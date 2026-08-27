@@ -1,0 +1,17 @@
+{
+    "name": "AiCharacterKit.Core.Tests.EditMode",
+    "rootNamespace": "AiCharacterKit.Core.Tests",
+    "references": [
+        "AiCharacterKit.Core",
+        "AiCharacterKit.Unity",
+        "UnityEngine.UI",
+        "Unity.InputSystem"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": []
+}

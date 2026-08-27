@@ -20,7 +20,7 @@ The framework will eventually support:
 - `Assets/`: Unity source code, scenes, prefabs, ScriptableObjects, and other game assets
 - `Packages/`: Unity package manifest and dependency lock file
 - `ProjectSettings/`: project-wide Unity editor and runtime settings
-- `docs/`: planned location for requirements, architecture, plans, and decisions; currently absent
+- `docs/`: requirements, architecture, plans, and decisions; the current roadmap is `docs/ROADMAP.md`
 - `server/`: reserved for a future backend; currently absent and must not be created until explicitly requested
 
 The Unity project root is the repository root. Do not assume a separate `unity/` directory.

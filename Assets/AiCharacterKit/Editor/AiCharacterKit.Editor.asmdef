@@ -1,0 +1,21 @@
+{
+    "name": "AiCharacterKit.Editor",
+    "rootNamespace": "AiCharacterKit.Editor",
+    "references": [
+        "AiCharacterKit.Core",
+        "AiCharacterKit.Unity",
+        "UnityEngine.UI",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
