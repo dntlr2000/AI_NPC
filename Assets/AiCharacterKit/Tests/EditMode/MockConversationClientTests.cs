@@ -60,6 +60,44 @@ namespace AiCharacterKit.Core.Tests
         }
 
         /// <summary>
+        /// Confirms that profile data differentiates the same question without character ID branches.
+        /// </summary>
+        [Test]
+        public async Task SendAsync_DifferentProfilesSameQuestion_ReturnsProfileSpecificResponses()
+        {
+            var client = new MockConversationClient(TimeSpan.Zero);
+            var lunaRequest = new AiNpcRequest(
+                "sample-luna",
+                "Luna",
+                "Playful, curious, and friendly.",
+                "Warm, casual, short sentences.",
+                "새로운 모험 이야기를 들려줄래?",
+                NpcEmotion.Happy,
+                "무엇을 좋아해?");
+            var guardRequest = new AiNpcRequest(
+                "sample-guard",
+                "Guard",
+                "Disciplined, vigilant, and duty-bound.",
+                "Formal, concise, respectful sentences.",
+                "성문 주변에서는 질서를 지켜 주십시오.",
+                NpcEmotion.Concerned,
+                "무엇을 좋아해?");
+
+            var lunaResponse = await client.SendAsync(
+                lunaRequest,
+                CancellationToken.None);
+            var guardResponse = await client.SendAsync(
+                guardRequest,
+                CancellationToken.None);
+
+            Assert.That(lunaResponse.Dialogue, Is.Not.EqualTo(guardResponse.Dialogue));
+            Assert.That(lunaResponse.Emotion, Is.EqualTo(NpcEmotion.Happy));
+            Assert.That(guardResponse.Emotion, Is.EqualTo(NpcEmotion.Concerned));
+            Assert.That(lunaResponse.Gesture, Is.EqualTo(NpcGesture.Nod));
+            Assert.That(guardResponse.Gesture, Is.EqualTo(NpcGesture.Nod));
+        }
+
+        /// <summary>
         /// Confirms that an already cancelled request does not generate a response.
         /// </summary>
         [Test]

@@ -20,7 +20,7 @@ The framework will eventually support:
 - `Assets/`: Unity source code, scenes, prefabs, ScriptableObjects, and other game assets
 - `Packages/`: Unity package manifest and dependency lock file
 - `ProjectSettings/`: project-wide Unity editor and runtime settings
-- `docs/`: requirements, architecture, plans, and decisions; the current roadmap is `docs/ROADMAP.md`
+- `docs/`: requirements, architecture, plans, and decisions; see `docs/ROADMAP.md` and `docs/PHASE2_PLAN.md`
 - `server/`: reserved for a future backend; currently absent and must not be created until explicitly requested
 
 The Unity project root is the repository root. Do not assume a separate `unity/` directory.
@@ -33,27 +33,28 @@ The Unity project root is the repository root. Do not assume a separate `unity/`
 
 ## Current milestone
 
-The current milestone is a text-only, mock-driven AI NPC vertical slice.
+The current milestone is Phase 2: a data-driven, multi-character mock vertical slice.
 
 It must include:
 
-- One NPC
-- Text input
-- Deterministic mock response
-- Dialogue output
-- Emotion command
-- Gesture command
-- CharacterProfile ScriptableObject
+- Two distinct CharacterProfile assets
+- Deterministic, profile-specific responses to the same input
+- Reuse of the same Core, controller, client, and presentation code
+- CharacterProfile validation and unique sample character IDs
+- An Editor-generated sample with two test NPCs
+- EditMode coverage for profile validation, response differentiation, and scene wiring
 
 It must not include:
 
 - OpenAI API calls
 - HTTP networking
 - Backend code
-- Long-term memory
+- JSON transport contracts
+- Conversation memory
 - TTS
 - STT
 - Realtime voice
+- Animator-based presentation
 - Vector databases
 
 ## Architecture rules

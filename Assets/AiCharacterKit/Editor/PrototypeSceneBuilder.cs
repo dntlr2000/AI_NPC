@@ -14,7 +14,7 @@ using UnityEngine.UI;
 namespace AiCharacterKit.Editor
 {
     /// <summary>
-    /// Creates the Phase 1 profile and Play Mode scene through supported Unity Editor APIs.
+    /// Creates the mock profile and Play Mode sample scenes through supported Unity Editor APIs.
     /// </summary>
     public static class PrototypeSceneBuilder
     {
@@ -25,7 +25,13 @@ namespace AiCharacterKit.Editor
         private const string ScenesFolder = MockNpcFolder + "/Scenes";
         private const string ProfilePath = ProfilesFolder + "/PrototypeCharacter.asset";
         private const string ScenePath = ScenesFolder + "/MockNpcPrototype.unity";
+        private const string LunaProfilePath = ProfilesFolder + "/Luna.asset";
+        private const string GuardProfilePath = ProfilesFolder + "/Guard.asset";
+        private const string MultiCharacterScenePath =
+            ScenesFolder + "/MultiCharacterMock.unity";
         private const string InputActionsPath = "Assets/InputSystem_Actions.inputactions";
+        private const float SinglePanelWidth = 560f;
+        private const float MultiPanelWidth = 440f;
 
         /// <summary>
         /// Creates the prototype from the Unity menu after protecting unsaved user scenes.
@@ -68,101 +74,237 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
+        /// Creates or repairs the Phase 2 two-character sample after protecting unsaved scenes.
+        /// </summary>
+        [MenuItem("Tools/AI Character Kit/Create Multi-Character Mock Prototype")]
+        public static void CreateMultiCharacterScene()
+        {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                return;
+            }
+
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(MultiCharacterScenePath) != null)
+            {
+                RepairMultiCharacterScene();
+                EditorUtility.DisplayDialog(
+                    "Multi-Character Mock Prototype",
+                    "The prototype already exists at:\n"
+                    + MultiCharacterScenePath
+                    + "\n\nIts required references were refreshed.",
+                    "OK");
+                Selection.activeObject = AssetDatabase.LoadAssetAtPath<SceneAsset>(
+                    MultiCharacterScenePath);
+                return;
+            }
+
+            CreateMultiCharacterSceneInternal();
+        }
+
+        /// <summary>
+        /// Creates or repairs the Phase 2 sample non-interactively for batch automation.
+        /// </summary>
+        public static void CreateMultiCharacterSceneBatch()
+        {
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(MultiCharacterScenePath) != null)
+            {
+                RepairMultiCharacterScene();
+                Debug.Log(
+                    $"Refreshed multi-character mock prototype references at {MultiCharacterScenePath}.");
+                return;
+            }
+
+            CreateMultiCharacterSceneInternal();
+        }
+
+        /// <summary>
         /// Creates folders, profile data, scene objects, UI, and serialized component wiring.
         /// </summary>
         private static void CreatePrototypeSceneInternal()
         {
-            EnsureFolder(RootFolder);
-            EnsureFolder(SamplesFolder);
-            EnsureFolder(MockNpcFolder);
-            EnsureFolder(ProfilesFolder);
-            EnsureFolder(ScenesFolder);
-
-            CreateOrLoadProfile();
+            EnsureSampleFolders();
+            var profile = CreateOrLoadProfile(CreateMinaProfileDefinition());
             var scene = EditorSceneManager.NewScene(
                 NewSceneSetup.DefaultGameObjects,
                 NewSceneMode.Single);
-            var profile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(ProfilePath);
-            if (profile == null)
-            {
-                throw new InvalidOperationException(
-                    $"Prototype profile was not found at {ProfilePath}.");
-            }
 
             ConfigureDefaultSceneObjects();
             CreateGround();
-
-            var npc = CreateNpc();
-            var presentationDriver = npc.GetComponent<NpcTextPresentationDriver>();
-            var conversationBehaviour = npc.GetComponent<NpcConversationBehaviour>();
-            var ui = CreateUserInterface(profile.DisplayName);
-
-            ConfigurePresentationDriver(
-                presentationDriver,
-                ui,
-                npc.GetComponent<Renderer>(),
-                npc.transform);
-            ConfigureConversationBehaviour(
-                conversationBehaviour,
+            CreateConfiguredNpc(
                 profile,
-                presentationDriver);
-            ConfigureInputView(ui.InputView, ui.InputField, ui.SendButton, conversationBehaviour);
+                Vector3.zero,
+                string.Empty,
+                false,
+                SinglePanelWidth);
             CreateInputSystemEventSystem();
 
-            EditorSceneManager.MarkSceneDirty(scene);
-            if (!EditorSceneManager.SaveScene(scene, ScenePath))
-            {
-                throw new InvalidOperationException(
-                    $"Failed to save prototype scene at {ScenePath}.");
-            }
-
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-
-            var sceneAsset = AssetDatabase.LoadAssetAtPath<SceneAsset>(ScenePath);
-            Selection.activeObject = sceneAsset;
-            Debug.Log($"Created Mock NPC prototype at {ScenePath}.");
+            SaveGeneratedScene(
+                scene,
+                ScenePath,
+                "Created Mock NPC prototype");
         }
 
         /// <summary>
-        /// Creates the profile once and reuses it on later safe builder runs.
+        /// Creates both Phase 2 profiles and wires two independent NPCs into a new scene.
         /// </summary>
-        private static CharacterProfile CreateOrLoadProfile()
+        private static void CreateMultiCharacterSceneInternal()
         {
-            var existingProfile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(ProfilePath);
+            EnsureSampleFolders();
+            var lunaProfile = CreateOrLoadProfile(CreateLunaProfileDefinition());
+            var guardProfile = CreateOrLoadProfile(CreateGuardProfileDefinition());
+            EnsureDistinctProfileIds(lunaProfile, guardProfile);
+
+            var scene = EditorSceneManager.NewScene(
+                NewSceneSetup.DefaultGameObjects,
+                NewSceneMode.Single);
+
+            ConfigureDefaultSceneObjects();
+            CreateGround();
+            CreateConfiguredNpc(
+                lunaProfile,
+                new Vector3(-1.7f, 0f, 0f),
+                "Luna",
+                true,
+                MultiPanelWidth);
+            CreateConfiguredNpc(
+                guardProfile,
+                new Vector3(1.7f, 0f, 0f),
+                "Guard",
+                false,
+                MultiPanelWidth);
+            CreateInputSystemEventSystem();
+
+            SaveGeneratedScene(
+                scene,
+                MultiCharacterScenePath,
+                "Created multi-character mock prototype");
+        }
+
+        /// <summary>
+        /// Creates one profile once and validates existing assets without overwriting them.
+        /// </summary>
+        private static CharacterProfile CreateOrLoadProfile(
+            SampleProfileDefinition definition)
+        {
+            var existingProfile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(
+                definition.AssetPath);
             if (existingProfile != null)
             {
+                ValidateProfile(existingProfile, definition.AssetPath);
                 return existingProfile;
             }
 
             var profile = ScriptableObject.CreateInstance<CharacterProfile>();
-            profile.name = "Prototype Character";
+            profile.name = definition.AssetName;
 
             var serializedProfile = new SerializedObject(profile);
-            serializedProfile.FindProperty("characterId").stringValue = "prototype-mina";
-            serializedProfile.FindProperty("displayName").stringValue = "Mina";
+            serializedProfile.FindProperty("characterId").stringValue =
+                definition.CharacterId;
+            serializedProfile.FindProperty("displayName").stringValue =
+                definition.DisplayName;
             serializedProfile.FindProperty("personality").stringValue =
-                "Friendly, observant, and eager to help.";
+                definition.Personality;
             serializedProfile.FindProperty("speechStyle").stringValue =
-                "Uses short, warm, and polite sentences.";
+                definition.SpeechStyle;
             serializedProfile.FindProperty("exampleDialogue").stringValue =
-                "오늘은 무엇을 도와드릴까요?";
+                definition.ExampleDialogue;
             serializedProfile.FindProperty("defaultEmotion").enumValueIndex =
-                (int)NpcEmotion.Neutral;
+                (int)definition.DefaultEmotion;
             serializedProfile.ApplyModifiedPropertiesWithoutUndo();
 
-            AssetDatabase.CreateAsset(profile, ProfilePath);
+            AssetDatabase.CreateAsset(profile, definition.AssetPath);
             AssetDatabase.SaveAssets();
-            AssetDatabase.ImportAsset(ProfilePath, ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabase.ImportAsset(
+                definition.AssetPath,
+                ImportAssetOptions.ForceSynchronousImport);
 
-            var savedProfile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(ProfilePath);
+            var savedProfile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(
+                definition.AssetPath);
             if (savedProfile == null)
             {
                 throw new InvalidOperationException(
-                    $"Failed to reload the created profile at {ProfilePath}.");
+                    $"Failed to reload the created profile at {definition.AssetPath}.");
             }
 
+            ValidateProfile(savedProfile, definition.AssetPath);
             return savedProfile;
+        }
+
+        /// <summary>
+        /// Describes the existing Phase 1 Mina profile without changing its asset path or values.
+        /// </summary>
+        private static SampleProfileDefinition CreateMinaProfileDefinition()
+        {
+            return new SampleProfileDefinition(
+                ProfilePath,
+                "Prototype Character",
+                "prototype-mina",
+                "Mina",
+                "Friendly, observant, and eager to help.",
+                "Uses short, warm, and polite sentences.",
+                "오늘은 무엇을 도와드릴까요?",
+                NpcEmotion.Neutral);
+        }
+
+        /// <summary>
+        /// Describes the playful Phase 2 Luna sample profile.
+        /// </summary>
+        private static SampleProfileDefinition CreateLunaProfileDefinition()
+        {
+            return new SampleProfileDefinition(
+                LunaProfilePath,
+                "Luna",
+                "sample-luna",
+                "Luna",
+                "Playful, curious, and friendly.",
+                "Warm, casual, short sentences.",
+                "새로운 모험 이야기를 들려줄래?",
+                NpcEmotion.Happy);
+        }
+
+        /// <summary>
+        /// Describes the disciplined Phase 2 Guard sample profile.
+        /// </summary>
+        private static SampleProfileDefinition CreateGuardProfileDefinition()
+        {
+            return new SampleProfileDefinition(
+                GuardProfilePath,
+                "Guard",
+                "sample-guard",
+                "Guard",
+                "Disciplined, vigilant, and duty-bound.",
+                "Formal, concise, respectful sentences.",
+                "성문 주변에서는 질서를 지켜 주십시오.",
+                NpcEmotion.Concerned);
+        }
+
+        /// <summary>
+        /// Fails scene generation early when a profile asset is incomplete or unsupported.
+        /// </summary>
+        private static void ValidateProfile(CharacterProfile profile, string assetPath)
+        {
+            if (!profile.TryValidate(out var validationError))
+            {
+                throw new InvalidOperationException(
+                    $"Character profile at {assetPath} is invalid: {validationError}");
+            }
+        }
+
+        /// <summary>
+        /// Ensures the Phase 2 samples cannot accidentally share a character identity.
+        /// </summary>
+        private static void EnsureDistinctProfileIds(
+            CharacterProfile first,
+            CharacterProfile second)
+        {
+            if (string.Equals(
+                first.CharacterId.Trim(),
+                second.CharacterId.Trim(),
+                StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "The multi-character sample profiles must use distinct character IDs.");
+            }
         }
 
         /// <summary>
@@ -178,50 +320,51 @@ namespace AiCharacterKit.Editor
                     $"Prototype profile was not found at {ProfilePath}.");
             }
 
-            var npc = GameObject.Find("Mock NPC - Mina");
-            var inputObject = GameObject.Find("Player Input");
-            var buttonObject = GameObject.Find("Send Button");
-
-            if (npc == null || inputObject == null || buttonObject == null)
-            {
-                throw new InvalidOperationException(
-                    "The existing prototype scene is missing required generated objects.");
-            }
-
-            var presentationDriver = npc.GetComponent<NpcTextPresentationDriver>();
-            var conversationBehaviour = npc.GetComponent<NpcConversationBehaviour>();
-            var inputView = UnityEngine.Object.FindAnyObjectByType<NpcTextInputView>();
-            var inputField = inputObject.GetComponent<InputField>();
-            var sendButton = buttonObject.GetComponent<Button>();
-
-            if (presentationDriver == null
-                || conversationBehaviour == null
-                || inputView == null
-                || inputField == null
-                || sendButton == null)
-            {
-                throw new InvalidOperationException(
-                    "The existing prototype scene is missing required generated components.");
-            }
-
-            ConfigureConversationBehaviour(
-                conversationBehaviour,
+            ValidateProfile(profile, ProfilePath);
+            RepairNpcConfiguration(
                 profile,
-                presentationDriver);
-            ConfigureInputView(
-                inputView,
-                inputField,
-                sendButton,
-                conversationBehaviour);
+                "Mock NPC - Mina",
+                string.Empty);
+            SaveGeneratedScene(
+                scene,
+                ScenePath,
+                "Repaired Mock NPC prototype");
+        }
 
-            EditorSceneManager.MarkSceneDirty(scene);
-            if (!EditorSceneManager.SaveScene(scene, ScenePath))
+        /// <summary>
+        /// Reloads the Phase 2 scene and restores both NPCs' independent serialized references.
+        /// </summary>
+        private static void RepairMultiCharacterScene()
+        {
+            var scene = EditorSceneManager.OpenScene(
+                MultiCharacterScenePath,
+                OpenSceneMode.Single);
+            var lunaProfile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(
+                LunaProfilePath);
+            var guardProfile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(
+                GuardProfilePath);
+
+            if (lunaProfile == null || guardProfile == null)
             {
                 throw new InvalidOperationException(
-                    $"Failed to repair prototype scene at {ScenePath}.");
+                    "The multi-character sample profiles are missing.");
             }
 
-            AssetDatabase.SaveAssets();
+            ValidateProfile(lunaProfile, LunaProfilePath);
+            ValidateProfile(guardProfile, GuardProfilePath);
+            EnsureDistinctProfileIds(lunaProfile, guardProfile);
+            RepairNpcConfiguration(
+                lunaProfile,
+                "Mock NPC - Luna",
+                "Luna");
+            RepairNpcConfiguration(
+                guardProfile,
+                "Mock NPC - Guard",
+                "Guard");
+            SaveGeneratedScene(
+                scene,
+                MultiCharacterScenePath,
+                "Repaired multi-character mock prototype");
         }
 
         /// <summary>
@@ -261,25 +404,64 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
-        /// Creates the Capsule NPC and adds its runtime bridge and presentation adapter.
+        /// Creates one Capsule NPC and adds its runtime bridge and presentation adapter.
         /// </summary>
-        private static GameObject CreateNpc()
+        private static GameObject CreateNpc(string displayName, Vector3 position)
         {
             var npc = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            npc.name = "Mock NPC - Mina";
-            npc.transform.position = Vector3.zero;
+            npc.name = $"Mock NPC - {displayName}";
+            npc.transform.position = position;
             npc.AddComponent<NpcTextPresentationDriver>();
             npc.AddComponent<NpcConversationBehaviour>();
             return npc;
         }
 
         /// <summary>
+        /// Creates and wires one NPC, its profile, its presentation driver, and its UI panel.
+        /// </summary>
+        private static void CreateConfiguredNpc(
+            CharacterProfile profile,
+            Vector3 position,
+            string objectSuffix,
+            bool alignPanelLeft,
+            float panelWidth)
+        {
+            var npc = CreateNpc(profile.DisplayName, position);
+            var presentationDriver = npc.GetComponent<NpcTextPresentationDriver>();
+            var conversationBehaviour = npc.GetComponent<NpcConversationBehaviour>();
+            var ui = CreateUserInterface(
+                profile.DisplayName,
+                objectSuffix,
+                alignPanelLeft,
+                panelWidth);
+
+            ConfigurePresentationDriver(
+                presentationDriver,
+                ui,
+                npc.GetComponent<Renderer>(),
+                npc.transform);
+            ConfigureConversationBehaviour(
+                conversationBehaviour,
+                profile,
+                presentationDriver);
+            ConfigureInputView(
+                ui.InputView,
+                ui.InputField,
+                ui.SendButton,
+                conversationBehaviour);
+        }
+
+        /// <summary>
         /// Creates a screen-space uGUI panel with all required input and output controls.
         /// </summary>
-        private static PrototypeUiReferences CreateUserInterface(string displayName)
+        private static PrototypeUiReferences CreateUserInterface(
+            string displayName,
+            string objectSuffix,
+            bool alignPanelLeft,
+            float panelWidth)
         {
             var canvasObject = new GameObject(
-                "Mock NPC Canvas",
+                GetObjectName("Mock NPC Canvas", objectSuffix),
                 typeof(RectTransform),
                 typeof(Canvas),
                 typeof(CanvasScaler),
@@ -294,7 +476,7 @@ namespace AiCharacterKit.Editor
             scaler.matchWidthOrHeight = 0.5f;
 
             var panel = new GameObject(
-                "Conversation Panel",
+                GetObjectName("Conversation Panel", objectSuffix),
                 typeof(RectTransform),
                 typeof(CanvasRenderer),
                 typeof(Image));
@@ -302,83 +484,85 @@ namespace AiCharacterKit.Editor
 
             var panelImage = panel.GetComponent<Image>();
             panelImage.color = new Color(0.04f, 0.055f, 0.08f, 0.94f);
-            SetTopRightRect(
+            SetPanelRect(
                 panel.GetComponent<RectTransform>(),
-                new Vector2(-24f, -24f),
-                new Vector2(560f, 610f));
+                alignPanelLeft,
+                panelWidth);
+
+            var contentWidth = panelWidth - 40f;
 
             var resources = new DefaultControls.Resources();
             var title = CreateText(
                 resources,
                 panel.transform,
-                "Character Name",
+                GetObjectName("Character Name", objectSuffix),
                 displayName,
                 28,
                 TextAnchor.MiddleLeft,
                 new Vector2(20f, -20f),
-                new Vector2(520f, 42f));
+                new Vector2(contentWidth, 42f));
             title.fontStyle = FontStyle.Bold;
             title.color = new Color(0.55f, 0.85f, 1f);
 
             var dialogue = CreateText(
                 resources,
                 panel.transform,
-                "Dialogue Output",
+                GetObjectName("Dialogue Output", objectSuffix),
                 "대화 출력",
                 20,
                 TextAnchor.UpperLeft,
                 new Vector2(20f, -78f),
-                new Vector2(520f, 170f));
+                new Vector2(contentWidth, 170f));
 
             var emotion = CreateText(
                 resources,
                 panel.transform,
-                "Emotion Output",
+                GetObjectName("Emotion Output", objectSuffix),
                 "감정: Neutral",
                 20,
                 TextAnchor.MiddleLeft,
                 new Vector2(20f, -266f),
-                new Vector2(520f, 38f));
+                new Vector2(contentWidth, 38f));
 
             var gesture = CreateText(
                 resources,
                 panel.transform,
-                "Gesture Output",
+                GetObjectName("Gesture Output", objectSuffix),
                 "제스처: None",
                 20,
                 TextAnchor.MiddleLeft,
                 new Vector2(20f, -310f),
-                new Vector2(520f, 38f));
+                new Vector2(contentWidth, 38f));
 
             var status = CreateText(
                 resources,
                 panel.transform,
-                "Request Status",
+                GetObjectName("Request Status", objectSuffix),
                 "상태: 준비",
                 18,
                 TextAnchor.MiddleLeft,
                 new Vector2(20f, -354f),
-                new Vector2(520f, 38f));
+                new Vector2(contentWidth, 38f));
             status.color = new Color(0.75f, 0.8f, 0.9f);
 
             var hint = CreateText(
                 resources,
                 panel.transform,
-                "Input Hint",
+                GetObjectName("Input Hint", objectSuffix),
                 "Try: 안녕 / 고마워 / 무엇을 좋아해?",
                 16,
                 TextAnchor.MiddleLeft,
                 new Vector2(20f, -400f),
-                new Vector2(520f, 32f));
+                new Vector2(contentWidth, 32f));
             hint.color = new Color(0.65f, 0.7f, 0.8f);
 
             var inputObject = DefaultControls.CreateInputField(resources);
-            inputObject.name = "Player Input";
+            inputObject.name = GetObjectName("Player Input", objectSuffix);
             inputObject.transform.SetParent(panel.transform, false);
             SetTopLeftRect(
                 inputObject.GetComponent<RectTransform>(),
                 new Vector2(20f, -452f),
-                new Vector2(385f, 64f));
+                new Vector2(panelWidth - 175f, 64f));
 
             var inputField = inputObject.GetComponent<InputField>();
             inputField.lineType = InputField.LineType.SingleLine;
@@ -388,11 +572,11 @@ namespace AiCharacterKit.Editor
             inputField.placeholder.GetComponent<Text>().fontSize = 18;
 
             var buttonObject = DefaultControls.CreateButton(resources);
-            buttonObject.name = "Send Button";
+            buttonObject.name = GetObjectName("Send Button", objectSuffix);
             buttonObject.transform.SetParent(panel.transform, false);
             SetTopLeftRect(
                 buttonObject.GetComponent<RectTransform>(),
-                new Vector2(420f, -452f),
+                new Vector2(panelWidth - 140f, -452f),
                 new Vector2(120f, 64f));
 
             var sendButton = buttonObject.GetComponent<Button>();
@@ -404,12 +588,12 @@ namespace AiCharacterKit.Editor
             var instructions = CreateText(
                 resources,
                 panel.transform,
-                "Verification Instructions",
+                GetObjectName("Verification Instructions", objectSuffix),
                 "응답 후 NPC 색상은 감정, 기울기는 제스처를 표시합니다.",
                 15,
                 TextAnchor.UpperLeft,
                 new Vector2(20f, -532f),
-                new Vector2(520f, 58f));
+                new Vector2(contentWidth, 58f));
             instructions.color = new Color(0.65f, 0.7f, 0.8f);
 
             var inputView = panel.AddComponent<NpcTextInputView>();
@@ -454,6 +638,96 @@ namespace AiCharacterKit.Editor
             text.verticalOverflow = VerticalWrapMode.Truncate;
             text.color = Color.white;
             return text;
+        }
+
+        /// <summary>
+        /// Restores every serialized connection for one existing generated NPC and UI panel.
+        /// </summary>
+        private static void RepairNpcConfiguration(
+            CharacterProfile profile,
+            string npcObjectName,
+            string objectSuffix)
+        {
+            var npc = FindRequiredGameObject(npcObjectName);
+            var presentationDriver = npc.GetComponent<NpcTextPresentationDriver>();
+            var conversationBehaviour = npc.GetComponent<NpcConversationBehaviour>();
+            if (presentationDriver == null || conversationBehaviour == null)
+            {
+                throw new InvalidOperationException(
+                    $"Generated NPC '{npcObjectName}' is missing required runtime components.");
+            }
+
+            var ui = FindUiReferences(objectSuffix);
+            ConfigurePresentationDriver(
+                presentationDriver,
+                ui,
+                npc.GetComponent<Renderer>(),
+                npc.transform);
+            ConfigureConversationBehaviour(
+                conversationBehaviour,
+                profile,
+                presentationDriver);
+            ConfigureInputView(
+                ui.InputView,
+                ui.InputField,
+                ui.SendButton,
+                conversationBehaviour);
+        }
+
+        /// <summary>
+        /// Finds one generated UI set by its optional Phase 2 character suffix.
+        /// </summary>
+        private static PrototypeUiReferences FindUiReferences(string objectSuffix)
+        {
+            return new PrototypeUiReferences
+            {
+                DialogueText = FindRequiredComponent<Text>(
+                    GetObjectName("Dialogue Output", objectSuffix)),
+                EmotionText = FindRequiredComponent<Text>(
+                    GetObjectName("Emotion Output", objectSuffix)),
+                GestureText = FindRequiredComponent<Text>(
+                    GetObjectName("Gesture Output", objectSuffix)),
+                StatusText = FindRequiredComponent<Text>(
+                    GetObjectName("Request Status", objectSuffix)),
+                InputField = FindRequiredComponent<InputField>(
+                    GetObjectName("Player Input", objectSuffix)),
+                SendButton = FindRequiredComponent<Button>(
+                    GetObjectName("Send Button", objectSuffix)),
+                InputView = FindRequiredComponent<NpcTextInputView>(
+                    GetObjectName("Conversation Panel", objectSuffix))
+            };
+        }
+
+        /// <summary>
+        /// Finds one active generated object or reports the exact missing name.
+        /// </summary>
+        private static GameObject FindRequiredGameObject(string objectName)
+        {
+            var gameObject = GameObject.Find(objectName);
+            if (gameObject == null)
+            {
+                throw new InvalidOperationException(
+                    $"Generated object '{objectName}' was not found.");
+            }
+
+            return gameObject;
+        }
+
+        /// <summary>
+        /// Finds one generated object and returns its required component.
+        /// </summary>
+        private static T FindRequiredComponent<T>(string objectName)
+            where T : Component
+        {
+            var gameObject = FindRequiredGameObject(objectName);
+            var component = gameObject.GetComponent<T>();
+            if (component == null)
+            {
+                throw new InvalidOperationException(
+                    $"Generated object '{objectName}' is missing {typeof(T).Name}.");
+            }
+
+            return component;
         }
 
         /// <summary>
@@ -625,6 +899,34 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
+        /// Keeps Phase 1 names unchanged and adds a stable character suffix for Phase 2 objects.
+        /// </summary>
+        private static string GetObjectName(string baseName, string objectSuffix)
+        {
+            return string.IsNullOrWhiteSpace(objectSuffix)
+                ? baseName
+                : $"{baseName} - {objectSuffix.Trim()}";
+        }
+
+        /// <summary>
+        /// Positions a conversation panel on the selected top screen edge.
+        /// </summary>
+        private static void SetPanelRect(
+            RectTransform rectTransform,
+            bool alignLeft,
+            float panelWidth)
+        {
+            var size = new Vector2(panelWidth, 610f);
+            if (alignLeft)
+            {
+                SetTopLeftRect(rectTransform, new Vector2(24f, -24f), size);
+                return;
+            }
+
+            SetTopRightRect(rectTransform, new Vector2(-24f, -24f), size);
+        }
+
+        /// <summary>
         /// Anchors a UI element to the top-left of its parent.
         /// </summary>
         private static void SetTopLeftRect(
@@ -655,6 +957,39 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
+        /// Creates every shared sample folder required by either mock prototype.
+        /// </summary>
+        private static void EnsureSampleFolders()
+        {
+            EnsureFolder(RootFolder);
+            EnsureFolder(SamplesFolder);
+            EnsureFolder(MockNpcFolder);
+            EnsureFolder(ProfilesFolder);
+            EnsureFolder(ScenesFolder);
+        }
+
+        /// <summary>
+        /// Saves one generated scene, persists assets, and selects the saved scene asset.
+        /// </summary>
+        private static void SaveGeneratedScene(
+            Scene scene,
+            string scenePath,
+            string logAction)
+        {
+            EditorSceneManager.MarkSceneDirty(scene);
+            if (!EditorSceneManager.SaveScene(scene, scenePath))
+            {
+                throw new InvalidOperationException(
+                    $"Failed to save generated scene at {scenePath}.");
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Selection.activeObject = AssetDatabase.LoadAssetAtPath<SceneAsset>(scenePath);
+            Debug.Log($"{logAction} at {scenePath}.");
+        }
+
+        /// <summary>
         /// Creates every missing segment of an Assets-relative folder path.
         /// </summary>
         private static void EnsureFolder(string folderPath)
@@ -679,6 +1014,51 @@ namespace AiCharacterKit.Editor
                 }
 
                 currentPath = nextPath;
+            }
+        }
+
+        /// <summary>
+        /// Holds only the serialized values needed to create one sample profile asset.
+        /// </summary>
+        private sealed class SampleProfileDefinition
+        {
+            public string AssetPath { get; }
+
+            public string AssetName { get; }
+
+            public string CharacterId { get; }
+
+            public string DisplayName { get; }
+
+            public string Personality { get; }
+
+            public string SpeechStyle { get; }
+
+            public string ExampleDialogue { get; }
+
+            public NpcEmotion DefaultEmotion { get; }
+
+            /// <summary>
+            /// Captures one immutable set of sample profile values for Editor generation.
+            /// </summary>
+            public SampleProfileDefinition(
+                string assetPath,
+                string assetName,
+                string characterId,
+                string displayName,
+                string personality,
+                string speechStyle,
+                string exampleDialogue,
+                NpcEmotion defaultEmotion)
+            {
+                AssetPath = assetPath;
+                AssetName = assetName;
+                CharacterId = characterId;
+                DisplayName = displayName;
+                Personality = personality;
+                SpeechStyle = speechStyle;
+                ExampleDialogue = exampleDialogue;
+                DefaultEmotion = defaultEmotion;
             }
         }
 

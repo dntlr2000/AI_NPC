@@ -1,21 +1,21 @@
 # AI NPC Framework 진행 점검 및 로드맵
 
-> 기준일: 2026-08-27  
+> 기준일: 2026-08-28
 > 비교 기준: ChatGPT 대화 **“Unity Ai NPC 만들기”**의 초기 구상과 이후 합의된 Phase 1·2 범위
 
 ## 결론
 
-저장소는 수정된 로드맵의 순서와 제약을 잘 따르고 있다. 현재 위치는 **Phase 1 기능 구현과 자동 검증은 완료했지만 마일스톤 종료 절차는 남은 상태**다. 실제 OpenAI 연동을 먼저 만들지 않고, Mock으로 요청·응답·표현 경계를 검증한 것은 초기 구상을 안전하게 구체화한 의도적인 변경이다.
+저장소는 수정된 로드맵의 순서와 제약을 잘 따르고 있다. **Phase 1은 완료됐고, Phase 2는 구현과 자동 검증을 마쳐 Play Mode 수동 확인을 기다리고 있다.** 실제 OpenAI 연동을 먼저 만들지 않고, Mock으로 프로필 기반 재사용성까지 검증한 것은 초기 구상을 안전하게 구체화한 의도적인 변경이다.
 
-다음 구현은 API가 아니라 **Phase 2: 다중 CharacterProfile 기반 재사용성 검증**이어야 한다. 단, 그 전에 Play Mode 수동 확인과 Git 체크포인트로 Phase 1을 닫는다.
+현재 종료 게이트는 새 2인용 샘플의 수동 확인과 Phase 2 체크포인트 커밋이다. 상세 결과와 체크리스트는 [`PHASE2_PLAN.md`](PHASE2_PLAN.md)를 따른다.
 
 ## 현재 기준선
 
 - Unity: `6000.5.3f1`
 - 주요 설치 패키지: URP `17.5.0`, Input System `1.19.0`, uGUI `2.5.0`, Test Framework `1.7.0`
 - 구현 위치: `Assets/AiCharacterKit/`
-- 샘플: `Samples/MockNpc/Scenes/MockNpcPrototype.unity`
-- Git: Phase 1 전체가 아직 추적되지 않은 신규 파일이며 `main`에는 초기 커밋만 존재
+- 샘플: Phase 1 `MockNpcPrototype.unity`, Phase 2 `MultiCharacterMock.unity`
+- Git: `main`의 Phase 1 체크포인트 `e2f2c8d` 위에 Phase 2 변경이 아직 커밋되지 않은 상태
 - 제외 범위: OpenAI, HTTP, `server/`, 기억, TTS, STT, Realtime은 없음
 
 ## 초기 로드맵과의 비교
@@ -39,25 +39,27 @@
 - Unity 경계: `CharacterProfile`, `NpcConversationBehaviour`, uGUI 입력, `INpcPresentationDriver` 구현
 - 자동 설정: `PrototypeSceneBuilder`가 Editor API로 프로필과 샘플 씬을 생성·복구
 - 의존성: Core asmdef는 `noEngineReferences: true`; Runtime에는 `UnityEditor` 참조가 없음
-- 자동 검증: Unity EditMode **11/11 통과**, 실패·건너뜀 0. 결과는 로컬 `E:\CodexValidation\AI_NPC_RoadmapAudit\EditModeFinalResults.xml`에 보관
-- 미검증: 이번 점검에서는 실제 Play Mode 상호작용을 사람이 확인하지 않음
+- 자동 검증: Unity 컴파일 성공, EditMode **20/20 통과**, 실패·건너뜀 0. Phase 2 결과는 로컬 `E:\CodexValidation\AI_NPC_Phase2\EditModeFinalResults.xml`에 보관
+- 수동 검증: Phase 1은 완료. Phase 2 다중 NPC 씬은 확인 대기
 
-## Phase 1 종료 게이트 — 지금 수행
+## Phase 1 완료 기록
 
-1. `MockNpcPrototype.unity`를 열고 Console 오류가 없는지 확인한다.
-2. `안녕`, `고마워`, `무엇을 좋아해?`를 입력해 대사·감정·제스처가 함께 바뀌는지 확인한다.
-3. 빈 입력과 빠른 연속 클릭이 안전하게 거부되는지 확인한다.
-4. 같은 입력을 반복해 동일한 구조화 응답이 나오는지 확인한다.
-5. 변경 사항을 리뷰하고 `Packages/`가 그대로인지 확인한 뒤 Phase 1 커밋을 만든다.
+- Unity EditMode 11/11 통과, 실패·건너뜀 0
+- Play Mode에서 대사·감정·제스처와 입력 예외 흐름 정상 확인
+- `Packages/`와 `ProjectSettings/` 변경 없음
+- OpenAI, HTTP, 서버, 기억, 음성 코드 없음
+- `main`에 `e2f2c8d (Phase1)` 커밋 생성, 작업 트리 clean
 
-**종료 조건:** Console 오류 0, EditMode 전체 통과, 위 Play Mode 항목 통과, 차단 수준 리뷰 이슈 0, Git 체크포인트 생성.
+**판정:** Phase 1 완료. Phase 2 시작 가능.
 
 ## 향후 작업 순서
 
 ### Phase 2 — 다중 캐릭터와 데이터 주도 재사용
 
+- **상태: 구현 및 자동 검증 완료, Play Mode 확인 대기**
+- 상세 구현 계획: [`PHASE2_PLAN.md`](PHASE2_PLAN.md)
 - 성격과 말투가 대비되는 프로필 2개(예: Luna, Guard)를 만든다.
-- 같은 입력이 같은 프로필에서는 항상 같고, 다른 프로필에서는 구분되는 응답을 내도록 Mock 규칙을 확장한다.
+- 기존 Mock 규칙과 서로 다른 프로필 데이터를 사용해 같은 입력은 같은 프로필에서 항상 같고, 다른 프로필에서는 구분되게 한다.
 - `characterId` 분기 없이 프로필 데이터만 사용하며 필수 필드 검증을 추가한다.
 - 동일한 Core와 Controller를 두 NPC 또는 프로필 선택 UI에서 재사용한다.
 - 프로필별 결정성·차별성·유효성 테스트를 추가한다.
@@ -110,7 +112,7 @@
 
 ## 주요 위험과 통제
 
-- `Personality`와 `SpeechStyle`은 요청에 포함되지만 현재 Mock 규칙에서 직접 사용되지 않는다. Phase 2에서 ID 하드코딩 없이 의미 있게 반영한다.
+- `Personality`와 `SpeechStyle`은 요청에 포함되지만 Mock이 자연어 설명을 해석하지는 않는다. Phase 2에서는 필수 데이터로 검증하고 전달하되, 결정적 차이는 `DisplayName`, `ExampleDialogue`, `DefaultEmotion`으로 만들며 실제 의미 해석은 Phase 4에 둔다.
 - `NpcConversationBehaviour`가 Mock을 직접 생성한다. 실제 클라이언트 전환 시 작은 composition root를 도입하되 지금은 DI 프레임워크를 추가하지 않는다.
 - 현재 표현은 정적 색상·회전이다. 대상 3D 캐릭터와 Animator 규격이 정해진 후 별도 `INpcPresentationDriver`로 확장한다.
 - 전송 스키마, 인증, 비용 제한은 아직 없다. Phase 4 이전에 네트워크 코드를 넣지 않는다.
@@ -118,4 +120,4 @@
 
 ## 바로 다음 행동
 
-**Phase 1 종료 게이트를 통과시키고 커밋한 다음, Phase 2만 구현한다.** Backend, OpenAI, 기억, 음성 작업은 각 선행 단계의 종료 조건이 충족되기 전에는 시작하지 않는다.
+**`MultiCharacterMock.unity`를 Play Mode에서 수동 검증하고 Console 오류가 없으면 Phase 2 체크포인트를 커밋한다.** 이 게이트 전에는 Phase 3 계약이나 Backend, OpenAI, 기억, 음성 작업을 시작하지 않는다.

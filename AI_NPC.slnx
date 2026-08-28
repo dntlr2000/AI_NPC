@@ -1,0 +1,8 @@
+﻿<Solution>
+  <Project Path="AiCharacterKit.Core.Tests.EditMode.csproj" />
+  <Project Path="AiCharacterKit.Unity.csproj" />
+  <Project Path="Assembly-CSharp-Editor.csproj" />
+  <Project Path="AiCharacterKit.Core.csproj" />
+  <Project Path="AiCharacterKit.Editor.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
+</Solution>

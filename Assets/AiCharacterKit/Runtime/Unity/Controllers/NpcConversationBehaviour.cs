@@ -112,7 +112,7 @@ namespace AiCharacterKit.Unity
         }
 
         /// <summary>
-        /// Resolves the interface adapter and creates Phase 1's mock-backed controller.
+        /// Resolves the interface adapter and creates the current mock-backed controller.
         /// </summary>
         private bool TryInitialize()
         {
@@ -120,6 +120,14 @@ namespace AiCharacterKit.Unity
             {
                 Debug.LogError(
                     "NpcConversationBehaviour requires a CharacterProfile.",
+                    this);
+                return false;
+            }
+
+            if (!characterProfile.TryValidate(out var validationError))
+            {
+                Debug.LogError(
+                    $"NpcConversationBehaviour received an invalid CharacterProfile: {validationError}",
                     this);
                 return false;
             }
