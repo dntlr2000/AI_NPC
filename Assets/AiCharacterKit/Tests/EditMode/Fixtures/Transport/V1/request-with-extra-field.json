@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "requestId": "req-extra",
+  "character": {
+    "characterId": "sample-guard",
+    "displayName": "Guard",
+    "personality": "Disciplined, vigilant, and duty-bound.",
+    "speechStyle": "Formal, concise, respectful sentences.",
+    "exampleDialogue": "성문 주변에서는 질서를 지켜 주십시오.",
+    "defaultEmotion": "concerned",
+    "futureCharacterField": "ignored"
+  },
+  "userText": "누구세요?",
+  "futureEnvelopeField": {
+    "enabled": true
+  }
+}

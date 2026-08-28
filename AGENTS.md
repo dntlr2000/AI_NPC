@@ -20,7 +20,7 @@ The framework will eventually support:
 - `Assets/`: Unity source code, scenes, prefabs, ScriptableObjects, and other game assets
 - `Packages/`: Unity package manifest and dependency lock file
 - `ProjectSettings/`: project-wide Unity editor and runtime settings
-- `docs/`: requirements, architecture, plans, and decisions; see `docs/ROADMAP.md` and `docs/PHASE2_PLAN.md`
+- `docs/`: requirements, architecture, plans, and decisions; see `docs/ROADMAP.md`, `docs/PHASE3_PLAN.md`, and `docs/CONTRACT_V1.md`
 - `server/`: reserved for a future backend; currently absent and must not be created until explicitly requested
 
 The Unity project root is the repository root. Do not assume a separate `unity/` directory.
@@ -33,34 +33,36 @@ The Unity project root is the repository root. Do not assume a separate `unity/`
 
 ## Current milestone
 
-The current milestone is Phase 2: a data-driven, multi-character mock vertical slice.
+The current milestone is Phase 3: a versioned Unity-to-backend JSON transport contract.
 
 It must include:
 
-- Two distinct CharacterProfile assets
-- Deterministic, profile-specific responses to the same input
-- Reuse of the same Core, controller, client, and presentation code
-- CharacterProfile validation and unique sample character IDs
-- An Editor-generated sample with two test NPCs
-- EditMode coverage for profile validation, response differentiation, and scene wiring
+- Pure C# V1 request, response, character, result, and error DTOs
+- Explicit schema version, request correlation, status, and command tokens
+- Domain-to-transport mapping without changing existing Core models
+- Validation for required fields, versions, branches, and enum tokens
+- A Unity-only JsonUtility codec with no added package dependency
+- Golden JSON fixtures and EditMode contract coverage
 
 It must not include:
 
 - OpenAI API calls
 - HTTP networking
 - Backend code
-- JSON transport contracts
 - Conversation memory
 - TTS
 - STT
 - Realtime voice
 - Animator-based presentation
 - Vector databases
+- Changes to the existing mock Play Mode path or sample scenes
 
 ## Architecture rules
 
 - Runtime code must never reference `UnityEditor`.
 - Core dialogue logic must not directly depend on Animator, UI, TextMeshPro, OpenAI, or HTTP.
+- Transport DTOs, validation, and mapping must not depend on UnityEngine.
+- JSON serialization must remain in the Unity boundary rather than Core or Transport.
 - Use interfaces for external systems.
 - Use `IAiConversationClient` for dialogue generation.
 - Use `INpcPresentationDriver` for dialogue, emotion, and gesture presentation.

@@ -1,7 +1,8 @@
 # Phase 2 Implementation Plan
 
-> 상태: 자동 구현·검증 완료, Play Mode 수동 검증 대기
+> 상태: 완료
 > 기준 커밋: `e2f2c8d (Phase1)`
+> 완료 커밋: `8708f4f (Phase2)`
 > 목표: 네트워크 없이 동일한 프레임워크 코드로 서로 다른 Mock NPC 두 명을 구동한다.
 
 ## 구현 현황
@@ -11,7 +12,8 @@
 - 기존 Core 계약과 Mock·Controller·Presentation 구현을 변경 없이 재사용한다.
 - Unity 컴파일을 확인했고 전체 EditMode 테스트는 **20/20 통과**했다.
 - `Packages/`, 기존 Mina 프로필, Phase 1 씬은 변경하지 않았다.
-- 남은 종료 게이트는 새 씬의 Play Mode 수동 확인과 Phase 2 체크포인트 커밋이다.
+- 사용자가 새 씬의 Play Mode 수동 체크리스트와 Console 오류 0을 확인했다.
+- `8708f4f (Phase2)` 체크포인트 커밋으로 마일스톤을 종료했다.
 
 ## 목표와 범위
 
@@ -131,9 +133,9 @@ Luna와 Guard는 같은 클래스들을 사용하지만 Controller와 요청 상
 - [x] 잘못된 프로필은 요청 전에 명확히 거부된다.
 - [x] 두 NPC의 입력·상태·표현 참조가 인스턴스별로 분리돼 있다.
 - [x] 기존 11개 테스트를 포함한 전체 EditMode 테스트 20개가 통과한다.
-- [ ] Play Mode 수동 체크리스트와 Console 오류 0을 확인한다.
+- [x] Play Mode 수동 체크리스트와 Console 오류 0을 확인한다.
 - [x] 패키지 변경, 네트워크, 서버, 기억, 음성, Animator 구현이 없다.
-- [ ] 변경 리뷰 후 Phase 2 체크포인트 커밋을 만든다.
+- [x] 변경 리뷰 후 Phase 2 체크포인트 커밋을 만든다.
 
 ## 위험 요소와 통제
 

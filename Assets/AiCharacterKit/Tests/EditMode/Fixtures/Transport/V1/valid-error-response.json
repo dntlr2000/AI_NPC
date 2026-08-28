@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "requestId": "req-error",
+  "status": "error",
+  "error": {
+    "code": "invalid_request",
+    "message": "요청을 확인해 주세요.",
+    "retryable": false
+  }
+}

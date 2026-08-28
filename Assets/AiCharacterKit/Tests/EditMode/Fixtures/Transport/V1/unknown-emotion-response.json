@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "requestId": "req-unknown-emotion",
+  "status": "success",
+  "result": {
+    "dialogue": "새로운 감정입니다.",
+    "emotion": "excited",
+    "gesture": "nod"
+  }
+}

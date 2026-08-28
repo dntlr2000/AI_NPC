@@ -1,13 +1,13 @@
 # AI NPC Framework 진행 점검 및 로드맵
 
-> 기준일: 2026-08-28
+> 기준일: 2026-08-29
 > 비교 기준: ChatGPT 대화 **“Unity Ai NPC 만들기”**의 초기 구상과 이후 합의된 Phase 1·2 범위
 
 ## 결론
 
-저장소는 수정된 로드맵의 순서와 제약을 잘 따르고 있다. **Phase 1은 완료됐고, Phase 2는 구현과 자동 검증을 마쳐 Play Mode 수동 확인을 기다리고 있다.** 실제 OpenAI 연동을 먼저 만들지 않고, Mock으로 프로필 기반 재사용성까지 검증한 것은 초기 구상을 안전하게 구체화한 의도적인 변경이다.
+저장소는 수정된 로드맵의 순서와 제약을 잘 따르고 있다. **Phase 1·2는 완료됐고, Phase 3는 V1 전송 계약 구현과 자동 검증을 마쳐 리뷰와 체크포인트 커밋을 기다리고 있다.** 실제 OpenAI 연동보다 먼저 Mock 재사용성과 직렬화 경계를 검증하는 순서를 유지했다.
 
-현재 종료 게이트는 새 2인용 샘플의 수동 확인과 Phase 2 체크포인트 커밋이다. 상세 결과와 체크리스트는 [`PHASE2_PLAN.md`](PHASE2_PLAN.md)를 따른다.
+현재 종료 게이트는 Phase 3 변경 리뷰와 체크포인트 커밋이다. 상세 구현 결과는 [`PHASE3_PLAN.md`](PHASE3_PLAN.md), 고정된 wire 규격은 [`CONTRACT_V1.md`](CONTRACT_V1.md)를 따른다.
 
 ## 현재 기준선
 
@@ -15,7 +15,7 @@
 - 주요 설치 패키지: URP `17.5.0`, Input System `1.19.0`, uGUI `2.5.0`, Test Framework `1.7.0`
 - 구현 위치: `Assets/AiCharacterKit/`
 - 샘플: Phase 1 `MockNpcPrototype.unity`, Phase 2 `MultiCharacterMock.unity`
-- Git: `main`의 Phase 1 체크포인트 `e2f2c8d` 위에 Phase 2 변경이 아직 커밋되지 않은 상태
+- Git: `main`의 Phase 2 체크포인트 `8708f4f` 위에 Phase 3 변경이 아직 커밋되지 않은 상태
 - 제외 범위: OpenAI, HTTP, `server/`, 기억, TTS, STT, Realtime은 없음
 
 ## 초기 로드맵과의 비교
@@ -25,8 +25,8 @@
 | 계획 축 | 현재 상태 | 판단 |
 | --- | --- | --- |
 | 텍스트 NPC vertical slice | 입력, 결정적 Mock 응답, 출력 UI와 샘플 NPC 구현 | 완료 |
-| 구조화 응답 | `AiNpcResponse`가 대사·감정·제스처를 전달 | Phase 1 목표 충족; JSON 전송 규격은 Phase 3으로 보류 |
-| 캐릭터 데이터 | `CharacterProfile`에 신원·성격·말투·예시·기본 감정 저장 | 기반 완료; 현재 프로필은 1개 |
+| 구조화 응답 | `AiNpcResponse`와 분리된 V1 JSON DTO·validator·codec | Phase 3 자동 검증 완료 |
+| 캐릭터 데이터 | Mina·Luna·Guard 프로필과 다중 NPC 재사용 검증 | Phase 2 완료 |
 | 표현 명령 | 색상으로 감정, 회전으로 제스처를 확인 | vertical slice 충족; Animator 연동은 의도적으로 미구현 |
 | 실제 모델·백엔드 | 구현하지 않음 | 수정된 로드맵과 보안 원칙에 부합 |
 | 기억·음성·패키지화 | 구현하지 않음 | 선행 구현을 피한 올바른 상태 |
@@ -36,11 +36,12 @@
 ## 구현 및 검증 현황
 
 - Core: 요청/응답 모델, `IAiConversationClient`, 결정적 `MockConversationClient`, 중복·취소·오류를 처리하는 `NpcAIController`
+- Transport: Unity 비의존 V1 DTO, validator, mapper와 Unity 경계의 `JsonUtility` codec
 - Unity 경계: `CharacterProfile`, `NpcConversationBehaviour`, uGUI 입력, `INpcPresentationDriver` 구현
 - 자동 설정: `PrototypeSceneBuilder`가 Editor API로 프로필과 샘플 씬을 생성·복구
 - 의존성: Core asmdef는 `noEngineReferences: true`; Runtime에는 `UnityEditor` 참조가 없음
-- 자동 검증: Unity 컴파일 성공, EditMode **20/20 통과**, 실패·건너뜀 0. Phase 2 결과는 로컬 `E:\CodexValidation\AI_NPC_Phase2\EditModeFinalResults.xml`에 보관
-- 수동 검증: Phase 1은 완료. Phase 2 다중 NPC 씬은 확인 대기
+- 자동 검증: Unity 컴파일 성공, EditMode **46/46 통과**, 실패·건너뜀 0. Phase 3 결과는 로컬 `E:\CodexValidation\AI_NPC_Phase3\EditModeFinalResults.xml`에 보관
+- 수동 검증: Phase 1·2 Play Mode 완료. Phase 3는 씬을 변경하지 않아 별도 Play Mode 검증이 필요하지 않음
 
 ## Phase 1 완료 기록
 
@@ -56,7 +57,7 @@
 
 ### Phase 2 — 다중 캐릭터와 데이터 주도 재사용
 
-- **상태: 구현 및 자동 검증 완료, Play Mode 확인 대기**
+- **상태: 완료 — `8708f4f (Phase2)`**
 - 상세 구현 계획: [`PHASE2_PLAN.md`](PHASE2_PLAN.md)
 - 성격과 말투가 대비되는 프로필 2개(예: Luna, Guard)를 만든다.
 - 기존 Mock 규칙과 서로 다른 프로필 데이터를 사용해 같은 입력은 같은 프로필에서 항상 같고, 다른 프로필에서는 구분되게 한다.
@@ -68,6 +69,9 @@
 
 ### Phase 3 — Unity ↔ Backend 전송 계약
 
+- **상태: 구현 및 자동 검증 완료, 체크포인트 커밋 대기**
+- 상세 구현 기록: [`PHASE3_PLAN.md`](PHASE3_PLAN.md)
+- V1 wire 규격: [`CONTRACT_V1.md`](CONTRACT_V1.md)
 - Core 도메인 모델과 직렬화 DTO를 분리하고 버전이 있는 JSON 계약을 정의한다.
 - 요청 ID, 캐릭터 스냅샷, 사용자 입력, 대사·감정·제스처, 오류 형식을 고정한다.
 - 정상·누락·알 수 없는 enum·잘못된 JSON에 대한 golden fixture 테스트를 만든다.
@@ -120,4 +124,4 @@
 
 ## 바로 다음 행동
 
-**`MultiCharacterMock.unity`를 Play Mode에서 수동 검증하고 Console 오류가 없으면 Phase 2 체크포인트를 커밋한다.** 이 게이트 전에는 Phase 3 계약이나 Backend, OpenAI, 기억, 음성 작업을 시작하지 않는다.
+**Phase 3 변경을 리뷰하고 V1 fixture와 EditMode 46/46 결과를 확인한 뒤 체크포인트를 커밋한다.** 이후 Phase 4 계획에서만 Backend, HTTP, 실제 OpenAI, timeout·재시도·오류 매핑을 다룬다.

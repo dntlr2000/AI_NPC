@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "requestId": "req-001",
+  "status": "success",
+  "result": {
+    "dialogue": "Luna: 새로운 모험 이야기를 들려줄래?",
+    "emotion": "happy",
+    "gesture": "nod"
+  }
+}
