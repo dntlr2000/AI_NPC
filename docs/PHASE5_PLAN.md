@@ -1,7 +1,8 @@
 # Phase 5 — Sessions and Bounded Short-Term Memory
 
-> 상태: 구현 및 자동 검증 완료, 실제 OpenAI Play Mode 검증과 체크포인트 커밋 대기
+> 상태: 완료 — `d8ae5f7 (Phase5)`
 > 기준 커밋: `ab53815 (Phase4_1)`
+> 완료 커밋: `d8ae5f7 (Phase5)`
 > 목표: 기존 V1·Mock 경로를 보존하면서 NPC별 제한된 최근 대화와 명시적 reset을 제공한다.
 
 ## 구현 범위
@@ -69,14 +70,13 @@ CharacterProfile + user text
 - 로그: `E:\CodexValidation\Phase5\MemorySceneBuilder.log`, `EditMode.log`
 - `Packages/`와 `ProjectSettings/` 변경 없음
 
-## 수동 검증
+## 수동 검증 결과
 
-1. `server/`에서 `OPENAI_API_KEY`를 현재 process 환경에만 설정하고 `npm run dev`를 실행한다.
-2. `MemoryNpcPrototype.unity`를 열어 Play Mode로 진입한다.
-3. Luna와 Guard에게 서로 다른 사실을 말한 뒤 각각 재질문해 독립적으로 기억하는지 확인한다.
-4. Luna만 Reset하고 Luna의 기억은 사라지며 Guard의 기억은 유지되는지 확인한다.
-5. Reset 후 Luna가 초기 대사·기본 감정·`None` 제스처로 돌아가는지 확인한다.
-6. 응답 또는 reset 진행 중 Send와 Reset 버튼이 모두 비활성화되는지 확인한다.
+- 2026-08-30 사용자가 실제 OpenAI Backend와 `MemoryNpcPrototype.unity`를 Play Mode에서 검증했다.
+- Luna와 Guard가 서로 다른 사실을 독립적으로 기억하고 재질문에 반영했다.
+- Luna만 Reset했을 때 Luna의 기억은 사라지고 Guard의 기억은 유지됐다.
+- Reset 후 초기 대사·기본 감정·`None` 제스처 복귀와 작업 중 Send/Reset 버튼 비활성화가 정상 동작했다.
+- 검증 후 `main`에 `d8ae5f7 (Phase5)` 체크포인트를 생성했고 작업 트리가 clean함을 확인했다.
 
 ## 완료 기준
 
@@ -84,8 +84,8 @@ CharacterProfile + user text
 - [x] V2 계약, session 제한, 동시성, reset과 오류 경로를 자동 테스트한다.
 - [x] 실제 OpenAI 없이 전체 Server/Unity 회귀가 통과한다.
 - [x] API 키·대화·session ID를 asset, source 또는 log에 저장하지 않는다.
-- [ ] 사용자가 실제 모델로 두 NPC의 기억 분리와 reset을 확인한다.
-- [ ] 수동 검증 후 Phase 5 체크포인트 커밋을 만든다.
+- [x] 사용자가 실제 모델로 두 NPC의 기억 분리와 reset을 확인한다.
+- [x] 수동 검증 후 Phase 5 체크포인트 커밋을 만든다.
 
 ## 남은 위험
 

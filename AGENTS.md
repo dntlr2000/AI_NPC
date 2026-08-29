@@ -33,9 +33,9 @@ The Unity project root is the repository root. Do not assume a separate `unity/`
 
 ## Current milestone
 
-Phase 4 is complete on `main` at `ab53815 (Phase4_1)`. Phase 5 implementation and automated verification are complete in the working tree; manual live-memory verification and a checkpoint commit remain.
+Phase 5 is complete on `main` at `d8ae5f7 (Phase5)`, including automated regression coverage and manual live-memory Play Mode verification. Phase 6 has not been planned or approved yet, so preserve this checkpoint until a new plan is accepted.
 
-The Phase 5 working tree includes:
+The completed Phase 5 checkpoint includes:
 
 - The unchanged stateless V1 and Mock paths
 - A V2 contract with `/v2/npc/respond` and `/v2/npc/sessions/reset`
@@ -44,7 +44,7 @@ The Phase 5 working tree includes:
 - An Editor-generated two-character `MemoryNpcPrototype` sample scene
 - Server tests and full Unity EditMode regression coverage
 
-Do not add beyond this milestone:
+Until the next milestone is approved, do not add:
 
 - Persistent or long-term memory
 - TTS

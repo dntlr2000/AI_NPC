@@ -5,9 +5,9 @@
 
 ## 결론
 
-저장소는 수정된 로드맵의 순서와 제약을 잘 따르고 있다. **Phase 1~4는 `main` 체크포인트로 완료됐고, Phase 5의 제한된 단기 기억은 구현 및 자동 검증까지 완료됐다.** Phase 5의 실제 OpenAI Play Mode 검증과 체크포인트 커밋은 아직 남아 있으므로 완료로 표시하지 않는다. Mock 재사용성과 stateless V1 계약은 그대로 유지된다.
+저장소는 수정된 로드맵의 순서와 제약을 잘 따르고 있다. **Phase 1~5는 `main` 체크포인트로 완료됐으며, Phase 5의 제한된 단기 기억도 실제 OpenAI Play Mode에서 검증했다.** Mock 재사용성과 stateless V1 계약은 그대로 유지된다.
 
-현재 커밋 기준선은 `ab53815 (Phase4_1)`이다. Phase 5 범위와 검증은 [`PHASE5_PLAN.md`](PHASE5_PLAN.md), session wire 규격은 [`CONTRACT_V2.md`](CONTRACT_V2.md)를 따른다. 기존 V1 규격은 [`CONTRACT_V1.md`](CONTRACT_V1.md)에 고정돼 있다.
+현재 커밋 기준선은 `d8ae5f7 (Phase5)`이다. Phase 5 범위와 검증은 [`PHASE5_PLAN.md`](PHASE5_PLAN.md), session wire 규격은 [`CONTRACT_V2.md`](CONTRACT_V2.md)를 따른다. 기존 V1 규격은 [`CONTRACT_V1.md`](CONTRACT_V1.md)에 고정돼 있다.
 
 ## 우리가 만드는 것
 
@@ -45,7 +45,7 @@
 - uGUI, 3D 캐릭터 또는 다른 표현 방식을 교체할 수 있는 presentation 경계
 - 샘플, 자동 테스트, 두 번째 프로젝트 검증을 거친 최종 UPM 패키지
 
-API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유한다. 기억·TTS·STT·Realtime은 기본 대화 경로가 안정된 뒤 선택형 기능으로 추가한다. 퀘스트, 관계도, 범용 자율 에이전트와 게임별 행동 트리는 이 프레임워크의 현재 목표가 아니다.
+API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유한다. 제한된 단기 기억까지 검증됐으며 TTS·STT·Realtime은 이후 선택형 기능으로 추가한다. 퀘스트, 관계도, 범용 자율 에이전트와 게임별 행동 트리는 이 프레임워크의 현재 목표가 아니다.
 
 ## 현재 기준선
 
@@ -53,7 +53,7 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - 주요 설치 패키지: URP `17.5.0`, Input System `1.19.0`, uGUI `2.5.0`, Test Framework `1.7.0`
 - 구현 위치: `Assets/AiCharacterKit/`
 - 샘플: `MockNpcPrototype.unity`, `MultiCharacterMock.unity`, `BackendNpcPrototype.unity`, `MemoryNpcPrototype.unity`
-- Git 기준선: `ab53815 (Phase4_1)`; Phase 5 변경은 아직 미커밋
+- Git 기준선: `d8ae5f7 (Phase5)`
 - Backend: Node.js 24 + TypeScript + Fastify + OpenAI SDK, V1 stateless와 V2 session, loopback 전용
 - 제외 범위: 영구·장기·Vector 기억, TTS, STT, Realtime, 원격 배포, client auth, streaming
 
@@ -68,7 +68,7 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 | 캐릭터 데이터 | Mina·Luna·Guard 프로필과 다중 NPC 재사용 검증 | Phase 2 완료 |
 | 표현 명령 | 색상으로 감정, 회전으로 제스처를 확인 | vertical slice 충족; Animator 연동은 의도적으로 미구현 |
 | 실제 모델·백엔드 | loopback Backend와 Structured Output 경로 구현 및 라이브 1회 검증 | Phase 4 완료 |
-| 제한된 단기 기억 | V2 session/reset, bounded process memory, 두 NPC 샘플 구현 | Phase 5 자동 검증 완료; 수동 검증 대기 |
+| 제한된 단기 기억 | V2 session/reset, bounded process memory, 두 NPC 샘플 구현 | Phase 5 완료; 실제 모델 수동 검증 완료 |
 | 장기 기억·음성·패키지화 | 구현하지 않음 | 선행 구현을 피한 올바른 상태 |
 
 초기 대화에서는 실제 GPT/JSON 응답이 비교적 앞에 있었으나, 이후 계획은 Mock → 프로필 재사용 → 전송 계약 → 백엔드 순서로 정리됐다. 현재 저장소는 이 수정된 순서를 따른다.
@@ -83,7 +83,7 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - 자동 설정: `PrototypeSceneBuilder`가 Editor API로 프로필과 Mock/Backend/Memory 샘플 씬을 생성·복구
 - 의존성: Core asmdef는 `noEngineReferences: true`; Runtime에는 `UnityEditor` 참조가 없음
 - 자동 검증: Server build 및 Vitest **43/43**, Unity 컴파일·Memory scene builder 및 EditMode **72/72** 통과, 실패·건너뜀 0
-- 수동 검증: Phase 1·2 Play Mode, Phase 3 계약, Phase 4 실제 모델 smoke test 완료; Phase 5 live memory 검증 대기
+- 수동 검증: Phase 1·2 Play Mode, Phase 3 계약, Phase 4 실제 모델 smoke test, Phase 5 live memory와 reset 검증 완료
 
 ## Phase 1 완료 기록
 
@@ -129,7 +129,7 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 ### Phase 5 — 세션과 단기 기억
 
-- **상태: 구현 및 자동 검증 완료 — 수동 Play Mode 검증과 커밋 대기**
+- **상태: 완료 — `d8ae5f7 (Phase5)`**
 - 상세 구현 기록: [`PHASE5_PLAN.md`](PHASE5_PLAN.md)
 - V2 wire 규격: [`CONTRACT_V2.md`](CONTRACT_V2.md)
 - 최근 8개 성공 turn과 16 KiB의 process-local buffer, TTL·LRU·capacity 제한을 구현했다.
@@ -173,4 +173,4 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 ## 바로 다음 행동
 
-**`MemoryNpcPrototype.unity`에서 Phase 5의 실제 모델 동작을 수동 검증한다.** Luna·Guard의 독립 기억, Luna 단독 reset, 초기 표현 복귀와 busy 버튼을 확인한 뒤에만 Phase 5 체크포인트를 커밋하고 Phase 6 TTS 계획으로 이동한다.
+**Phase 6 TTS의 책임과 최소 범위를 먼저 계획한다.** 음성 공급자 경계, 재생 취소·교체, text fallback, API 키 보관 위치와 Mock 가능성을 확정한 뒤 별도 승인을 받아 구현한다.
