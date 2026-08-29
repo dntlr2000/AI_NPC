@@ -23,12 +23,19 @@ namespace AiCharacterKit.Editor
         private const string MockNpcFolder = SamplesFolder + "/MockNpc";
         private const string ProfilesFolder = MockNpcFolder + "/Profiles";
         private const string ScenesFolder = MockNpcFolder + "/Scenes";
+        private const string BackendNpcFolder = SamplesFolder + "/BackendNpc";
+        private const string BackendScenesFolder = BackendNpcFolder + "/Scenes";
         private const string ProfilePath = ProfilesFolder + "/PrototypeCharacter.asset";
         private const string ScenePath = ScenesFolder + "/MockNpcPrototype.unity";
         private const string LunaProfilePath = ProfilesFolder + "/Luna.asset";
         private const string GuardProfilePath = ProfilesFolder + "/Guard.asset";
         private const string MultiCharacterScenePath =
             ScenesFolder + "/MultiCharacterMock.unity";
+        private const string BackendScenePath =
+            BackendScenesFolder + "/BackendNpcPrototype.unity";
+        private const string DefaultBackendEndpoint =
+            "http://127.0.0.1:8787/v1/npc/respond";
+        private const int DefaultBackendTimeoutSeconds = 35;
         private const string InputActionsPath = "Assets/InputSystem_Actions.inputactions";
         private const float SinglePanelWidth = 560f;
         private const float MultiPanelWidth = 440f;
@@ -118,6 +125,50 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
+        /// Creates or repairs the Phase 4 backend sample after protecting unsaved scenes.
+        /// </summary>
+        [MenuItem("Tools/AI Character Kit/Create Backend NPC Prototype")]
+        public static void CreateBackendScene()
+        {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                return;
+            }
+
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(BackendScenePath) != null)
+            {
+                RepairBackendScene();
+                EditorUtility.DisplayDialog(
+                    "Backend NPC Prototype",
+                    "The prototype already exists at:\n"
+                    + BackendScenePath
+                    + "\n\nIts required references were refreshed.",
+                    "OK");
+                Selection.activeObject = AssetDatabase.LoadAssetAtPath<SceneAsset>(
+                    BackendScenePath);
+                return;
+            }
+
+            CreateBackendSceneInternal();
+        }
+
+        /// <summary>
+        /// Creates or repairs the Phase 4 backend sample non-interactively for automation.
+        /// </summary>
+        public static void CreateBackendSceneBatch()
+        {
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(BackendScenePath) != null)
+            {
+                RepairBackendScene();
+                Debug.Log(
+                    $"Refreshed backend NPC prototype references at {BackendScenePath}.");
+                return;
+            }
+
+            CreateBackendSceneInternal();
+        }
+
+        /// <summary>
         /// Creates folders, profile data, scene objects, UI, and serialized component wiring.
         /// </summary>
         private static void CreatePrototypeSceneInternal()
@@ -135,7 +186,11 @@ namespace AiCharacterKit.Editor
                 Vector3.zero,
                 string.Empty,
                 false,
-                SinglePanelWidth);
+                SinglePanelWidth,
+                "Mock NPC",
+                NpcConversationMode.Mock,
+                DefaultBackendEndpoint,
+                DefaultBackendTimeoutSeconds);
             CreateInputSystemEventSystem();
 
             SaveGeneratedScene(
@@ -165,19 +220,58 @@ namespace AiCharacterKit.Editor
                 new Vector3(-1.7f, 0f, 0f),
                 "Luna",
                 true,
-                MultiPanelWidth);
+                MultiPanelWidth,
+                "Mock NPC",
+                NpcConversationMode.Mock,
+                DefaultBackendEndpoint,
+                DefaultBackendTimeoutSeconds);
             CreateConfiguredNpc(
                 guardProfile,
                 new Vector3(1.7f, 0f, 0f),
                 "Guard",
                 false,
-                MultiPanelWidth);
+                MultiPanelWidth,
+                "Mock NPC",
+                NpcConversationMode.Mock,
+                DefaultBackendEndpoint,
+                DefaultBackendTimeoutSeconds);
             CreateInputSystemEventSystem();
 
             SaveGeneratedScene(
                 scene,
                 MultiCharacterScenePath,
                 "Created multi-character mock prototype");
+        }
+
+        /// <summary>
+        /// Reuses Luna's profile and creates one backend-only vertical-slice scene.
+        /// </summary>
+        private static void CreateBackendSceneInternal()
+        {
+            EnsureSampleFolders();
+            var profile = CreateOrLoadProfile(CreateLunaProfileDefinition());
+            var scene = EditorSceneManager.NewScene(
+                NewSceneSetup.DefaultGameObjects,
+                NewSceneMode.Single);
+
+            ConfigureDefaultSceneObjects();
+            CreateGround();
+            CreateConfiguredNpc(
+                profile,
+                Vector3.zero,
+                string.Empty,
+                false,
+                SinglePanelWidth,
+                "Backend NPC",
+                NpcConversationMode.Backend,
+                DefaultBackendEndpoint,
+                DefaultBackendTimeoutSeconds);
+            CreateInputSystemEventSystem();
+
+            SaveGeneratedScene(
+                scene,
+                BackendScenePath,
+                "Created backend NPC prototype");
         }
 
         /// <summary>
@@ -324,7 +418,10 @@ namespace AiCharacterKit.Editor
             RepairNpcConfiguration(
                 profile,
                 "Mock NPC - Mina",
-                string.Empty);
+                string.Empty,
+                NpcConversationMode.Mock,
+                DefaultBackendEndpoint,
+                DefaultBackendTimeoutSeconds);
             SaveGeneratedScene(
                 scene,
                 ScenePath,
@@ -356,15 +453,50 @@ namespace AiCharacterKit.Editor
             RepairNpcConfiguration(
                 lunaProfile,
                 "Mock NPC - Luna",
-                "Luna");
+                "Luna",
+                NpcConversationMode.Mock,
+                DefaultBackendEndpoint,
+                DefaultBackendTimeoutSeconds);
             RepairNpcConfiguration(
                 guardProfile,
                 "Mock NPC - Guard",
-                "Guard");
+                "Guard",
+                NpcConversationMode.Mock,
+                DefaultBackendEndpoint,
+                DefaultBackendTimeoutSeconds);
             SaveGeneratedScene(
                 scene,
                 MultiCharacterScenePath,
                 "Repaired multi-character mock prototype");
+        }
+
+        /// <summary>
+        /// Reloads the Phase 4 scene and restores its backend-mode serialized references.
+        /// </summary>
+        private static void RepairBackendScene()
+        {
+            var scene = EditorSceneManager.OpenScene(
+                BackendScenePath,
+                OpenSceneMode.Single);
+            var profile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(LunaProfilePath);
+            if (profile == null)
+            {
+                throw new InvalidOperationException(
+                    $"Backend sample profile was not found at {LunaProfilePath}.");
+            }
+
+            ValidateProfile(profile, LunaProfilePath);
+            RepairNpcConfiguration(
+                profile,
+                "Backend NPC - Luna",
+                string.Empty,
+                NpcConversationMode.Backend,
+                DefaultBackendEndpoint,
+                DefaultBackendTimeoutSeconds);
+            SaveGeneratedScene(
+                scene,
+                BackendScenePath,
+                "Repaired backend NPC prototype");
         }
 
         /// <summary>
@@ -406,10 +538,13 @@ namespace AiCharacterKit.Editor
         /// <summary>
         /// Creates one Capsule NPC and adds its runtime bridge and presentation adapter.
         /// </summary>
-        private static GameObject CreateNpc(string displayName, Vector3 position)
+        private static GameObject CreateNpc(
+            string displayName,
+            Vector3 position,
+            string compositionLabel)
         {
             var npc = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            npc.name = $"Mock NPC - {displayName}";
+            npc.name = $"{compositionLabel} - {displayName}";
             npc.transform.position = position;
             npc.AddComponent<NpcTextPresentationDriver>();
             npc.AddComponent<NpcConversationBehaviour>();
@@ -424,16 +559,21 @@ namespace AiCharacterKit.Editor
             Vector3 position,
             string objectSuffix,
             bool alignPanelLeft,
-            float panelWidth)
+            float panelWidth,
+            string compositionLabel,
+            NpcConversationMode conversationMode,
+            string backendEndpoint,
+            int backendTimeoutSeconds)
         {
-            var npc = CreateNpc(profile.DisplayName, position);
+            var npc = CreateNpc(profile.DisplayName, position, compositionLabel);
             var presentationDriver = npc.GetComponent<NpcTextPresentationDriver>();
             var conversationBehaviour = npc.GetComponent<NpcConversationBehaviour>();
             var ui = CreateUserInterface(
                 profile.DisplayName,
                 objectSuffix,
                 alignPanelLeft,
-                panelWidth);
+                panelWidth,
+                compositionLabel);
 
             ConfigurePresentationDriver(
                 presentationDriver,
@@ -443,7 +583,10 @@ namespace AiCharacterKit.Editor
             ConfigureConversationBehaviour(
                 conversationBehaviour,
                 profile,
-                presentationDriver);
+                presentationDriver,
+                conversationMode,
+                backendEndpoint,
+                backendTimeoutSeconds);
             ConfigureInputView(
                 ui.InputView,
                 ui.InputField,
@@ -458,10 +601,11 @@ namespace AiCharacterKit.Editor
             string displayName,
             string objectSuffix,
             bool alignPanelLeft,
-            float panelWidth)
+            float panelWidth,
+            string compositionLabel)
         {
             var canvasObject = new GameObject(
-                GetObjectName("Mock NPC Canvas", objectSuffix),
+                GetObjectName(compositionLabel + " Canvas", objectSuffix),
                 typeof(RectTransform),
                 typeof(Canvas),
                 typeof(CanvasScaler),
@@ -646,7 +790,10 @@ namespace AiCharacterKit.Editor
         private static void RepairNpcConfiguration(
             CharacterProfile profile,
             string npcObjectName,
-            string objectSuffix)
+            string objectSuffix,
+            NpcConversationMode conversationMode,
+            string backendEndpoint,
+            int backendTimeoutSeconds)
         {
             var npc = FindRequiredGameObject(npcObjectName);
             var presentationDriver = npc.GetComponent<NpcTextPresentationDriver>();
@@ -666,7 +813,10 @@ namespace AiCharacterKit.Editor
             ConfigureConversationBehaviour(
                 conversationBehaviour,
                 profile,
-                presentationDriver);
+                presentationDriver,
+                conversationMode,
+                backendEndpoint,
+                backendTimeoutSeconds);
             ConfigureInputView(
                 ui.InputView,
                 ui.InputField,
@@ -756,15 +906,46 @@ namespace AiCharacterKit.Editor
         private static void ConfigureConversationBehaviour(
             NpcConversationBehaviour conversationBehaviour,
             CharacterProfile profile,
-            NpcTextPresentationDriver presentationDriver)
+            NpcTextPresentationDriver presentationDriver,
+            NpcConversationMode conversationMode,
+            string backendEndpoint,
+            int backendTimeoutSeconds)
         {
+            if (profile == null || !EditorUtility.IsPersistent(profile))
+            {
+                throw new InvalidOperationException(
+                    "Conversation profiles must be persistent Unity assets.");
+            }
+
             var serializedBehaviour = new SerializedObject(conversationBehaviour);
+            serializedBehaviour.Update();
             SetObjectReference(serializedBehaviour, "characterProfile", profile);
             SetObjectReference(
                 serializedBehaviour,
                 "presentationDriverSource",
                 presentationDriver);
+            SetEnumValue(
+                serializedBehaviour,
+                "conversationMode",
+                (int)conversationMode);
+            SetStringValue(
+                serializedBehaviour,
+                "backendEndpoint",
+                backendEndpoint);
+            SetIntegerValue(
+                serializedBehaviour,
+                "backendTimeoutSeconds",
+                backendTimeoutSeconds);
             serializedBehaviour.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(conversationBehaviour);
+
+            var savedProfile = serializedBehaviour.FindProperty(
+                "characterProfile").objectReferenceValue;
+            if (savedProfile != profile)
+            {
+                throw new InvalidOperationException(
+                    "Failed to assign the persistent CharacterProfile reference.");
+            }
         }
 
         /// <summary>
@@ -899,6 +1080,66 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
+        /// Assigns one enum value and fails early if a serialized field was renamed.
+        /// </summary>
+        private static void SetEnumValue(
+            SerializedObject serializedObject,
+            string propertyName,
+            int value)
+        {
+            var property = serializedObject.FindProperty(propertyName);
+            if (property == null)
+            {
+                throw new InvalidOperationException(
+                    $"Serialized property '{propertyName}' was not found on "
+                    + serializedObject.targetObject.GetType().Name
+                    + ".");
+            }
+
+            property.enumValueIndex = value;
+        }
+
+        /// <summary>
+        /// Assigns one string value and fails early if a serialized field was renamed.
+        /// </summary>
+        private static void SetStringValue(
+            SerializedObject serializedObject,
+            string propertyName,
+            string value)
+        {
+            var property = serializedObject.FindProperty(propertyName);
+            if (property == null)
+            {
+                throw new InvalidOperationException(
+                    $"Serialized property '{propertyName}' was not found on "
+                    + serializedObject.targetObject.GetType().Name
+                    + ".");
+            }
+
+            property.stringValue = value;
+        }
+
+        /// <summary>
+        /// Assigns one integer value and fails early if a serialized field was renamed.
+        /// </summary>
+        private static void SetIntegerValue(
+            SerializedObject serializedObject,
+            string propertyName,
+            int value)
+        {
+            var property = serializedObject.FindProperty(propertyName);
+            if (property == null)
+            {
+                throw new InvalidOperationException(
+                    $"Serialized property '{propertyName}' was not found on "
+                    + serializedObject.targetObject.GetType().Name
+                    + ".");
+            }
+
+            property.intValue = value;
+        }
+
+        /// <summary>
         /// Keeps Phase 1 names unchanged and adds a stable character suffix for Phase 2 objects.
         /// </summary>
         private static string GetObjectName(string baseName, string objectSuffix)
@@ -966,6 +1207,8 @@ namespace AiCharacterKit.Editor
             EnsureFolder(MockNpcFolder);
             EnsureFolder(ProfilesFolder);
             EnsureFolder(ScenesFolder);
+            EnsureFolder(BackendNpcFolder);
+            EnsureFolder(BackendScenesFolder);
         }
 
         /// <summary>

@@ -19,6 +19,17 @@
 # Recordings can get excessive in size
 /[Rr]ecordings/
 
+# Local Phase 4 backend outputs and secrets
+/server/node_modules/
+/server/dist/
+/server/coverage/
+/server/.env
+/server/.env.*
+!/server/.env.example
+
+# Unity 6 may create this default-only file during automated or manual checks.
+/ProjectSettings/SceneTemplateSettings.json
+
 # Uncomment this line if you wish to ignore the asset store tools plugin
 # /[Aa]ssets/AssetStoreTools*
 

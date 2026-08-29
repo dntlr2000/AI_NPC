@@ -103,6 +103,10 @@ namespace AiCharacterKit.Core.Tests
                 conversation,
                 "presentationDriverSource",
                 presentation);
+            AssertEnumValue(
+                conversation,
+                "conversationMode",
+                (int)NpcConversationMode.Mock);
             AssertObjectReference(inputView, "inputField", inputField);
             AssertObjectReference(inputView, "sendButton", sendButton);
             AssertObjectReference(
@@ -157,6 +161,21 @@ namespace AiCharacterKit.Core.Tests
 
             Assert.That(property, Is.Not.Null, propertyName);
             Assert.That(property.objectReferenceValue, Is.EqualTo(expected));
+        }
+
+        /// <summary>
+        /// Confirms that one private serialized enum retains the expected numeric value.
+        /// </summary>
+        private static void AssertEnumValue(
+            UnityEngine.Object target,
+            string propertyName,
+            int expected)
+        {
+            var serializedObject = new SerializedObject(target);
+            var property = serializedObject.FindProperty(propertyName);
+
+            Assert.That(property, Is.Not.Null, propertyName);
+            Assert.That(property.enumValueIndex, Is.EqualTo(expected));
         }
     }
 }

@@ -1,6 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using AiCharacterKit.Core;
+using AiCharacterKit.Unity.Networking;
 using UnityEngine;
 
 namespace AiCharacterKit.Unity
@@ -16,6 +17,17 @@ namespace AiCharacterKit.Unity
         [SerializeField]
         private MonoBehaviour presentationDriverSource;
 
+        [SerializeField]
+        private NpcConversationMode conversationMode = NpcConversationMode.Mock;
+
+        [SerializeField]
+        private string backendEndpoint =
+            "http://127.0.0.1:8787/v1/npc/respond";
+
+        [SerializeField]
+        [Min(1)]
+        private int backendTimeoutSeconds = 35;
+
         private INpcPresentationDriver presentationDriver;
         private NpcAIController controller;
         private CancellationTokenSource lifetimeCancellation;
@@ -24,7 +36,7 @@ namespace AiCharacterKit.Unity
             controller != null && controller.IsRequestInProgress;
 
         /// <summary>
-        /// Validates serialized dependencies and creates the local mock composition.
+        /// Validates serialized dependencies and creates the selected conversation composition.
         /// </summary>
         private void Awake()
         {
@@ -112,7 +124,7 @@ namespace AiCharacterKit.Unity
         }
 
         /// <summary>
-        /// Resolves the interface adapter and creates the current mock-backed controller.
+        /// Resolves the interface adapter and creates the configured conversation controller.
         /// </summary>
         private bool TryInitialize()
         {
@@ -141,10 +153,51 @@ namespace AiCharacterKit.Unity
                 return false;
             }
 
-            controller = new NpcAIController(
-                new MockConversationClient(),
-                presentationDriver);
+            if (!TryCreateConversationClient(out var conversationClient))
+            {
+                return false;
+            }
+
+            controller = new NpcAIController(conversationClient, presentationDriver);
             return true;
+        }
+
+        /// <summary>
+        /// Creates only the client selected by the serialized prototype mode.
+        /// </summary>
+        private bool TryCreateConversationClient(
+            out IAiConversationClient conversationClient)
+        {
+            conversationClient = null;
+            if (conversationMode == NpcConversationMode.Mock)
+            {
+                conversationClient = new MockConversationClient();
+                return true;
+            }
+
+            if (conversationMode != NpcConversationMode.Backend)
+            {
+                Debug.LogError(
+                    $"Unsupported NPC conversation mode '{conversationMode}'.",
+                    this);
+                return false;
+            }
+
+            try
+            {
+                var gateway = new UnityWebRequestAiNpcBackendGateway(
+                    backendEndpoint,
+                    backendTimeoutSeconds);
+                conversationClient = new BackendConversationClient(gateway);
+                return true;
+            }
+            catch (System.ArgumentException exception)
+            {
+                Debug.LogError(
+                    $"Invalid NPC backend configuration: {exception.Message}",
+                    this);
+                return false;
+            }
         }
     }
 }

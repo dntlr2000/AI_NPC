@@ -20,8 +20,8 @@ The framework will eventually support:
 - `Assets/`: Unity source code, scenes, prefabs, ScriptableObjects, and other game assets
 - `Packages/`: Unity package manifest and dependency lock file
 - `ProjectSettings/`: project-wide Unity editor and runtime settings
-- `docs/`: requirements, architecture, plans, and decisions; see `docs/ROADMAP.md`, `docs/PHASE3_PLAN.md`, and `docs/CONTRACT_V1.md`
-- `server/`: reserved for a future backend; currently absent and must not be created until explicitly requested
+- `docs/`: requirements, architecture, plans, and decisions; see `docs/ROADMAP.md`, `docs/PHASE4_PLAN.md`, and `docs/CONTRACT_V1.md`
+- `server/`: Node.js 24, TypeScript, Fastify, and OpenAI SDK local backend for Phase 4
 
 The Unity project root is the repository root. Do not assume a separate `unity/` directory.
 
@@ -33,29 +33,27 @@ The Unity project root is the repository root. Do not assume a separate `unity/`
 
 ## Current milestone
 
-The current milestone is Phase 3: a versioned Unity-to-backend JSON transport contract.
+Phase 4 is complete at `e9ebd45 (Phase4)`: a local Unity-to-OpenAI vertical slice using the V1 contract. Phase 5 has not been planned or approved yet, so preserve the Phase 4 checkpoint until a new plan is accepted.
 
-It must include:
+The completed Phase 4 checkpoint includes:
 
-- Pure C# V1 request, response, character, result, and error DTOs
-- Explicit schema version, request correlation, status, and command tokens
-- Domain-to-transport mapping without changing existing Core models
-- Validation for required fields, versions, branches, and enum tokens
-- A Unity-only JsonUtility codec with no added package dependency
-- Golden JSON fixtures and EditMode contract coverage
+- A loopback-only Fastify endpoint at `/v1/npc/respond`
+- OpenAI Responses API Structured Output with server-owned credentials
+- A replaceable Unity backend gateway and `BackendConversationClient`
+- Correlation, cancellation, timeout, safe error mapping, and redacted logs
+- A separate Editor-generated Backend NPC sample scene
+- Server tests plus full Unity EditMode regression coverage
 
-It must not include:
+Until the next milestone is approved, do not add:
 
-- OpenAI API calls
-- HTTP networking
-- Backend code
 - Conversation memory
 - TTS
 - STT
 - Realtime voice
 - Animator-based presentation
 - Vector databases
-- Changes to the existing mock Play Mode path or sample scenes
+- Remote deployment, client authentication, automatic retries, or streaming
+- Changes that replace the existing Mock Play Mode path
 
 ## Architecture rules
 
@@ -63,6 +61,8 @@ It must not include:
 - Core dialogue logic must not directly depend on Animator, UI, TextMeshPro, OpenAI, or HTTP.
 - Transport DTOs, validation, and mapping must not depend on UnityEngine.
 - JSON serialization must remain in the Unity boundary rather than Core or Transport.
+- Unity networking must remain in `Runtime/Unity/Networking`.
+- Backend vendor SDK code must remain under `server/`; Unity must not reference OpenAI.
 - Use interfaces for external systems.
 - Use `IAiConversationClient` for dialogue generation.
 - Use `INpcPresentationDriver` for dialogue, emotion, and gesture presentation.
@@ -85,8 +85,10 @@ It must not include:
 ## Security
 
 - Never store API keys in Unity source files, ScriptableObjects, Resources, StreamingAssets, or version control.
-- OpenAI calls will eventually go through a backend server.
-- Do not implement actual OpenAI integration during the mock milestone.
+- OpenAI calls go through the local backend server only.
+- Read `OPENAI_API_KEY` from the server process environment; never add a committed `.env` file.
+- Do not log API keys, profile text, user messages, generated dialogue, or raw upstream errors.
+- Phase 4 binds only to `127.0.0.1`; remote exposure requires a separate security design.
 
 ## Completion requirements
 

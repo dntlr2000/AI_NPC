@@ -32,6 +32,17 @@ namespace AiCharacterKit.Transport.V1
         public const string UnsupportedSchemaVersionErrorCode =
             "unsupported_schema_version";
 
+        public const string ContentRefusedErrorCode = "content_refused";
+
+        public const string RateLimitedErrorCode = "rate_limited";
+
+        public const string UpstreamTimeoutErrorCode = "upstream_timeout";
+
+        public const string UpstreamUnavailableErrorCode = "upstream_unavailable";
+
+        public const string UpstreamInvalidResponseErrorCode =
+            "upstream_invalid_response";
+
         public const string InternalErrorCode = "internal_error";
     }
 }

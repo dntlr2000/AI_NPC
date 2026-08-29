@@ -1,6 +1,6 @@
 # Phase 3 Implementation Plan
 
-> 상태: 구현 및 자동 검증 완료, 체크포인트 커밋 대기
+> 상태: 완료 — `cfc5b04 (Phase3)`
 > 기준 커밋: `8708f4f (Phase2)`
 > 목표: 실제 네트워크 없이 Unity와 미래 Backend 사이의 V1 JSON 계약을 고정한다.
 
@@ -52,7 +52,7 @@
 - [x] Packages, ProjectSettings, 프로필, 씬, scene builder를 변경하지 않았다.
 - [x] Unity 컴파일과 EditMode 46/46 통과를 확인했다.
 - [x] 검증 로그·결과와 TEMP/TMP를 E 드라이브에만 기록했다.
-- [ ] 변경 리뷰 후 Phase 3 체크포인트 커밋을 만든다.
+- [x] 변경 리뷰 후 Phase 3 체크포인트 커밋을 만들었다 (`cfc5b04`).
 
 ## 남은 위험
 

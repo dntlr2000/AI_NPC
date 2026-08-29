@@ -2,7 +2,7 @@
 
 ## 범위
 
-V1은 한 번의 독립된 NPC 대화 요청과 그 성공 또는 오류 응답을 정의한다. 세션, 기억, 인증, HTTP 상태, timeout, 재시도와 OpenAI 형식은 포함하지 않는다.
+V1은 한 번의 독립된 NPC 대화 요청과 그 성공 또는 오류 응답을 정의한다. 세션, 기억, 인증, 재시도와 OpenAI 공급자 형식은 포함하지 않는다. Phase 4는 이 payload 계약에 아래의 로컬 HTTP binding을 추가한다.
 
 ## 요청
 
@@ -54,7 +54,28 @@ V1은 한 번의 독립된 NPC 대화 요청과 그 성공 또는 오류 응답�
 }
 ```
 
-`code`는 `[a-z][a-z0-9]*(?:_[a-z0-9]+)*` 형태의 확장 가능한 token이다. V1 기준 코드는 `invalid_request`, `unsupported_schema_version`, `internal_error`이며 알 수 없는 유효 code도 일반 오류로 보존한다. `retryable`이 누락되면 `false`다.
+`code`는 `[a-z][a-z0-9]*(?:_[a-z0-9]+)*` 형태의 확장 가능한 token이다. 알 수 없는 유효 code도 Unity에서 일반 오류로 보존한다. `retryable`이 누락되면 `false`다.
+
+## Phase 4 HTTP binding
+
+- Backend는 `127.0.0.1`에만 bind하며 기본 URL은 `http://127.0.0.1:8787/v1/npc/respond`다.
+- `POST` 요청과 응답은 UTF-8 `application/json`이고 요청 본문 제한은 16 KiB다.
+- `2xx`는 `status: "success"`, 비-`2xx`는 `status: "error"`여야 한다. 조합이 다르면 Unity가 protocol error로 거부한다.
+- Unity timeout은 35초, OpenAI upstream timeout은 30초다. 자동 재시도는 양쪽 모두 하지 않는다.
+- 로컬 vertical slice에는 client authentication이 없다. 원격 bind 또는 배포는 허용하지 않는다.
+
+| HTTP | V1 `error.code` | `retryable` | 의미 |
+| --- | --- | --- | --- |
+| 400 | `invalid_request` | false | JSON 또는 필수 값 오류 |
+| 400 | `unsupported_schema_version` | false | V1 이외 버전 |
+| 422 | `content_refused` | false | 모델의 구조화된 거절 |
+| 429 | `rate_limited` | true | 모델 서비스 제한 |
+| 504 | `upstream_timeout` | true | OpenAI timeout |
+| 502 | `upstream_unavailable` | true | OpenAI 연결·서비스 실패 |
+| 502 | `upstream_invalid_response` | true | 구조화 결과가 없거나 잘못됨 |
+| 500 | `internal_error` | false | 안전하게 일반화한 내부 실패 |
+
+HTTP 응답을 받기 전 Unity에서 생긴 오류는 V1 서버 envelope가 아니다. `backend_unreachable`, `backend_timeout`, `backend_protocol_error`를 `AiConversationException`으로 전달한다.
 
 ## 고정 토큰
 
@@ -77,4 +98,4 @@ V1은 한 번의 독립된 NPC 대화 요청과 그 성공 또는 오류 응답�
 
 ## 코드 경계
 
-DTO, validator와 Core mapper는 `AiCharacterKit.Transport.V1`에 있으며 Unity에 의존하지 않는다. `AiNpcJsonCodec`만 Unity 경계에서 `JsonUtility`를 사용한다. V1 JSON은 아직 `IAiConversationClient` 또는 Play Mode 경로에 연결되지 않는다.
+DTO, validator와 Core mapper는 `AiCharacterKit.Transport.V1`에 있으며 Unity에 의존하지 않는다. `AiNpcJsonCodec`과 `UnityWebRequestAiNpcBackendGateway`만 Unity 경계에 있다. `BackendConversationClient`가 V1 envelope를 기존 `IAiConversationClient`에 연결하며 Mock 구현은 그대로 유지한다. OpenAI SDK는 `server/`에만 존재한다.
