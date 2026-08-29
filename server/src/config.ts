@@ -1,6 +1,12 @@
+import type { SessionStoreOptions } from "./sessions.js";
+
 export const DEFAULT_MODEL = "gpt-5.6-luna";
 export const DEFAULT_PORT = 8787;
 export const DEFAULT_OPENAI_TIMEOUT_MS = 30_000;
+export const DEFAULT_SESSION_MAX_TURNS = 8;
+export const DEFAULT_SESSION_MAX_CONTEXT_BYTES = 16 * 1024;
+export const DEFAULT_SESSION_IDLE_TTL_SECONDS = 1_800;
+export const DEFAULT_SESSION_MAX_COUNT = 128;
 export const SERVER_HOST = "127.0.0.1";
 export const REQUEST_BODY_LIMIT_BYTES = 16 * 1024;
 
@@ -9,6 +15,7 @@ export interface ServerConfig {
   readonly model: string;
   readonly port: number;
   readonly openAiTimeoutMs: number;
+  readonly sessionOptions: SessionStoreOptions;
 }
 
 /** Loads validated local server settings without reading or writing secret files. */
@@ -35,12 +42,46 @@ export function loadServerConfig(
     120_000,
     "OPENAI_TIMEOUT_MS",
   );
+  const sessionMaxTurns = readInteger(
+    environment.NPC_SESSION_MAX_TURNS,
+    DEFAULT_SESSION_MAX_TURNS,
+    1,
+    32,
+    "NPC_SESSION_MAX_TURNS",
+  );
+  const sessionMaxContextBytes = readInteger(
+    environment.NPC_SESSION_MAX_CONTEXT_BYTES,
+    DEFAULT_SESSION_MAX_CONTEXT_BYTES,
+    4 * 1024,
+    128 * 1024,
+    "NPC_SESSION_MAX_CONTEXT_BYTES",
+  );
+  const sessionIdleTtlSeconds = readInteger(
+    environment.NPC_SESSION_IDLE_TTL_SECONDS,
+    DEFAULT_SESSION_IDLE_TTL_SECONDS,
+    60,
+    86_400,
+    "NPC_SESSION_IDLE_TTL_SECONDS",
+  );
+  const sessionMaxCount = readInteger(
+    environment.NPC_SESSION_MAX_COUNT,
+    DEFAULT_SESSION_MAX_COUNT,
+    1,
+    4_096,
+    "NPC_SESSION_MAX_COUNT",
+  );
 
   return {
     apiKey,
     model,
     port,
     openAiTimeoutMs,
+    sessionOptions: {
+      maxTurns: sessionMaxTurns,
+      maxContextBytes: sessionMaxContextBytes,
+      idleTtlMs: sessionIdleTtlSeconds * 1_000,
+      maxSessions: sessionMaxCount,
+    },
   };
 }
 

@@ -3,10 +3,14 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../src/app.js";
 import { NpcServiceError } from "../src/errors.js";
 import type {
+  NpcGenerationRequest,
   NpcGenerationResult,
   NpcResponseGenerator,
 } from "../src/generator.js";
-import type { AiNpcRequest } from "../src/contracts/v1.js";
+import {
+  InMemoryConversationSessionStore,
+  SessionConversationService,
+} from "../src/sessions.js";
 
 const validRequest = {
   schemaVersion: 1,
@@ -22,13 +26,22 @@ const validRequest = {
   userText: "Hello!",
 };
 
+const validV2Request = {
+  ...validRequest,
+  schemaVersion: 2,
+  requestId: "req-route-v2-001",
+  sessionId: "session-route-v2-001",
+};
+
 /** Supplies deterministic route results without performing an OpenAI request. */
 class StubGenerator implements NpcResponseGenerator {
   public error: Error | null = null;
-  public lastRequest: AiNpcRequest | null = null;
+  public lastRequest: NpcGenerationRequest | null = null;
 
   /** Returns one fixed structured reply or the configured safe failure. */
-  public async generate(request: AiNpcRequest): Promise<NpcGenerationResult> {
+  public async generate(
+    request: NpcGenerationRequest,
+  ): Promise<NpcGenerationResult> {
     this.lastRequest = request;
     if (this.error !== null) {
       throw this.error;
@@ -50,13 +63,22 @@ class StubGenerator implements NpcResponseGenerator {
   }
 }
 
-describe("Phase 4 Fastify app", () => {
+describe("Phase 5 Fastify app", () => {
   let generator: StubGenerator;
   let app: FastifyInstance;
 
   beforeEach(() => {
     generator = new StubGenerator();
-    app = createApp({ generator, logger: false });
+    const sessionService = new SessionConversationService(
+      new InMemoryConversationSessionStore({
+        maxTurns: 8,
+        maxContextBytes: 16 * 1024,
+        idleTtlMs: 30 * 60 * 1_000,
+        maxSessions: 128,
+      }),
+      generator,
+    );
+    app = createApp({ generator, sessionService, logger: false });
   });
 
   afterEach(async () => {
@@ -90,6 +112,100 @@ describe("Phase 4 Fastify app", () => {
       },
     });
     expect(generator.lastRequest?.userText).toBe("Hello!");
+    expect(generator.lastRequest?.history).toEqual([]);
+  });
+
+  it("stores successful V2 turns and returns correlated responses", async () => {
+    const first = await app.inject({
+      method: "POST",
+      url: "/v2/npc/respond",
+      payload: validV2Request,
+    });
+    const second = await app.inject({
+      method: "POST",
+      url: "/v2/npc/respond",
+      payload: {
+        ...validV2Request,
+        requestId: "req-route-v2-002",
+        userText: "What did I say?",
+      },
+    });
+
+    expect(first.statusCode).toBe(200);
+    expect(first.json()).toMatchObject({
+      schemaVersion: 2,
+      requestId: "req-route-v2-001",
+      status: "success",
+    });
+    expect(second.statusCode).toBe(200);
+    expect(generator.lastRequest?.history).toEqual([
+      { role: "user", content: "Hello!" },
+      { role: "assistant", content: "Luna: Hello!" },
+    ]);
+  });
+
+  it("resets one V2 session idempotently", async () => {
+    await app.inject({
+      method: "POST",
+      url: "/v2/npc/respond",
+      payload: validV2Request,
+    });
+    const reset = await app.inject({
+      method: "POST",
+      url: "/v2/npc/sessions/reset",
+      payload: {
+        schemaVersion: 2,
+        requestId: "req-route-reset-001",
+        sessionId: validV2Request.sessionId,
+        characterId: validV2Request.character.characterId,
+      },
+    });
+    const repeatedReset = await app.inject({
+      method: "POST",
+      url: "/v2/npc/sessions/reset",
+      payload: {
+        schemaVersion: 2,
+        requestId: "req-route-reset-002",
+        sessionId: "session-unknown",
+        characterId: validV2Request.character.characterId,
+      },
+    });
+
+    expect(reset.statusCode).toBe(200);
+    expect(reset.json()).toMatchObject({
+      schemaVersion: 2,
+      requestId: "req-route-reset-001",
+      status: "success",
+      result: { reset: true },
+    });
+    expect(repeatedReset.statusCode).toBe(200);
+  });
+
+  it("returns route-correct V2 errors for malformed and invalid bodies", async () => {
+    const invalid = await app.inject({
+      method: "POST",
+      url: "/v2/npc/respond",
+      payload: { ...validV2Request, sessionId: "" },
+    });
+    const malformedReset = await app.inject({
+      method: "POST",
+      url: "/v2/npc/sessions/reset",
+      headers: { "content-type": "application/json" },
+      payload: "{not-json",
+    });
+
+    expect(invalid.statusCode).toBe(400);
+    expect(invalid.json()).toMatchObject({
+      schemaVersion: 2,
+      status: "error",
+      error: { code: "invalid_request" },
+    });
+    expect(malformedReset.statusCode).toBe(400);
+    expect(malformedReset.json()).toMatchObject({
+      schemaVersion: 2,
+      status: "error",
+      error: { code: "invalid_request" },
+    });
   });
 
   it("rejects invalid and unsupported requests before generation", async () => {

@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 2,
+  "requestId": "req-v2-error",
+  "status": "error",
+  "error": {
+    "code": "session_busy",
+    "message": "The conversation session is already processing a request.",
+    "retryable": true
+  }
+}

@@ -1,15 +1,13 @@
 import OpenAI from "openai";
 import { describe, expect, it } from "vitest";
-import type { AiNpcRequest } from "../src/contracts/v1.js";
 import {
   buildNpcInstructions,
   OpenAiNpcResponseGenerator,
 } from "../src/generator.js";
+import type { NpcGenerationRequest } from "../src/generator.js";
 import { NpcServiceError } from "../src/errors.js";
 
-const request: AiNpcRequest = {
-  schemaVersion: 1,
-  requestId: "req-generator-001",
+const request: NpcGenerationRequest = {
   character: {
     characterId: "sample-luna",
     displayName: "Luna",
@@ -18,6 +16,7 @@ const request: AiNpcRequest = {
     exampleDialogue: "Tell me about an adventure.",
     defaultEmotion: "happy",
   },
+  history: [],
   userText: "안녕!",
 };
 
@@ -93,6 +92,55 @@ describe("OpenAiNpcResponseGenerator", () => {
       input: [{ role: "user", content: "안녕!" }],
     });
     expect(buildNpcInstructions(request)).toContain('"displayName":"Luna"');
+    expect(buildNpcInstructions(request)).toContain("supplied conversation messages");
+  });
+
+  it("replays bounded user and assistant history before the current message", async () => {
+    const capturedRequests: unknown[] = [];
+    const generator = createGeneratorWithParseResult(
+      {
+        id: "resp-history-test",
+        status: "completed",
+        output: [
+          {
+            type: "message",
+            content: [
+              {
+                type: "output_text",
+                parsed: {
+                  dialogue: "파란색이라고 했지!",
+                  emotion: "happy",
+                  gesture: "nod",
+                },
+              },
+            ],
+          },
+        ],
+        usage: null,
+      },
+      capturedRequests,
+    );
+
+    await generator.generate(
+      {
+        ...request,
+        history: [
+          { role: "user", content: "내가 좋아하는 색은 파랑이야." },
+          { role: "assistant", content: "파란색을 기억할게." },
+        ],
+        userText: "내가 좋아하는 색은?",
+      },
+      new AbortController().signal,
+    );
+
+    expect(capturedRequests[0]).toMatchObject({
+      store: false,
+      input: [
+        { role: "user", content: "내가 좋아하는 색은 파랑이야." },
+        { role: "assistant", content: "파란색을 기억할게." },
+        { role: "user", content: "내가 좋아하는 색은?" },
+      ],
+    });
   });
 
   it("maps a structured refusal without returning its text", async () => {

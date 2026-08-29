@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 2,
+  "requestId": "req-v2-reset-error",
+  "status": "error",
+  "error": {
+    "code": "session_character_mismatch",
+    "message": "The conversation session belongs to another character.",
+    "retryable": false
+  }
+}

@@ -1,8 +1,12 @@
 import { createApp } from "./app.js";
 import { loadServerConfig, SERVER_HOST } from "./config.js";
 import { OpenAiNpcResponseGenerator } from "./generator.js";
+import {
+  InMemoryConversationSessionStore,
+  SessionConversationService,
+} from "./sessions.js";
 
-/** Starts the local Phase 4 backend after validating all required environment settings. */
+/** Starts the local backend after validating credentials and bounded session settings. */
 async function startServer(): Promise<void> {
   const config = loadServerConfig();
   const generator = new OpenAiNpcResponseGenerator({
@@ -10,7 +14,11 @@ async function startServer(): Promise<void> {
     model: config.model,
     timeoutMs: config.openAiTimeoutMs,
   });
-  const app = createApp({ generator });
+  const sessionService = new SessionConversationService(
+    new InMemoryConversationSessionStore(config.sessionOptions),
+    generator,
+  );
+  const app = createApp({ generator, sessionService });
 
   registerShutdownSignal("SIGINT", app);
   registerShutdownSignal("SIGTERM", app);

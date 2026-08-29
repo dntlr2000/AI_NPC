@@ -20,8 +20,8 @@ The framework will eventually support:
 - `Assets/`: Unity source code, scenes, prefabs, ScriptableObjects, and other game assets
 - `Packages/`: Unity package manifest and dependency lock file
 - `ProjectSettings/`: project-wide Unity editor and runtime settings
-- `docs/`: requirements, architecture, plans, and decisions; see `docs/ROADMAP.md`, `docs/PHASE4_PLAN.md`, and `docs/CONTRACT_V1.md`
-- `server/`: Node.js 24, TypeScript, Fastify, and OpenAI SDK local backend for Phase 4
+- `docs/`: requirements, architecture, plans, and decisions; see `docs/ROADMAP.md`, `docs/PHASE5_PLAN.md`, `docs/CONTRACT_V1.md`, and `docs/CONTRACT_V2.md`
+- `server/`: Node.js 24, TypeScript, Fastify, and OpenAI SDK local backend for the V1 stateless and V2 session paths
 
 The Unity project root is the repository root. Do not assume a separate `unity/` directory.
 
@@ -33,20 +33,20 @@ The Unity project root is the repository root. Do not assume a separate `unity/`
 
 ## Current milestone
 
-Phase 4 is complete on `main` at the `Phase4` checkpoint: a local Unity-to-OpenAI vertical slice using the V1 contract. Phase 5 has not been planned or approved yet, so preserve this checkpoint until a new plan is accepted.
+Phase 4 is complete on `main` at `ab53815 (Phase4_1)`. Phase 5 implementation and automated verification are complete in the working tree; manual live-memory verification and a checkpoint commit remain.
 
-The completed Phase 4 checkpoint includes:
+The Phase 5 working tree includes:
 
-- A loopback-only Fastify endpoint at `/v1/npc/respond`
-- OpenAI Responses API Structured Output with server-owned credentials
-- A replaceable Unity backend gateway and `BackendConversationClient`
-- Correlation, cancellation, timeout, safe error mapping, and redacted logs
-- A separate Editor-generated Backend NPC sample scene
-- Server tests plus full Unity EditMode regression coverage
+- The unchanged stateless V1 and Mock paths
+- A V2 contract with `/v2/npc/respond` and `/v2/npc/sessions/reset`
+- Bounded process-memory sessions with turn, byte, TTL, count, and concurrency limits
+- A component-lifetime Unity session client and shared send/reset operation gate
+- An Editor-generated two-character `MemoryNpcPrototype` sample scene
+- Server tests and full Unity EditMode regression coverage
 
-Until the next milestone is approved, do not add:
+Do not add beyond this milestone:
 
-- Conversation memory
+- Persistent or long-term memory
 - TTS
 - STT
 - Realtime voice
@@ -88,7 +88,8 @@ Until the next milestone is approved, do not add:
 - OpenAI calls go through the local backend server only.
 - Read `OPENAI_API_KEY` from the server process environment; never add a committed `.env` file.
 - Do not log API keys, profile text, user messages, generated dialogue, or raw upstream errors.
-- Phase 4 binds only to `127.0.0.1`; remote exposure requires a separate security design.
+- The backend binds only to `127.0.0.1`; remote exposure requires a separate security design.
+- Phase 5 memory is process-local and must never be written to logs or disk.
 
 ## Completion requirements
 

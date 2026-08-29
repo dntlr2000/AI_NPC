@@ -1,13 +1,13 @@
 # AI NPC Framework 진행 점검 및 로드맵
 
-> 기준일: 2026-08-29
-> 비교 기준: ChatGPT 대화 **“Unity Ai NPC 만들기”**의 초기 구상과 이후 합의된 Phase 1~4 범위
+> 기준일: 2026-08-30
+> 비교 기준: ChatGPT 대화 **“Unity Ai NPC 만들기”**의 초기 구상과 이후 합의된 Phase 1~5 범위
 
 ## 결론
 
-저장소는 수정된 로드맵의 순서와 제약을 잘 따르고 있다. **Phase 1~4는 `main` 체크포인트로 완료됐으며, Phase 4의 로컬 Backend·실제 OpenAI end-to-end 경로까지 수동 검증했다.** Mock 재사용성과 V1 계약을 먼저 고정한 뒤 네트워크를 연결했기 때문에 기존 오프라인 경로도 유지된다.
+저장소는 수정된 로드맵의 순서와 제약을 잘 따르고 있다. **Phase 1~4는 `main` 체크포인트로 완료됐고, Phase 5의 제한된 단기 기억은 구현 및 자동 검증까지 완료됐다.** Phase 5의 실제 OpenAI Play Mode 검증과 체크포인트 커밋은 아직 남아 있으므로 완료로 표시하지 않는다. Mock 재사용성과 stateless V1 계약은 그대로 유지된다.
 
-현재 기준선은 `main`의 `Phase4` 체크포인트이며 다음 작업은 Phase 5의 세션·단기 기억 범위를 먼저 계획하는 것이다. Phase 4 상세 기록은 [`PHASE4_PLAN.md`](PHASE4_PLAN.md), wire 규격은 [`CONTRACT_V1.md`](CONTRACT_V1.md)를 따른다.
+현재 커밋 기준선은 `ab53815 (Phase4_1)`이다. Phase 5 범위와 검증은 [`PHASE5_PLAN.md`](PHASE5_PLAN.md), session wire 규격은 [`CONTRACT_V2.md`](CONTRACT_V2.md)를 따른다. 기존 V1 규격은 [`CONTRACT_V1.md`](CONTRACT_V1.md)에 고정돼 있다.
 
 ## 우리가 만드는 것
 
@@ -22,9 +22,11 @@
         ↓
  NpcAIController ── IAiConversationClient
                          ├─ MockConversationClient
-                         └─ [Phase 4] BackendConversationClient
-                                      ↕ JSON Contract V1
-                                  Backend → OpenAI
+                         ├─ BackendConversationClient
+                         │            ↕ JSON Contract V1 (stateless)
+                         └─ [Phase 5] SessionBackendConversationClient
+                                      ↕ JSON Contract V2 + sessionId/reset
+                                  Backend bounded memory → OpenAI
         ↓
     AiNpcResponse
         ↓
@@ -39,6 +41,7 @@
 - 중복 요청, 취소, 성공과 실패를 일관되게 처리하는 순수 C# 대화 제어
 - Mock과 실제 Backend를 교체해도 유지되는 `IAiConversationClient` 계약
 - 대사와 감정·제스처 명령을 전달하는 버전 고정 JSON 계약
+- 최근 성공 turn만 제한적으로 보관하고 NPC별로 reset 가능한 process-local session
 - uGUI, 3D 캐릭터 또는 다른 표현 방식을 교체할 수 있는 presentation 경계
 - 샘플, 자동 테스트, 두 번째 프로젝트 검증을 거친 최종 UPM 패키지
 
@@ -49,10 +52,10 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - Unity: `6000.5.3f1`
 - 주요 설치 패키지: URP `17.5.0`, Input System `1.19.0`, uGUI `2.5.0`, Test Framework `1.7.0`
 - 구현 위치: `Assets/AiCharacterKit/`
-- 샘플: `MockNpcPrototype.unity`, `MultiCharacterMock.unity`, `BackendNpcPrototype.unity`
-- Git 기준선: `main`의 `Phase4` 체크포인트
-- Backend: Node.js 24 + TypeScript + Fastify + OpenAI SDK, loopback 전용
-- 제외 범위: 기억, TTS, STT, Realtime, 원격 배포, client auth, streaming
+- 샘플: `MockNpcPrototype.unity`, `MultiCharacterMock.unity`, `BackendNpcPrototype.unity`, `MemoryNpcPrototype.unity`
+- Git 기준선: `ab53815 (Phase4_1)`; Phase 5 변경은 아직 미커밋
+- Backend: Node.js 24 + TypeScript + Fastify + OpenAI SDK, V1 stateless와 V2 session, loopback 전용
+- 제외 범위: 영구·장기·Vector 기억, TTS, STT, Realtime, 원격 배포, client auth, streaming
 
 ## 초기 로드맵과의 비교
 
@@ -65,7 +68,8 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 | 캐릭터 데이터 | Mina·Luna·Guard 프로필과 다중 NPC 재사용 검증 | Phase 2 완료 |
 | 표현 명령 | 색상으로 감정, 회전으로 제스처를 확인 | vertical slice 충족; Animator 연동은 의도적으로 미구현 |
 | 실제 모델·백엔드 | loopback Backend와 Structured Output 경로 구현 및 라이브 1회 검증 | Phase 4 완료 |
-| 기억·음성·패키지화 | 구현하지 않음 | 선행 구현을 피한 올바른 상태 |
+| 제한된 단기 기억 | V2 session/reset, bounded process memory, 두 NPC 샘플 구현 | Phase 5 자동 검증 완료; 수동 검증 대기 |
+| 장기 기억·음성·패키지화 | 구현하지 않음 | 선행 구현을 피한 올바른 상태 |
 
 초기 대화에서는 실제 GPT/JSON 응답이 비교적 앞에 있었으나, 이후 계획은 Mock → 프로필 재사용 → 전송 계약 → 백엔드 순서로 정리됐다. 현재 저장소는 이 수정된 순서를 따른다.
 
@@ -74,12 +78,12 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - Core: 요청/응답 모델, `IAiConversationClient`, 결정적 `MockConversationClient`, 중복·취소·오류를 처리하는 `NpcAIController`
 - Transport: Unity 비의존 V1 DTO, validator, mapper와 Unity 경계의 `JsonUtility` codec
 - Unity 경계: `CharacterProfile`, `NpcConversationBehaviour`, uGUI 입력, `INpcPresentationDriver` 구현
-- Backend: V1 검증, OpenAI Structured Output, 취소·timeout·오류 매핑과 안전한 telemetry log
-- Unity networking: `BackendConversationClient`와 `UnityWebRequestAiNpcBackendGateway`; 기존 Mock mode 유지
-- 자동 설정: `PrototypeSceneBuilder`가 Editor API로 프로필과 Mock/Backend 샘플 씬을 생성·복구
+- Backend: V1 stateless 경로, V2 검증과 bounded session store, OpenAI Structured Output, 취소·timeout·오류 매핑과 안전한 telemetry log
+- Unity networking: V1 client/gateway와 V2 session client/gateway; 기존 Mock mode 유지
+- 자동 설정: `PrototypeSceneBuilder`가 Editor API로 프로필과 Mock/Backend/Memory 샘플 씬을 생성·복구
 - 의존성: Core asmdef는 `noEngineReferences: true`; Runtime에는 `UnityEditor` 참조가 없음
-- 자동 검증: Server build 및 Vitest **20/20**, Unity 컴파일 및 EditMode **54/54** 통과, 실패·건너뜀 0
-- 수동 검증: Phase 1·2 Play Mode, Phase 3 계약, Phase 4 실제 모델 smoke test 완료
+- 자동 검증: Server build 및 Vitest **43/43**, Unity 컴파일·Memory scene builder 및 EditMode **72/72** 통과, 실패·건너뜀 0
+- 수동 검증: Phase 1·2 Play Mode, Phase 3 계약, Phase 4 실제 모델 smoke test 완료; Phase 5 live memory 검증 대기
 
 ## Phase 1 완료 기록
 
@@ -117,7 +121,7 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 ### Phase 4 — Backend와 실제 OpenAI Structured Output
 
-- **상태: 완료 — `main`의 `Phase4` 체크포인트**
+- **상태: 완료 — `ab53815 (Phase4_1)`**
 - 상세 구현 기록: [`PHASE4_PLAN.md`](PHASE4_PLAN.md)
 - API 키를 서버에만 두고 `IAiConversationClient`의 네트워크 어댑터를 추가한다.
 - 스키마 검증, 취소, timeout, 재시도 제한, 오류 매핑, 민감정보 없는 로그를 구현한다.
@@ -125,9 +129,12 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 ### Phase 5 — 세션과 단기 기억
 
-- 먼저 최근 대화의 제한된 turn buffer와 명시적 reset을 구현한다.
-- 컨텍스트 길이 제한, 캐릭터별 세션 분리, 저장 여부를 테스트한다.
-- 장기 기억이나 Vector DB는 실제 요구와 평가 기준이 생길 때까지 보류한다.
+- **상태: 구현 및 자동 검증 완료 — 수동 Play Mode 검증과 커밋 대기**
+- 상세 구현 기록: [`PHASE5_PLAN.md`](PHASE5_PLAN.md)
+- V2 wire 규격: [`CONTRACT_V2.md`](CONTRACT_V2.md)
+- 최근 8개 성공 turn과 16 KiB의 process-local buffer, TTL·LRU·capacity 제한을 구현했다.
+- NPC component별 안정적인 opaque session ID, 캐릭터 결합, 명시적 reset과 shared busy gate를 추가했다.
+- V1·Mock을 유지하고 장기 기억이나 Vector DB는 실제 요구와 평가 기준이 생길 때까지 보류한다.
 
 ### Phase 6 — TTS
 
@@ -161,8 +168,9 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - 현재 표현은 정적 색상·회전이다. 대상 3D 캐릭터와 Animator 규격이 정해진 후 별도 `INpcPresentationDriver`로 확장한다.
 - 로컬 Backend에는 client auth와 rate limiting이 없다. `127.0.0.1` 밖으로 노출하지 않으며 원격 배포는 별도 보안 마일스톤으로 다룬다.
 - 실제 OpenAI smoke test는 비용과 계정 quota를 사용하므로 자동 테스트에서는 SDK를 주입형 fake로 대체한다. Phase 4에서는 사용자가 승인한 수동 1회만 실행해 end-to-end 경로를 확인했다.
+- Phase 5 session은 서버 재시작·TTL·LRU eviction 시 의도적으로 사라진다. UTF-8 byte 예산은 token 예산이 아니며, 기억 품질은 수동 시나리오로 별도 확인한다.
 - 패키지화를 먼저 하면 잘못된 경계를 고정할 수 있다. 반드시 두 번째 프로젝트 검증 뒤 진행한다.
 
 ## 바로 다음 행동
 
-**Phase 5 구현 전에 세션·단기 기억의 책임과 제한을 계획한다.** 캐릭터별 세션 분리, turn 수·token 제한, 명시적 reset, 저장하지 않는 기본 정책과 기존 stateless 경로의 호환성을 먼저 확정한다.
+**`MemoryNpcPrototype.unity`에서 Phase 5의 실제 모델 동작을 수동 검증한다.** Luna·Guard의 독립 기억, Luna 단독 reset, 초기 표현 복귀와 busy 버튼을 확인한 뒤에만 Phase 5 체크포인트를 커밋하고 Phase 6 TTS 계획으로 이동한다.

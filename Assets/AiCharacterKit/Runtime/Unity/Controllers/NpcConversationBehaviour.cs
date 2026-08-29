@@ -25,6 +25,14 @@ namespace AiCharacterKit.Unity
             "http://127.0.0.1:8787/v1/npc/respond";
 
         [SerializeField]
+        private string sessionBackendEndpoint =
+            "http://127.0.0.1:8787/v2/npc/respond";
+
+        [SerializeField]
+        private string sessionResetEndpoint =
+            "http://127.0.0.1:8787/v2/npc/sessions/reset";
+
+        [SerializeField]
         [Min(1)]
         private int backendTimeoutSeconds = 35;
 
@@ -34,6 +42,9 @@ namespace AiCharacterKit.Unity
 
         public bool IsRequestInProgress =>
             controller != null && controller.IsRequestInProgress;
+
+        public bool SupportsConversationReset =>
+            controller != null && controller.SupportsReset;
 
         /// <summary>
         /// Validates serialized dependencies and creates the selected conversation composition.
@@ -64,14 +75,7 @@ namespace AiCharacterKit.Unity
                 return;
             }
 
-            var initialDialogue = string.IsNullOrWhiteSpace(characterProfile.ExampleDialogue)
-                ? $"{characterProfile.DisplayName}와 대화를 시작해 보세요."
-                : $"{characterProfile.DisplayName}: {characterProfile.ExampleDialogue}";
-
-            presentationDriver.PresentDialogue(initialDialogue);
-            presentationDriver.PresentEmotion(characterProfile.DefaultEmotion);
-            presentationDriver.PresentGesture(NpcGesture.None);
-            presentationDriver.SetBusy(false);
+            PresentInitialState();
         }
 
         /// <summary>
@@ -121,6 +125,27 @@ namespace AiCharacterKit.Unity
             return await controller.SubmitAsync(
                 request,
                 lifetimeCancellation.Token);
+        }
+
+        /// <summary>
+        /// Clears optional short memory and restores the profile's initial presentation.
+        /// </summary>
+        public async Task<bool> ResetConversationAsync()
+        {
+            if (controller == null || lifetimeCancellation == null)
+            {
+                presentationDriver?.PresentError("NPC 대화 구성이 준비되지 않았습니다.");
+                return false;
+            }
+
+            var succeeded = await controller.ResetConversationAsync(
+                lifetimeCancellation.Token);
+            if (succeeded)
+            {
+                PresentInitialState();
+            }
+
+            return succeeded;
         }
 
         /// <summary>
@@ -175,6 +200,47 @@ namespace AiCharacterKit.Unity
                 return true;
             }
 
+            if (conversationMode == NpcConversationMode.Backend)
+            {
+                try
+                {
+                    var gateway = new UnityWebRequestAiNpcBackendGateway(
+                        backendEndpoint,
+                        backendTimeoutSeconds);
+                    conversationClient = new BackendConversationClient(gateway);
+                    return true;
+                }
+                catch (System.ArgumentException exception)
+                {
+                    Debug.LogError(
+                        $"Invalid NPC backend configuration: {exception.Message}",
+                        this);
+                    return false;
+                }
+            }
+
+            if (conversationMode == NpcConversationMode.BackendSession)
+            {
+                try
+                {
+                    var gateway = new UnityWebRequestAiNpcSessionBackendGateway(
+                        sessionBackendEndpoint,
+                        sessionResetEndpoint,
+                        backendTimeoutSeconds);
+                    conversationClient = new SessionBackendConversationClient(
+                        gateway,
+                        characterProfile.CharacterId);
+                    return true;
+                }
+                catch (System.ArgumentException exception)
+                {
+                    Debug.LogError(
+                        $"Invalid NPC session backend configuration: {exception.Message}",
+                        this);
+                    return false;
+                }
+            }
+
             if (conversationMode != NpcConversationMode.Backend)
             {
                 Debug.LogError(
@@ -183,21 +249,27 @@ namespace AiCharacterKit.Unity
                 return false;
             }
 
-            try
+            return false;
+        }
+
+        /// <summary>
+        /// Restores the profile dialogue, default emotion, and neutral gesture pose.
+        /// </summary>
+        private void PresentInitialState()
+        {
+            if (presentationDriver == null || characterProfile == null)
             {
-                var gateway = new UnityWebRequestAiNpcBackendGateway(
-                    backendEndpoint,
-                    backendTimeoutSeconds);
-                conversationClient = new BackendConversationClient(gateway);
-                return true;
+                return;
             }
-            catch (System.ArgumentException exception)
-            {
-                Debug.LogError(
-                    $"Invalid NPC backend configuration: {exception.Message}",
-                    this);
-                return false;
-            }
+
+            var initialDialogue = string.IsNullOrWhiteSpace(characterProfile.ExampleDialogue)
+                ? $"{characterProfile.DisplayName}와 대화를 시작해 보세요."
+                : $"{characterProfile.DisplayName}: {characterProfile.ExampleDialogue}";
+
+            presentationDriver.PresentDialogue(initialDialogue);
+            presentationDriver.PresentEmotion(characterProfile.DefaultEmotion);
+            presentationDriver.PresentGesture(NpcGesture.None);
+            presentationDriver.SetBusy(false);
         }
     }
 }

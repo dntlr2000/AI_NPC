@@ -28,6 +28,9 @@ namespace AiCharacterKit.Core
             }
         }
 
+        public bool SupportsReset =>
+            conversationClient is IResettableAiConversationClient;
+
         /// <summary>
         /// Creates a controller with explicit conversation and presentation dependencies.
         /// </summary>
@@ -60,25 +63,7 @@ namespace AiCharacterKit.Core
                 return false;
             }
 
-            CancellationTokenSource requestCancellation;
-            lock (requestLock)
-            {
-                ThrowIfDisposed();
-
-                if (isRequestInProgress)
-                {
-                    requestCancellation = null;
-                }
-                else
-                {
-                    isRequestInProgress = true;
-                    requestCancellation =
-                        CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                    activeRequestCancellation = requestCancellation;
-                }
-            }
-
-            if (requestCancellation == null)
+            if (!TryBeginOperation(cancellationToken, out var requestCancellation))
             {
                 presentationDriver.PresentError("이미 대화 요청을 처리하고 있습니다.");
                 return false;
@@ -116,6 +101,50 @@ namespace AiCharacterKit.Core
             finally
             {
                 CompleteRequest(requestCancellation);
+                presentationDriver.SetBusy(false);
+            }
+        }
+
+        /// <summary>
+        /// Clears optional conversation memory while sharing the normal single-operation gate.
+        /// </summary>
+        public async Task<bool> ResetConversationAsync(
+            CancellationToken cancellationToken)
+        {
+            if (!(conversationClient is IResettableAiConversationClient resettableClient))
+            {
+                presentationDriver.PresentError(
+                    "현재 대화 클라이언트는 기억 초기화를 지원하지 않습니다.");
+                return false;
+            }
+
+            if (!TryBeginOperation(cancellationToken, out var resetCancellation))
+            {
+                presentationDriver.PresentError("이미 대화 요청을 처리하고 있습니다.");
+                return false;
+            }
+
+            try
+            {
+                presentationDriver.SetBusy(true);
+                await resettableClient.ResetAsync(resetCancellation.Token);
+                resetCancellation.Token.ThrowIfCancellationRequested();
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                presentationDriver.PresentCancellation();
+                return false;
+            }
+            catch (Exception exception)
+            {
+                presentationDriver.PresentError(
+                    $"대화 기억 초기화에 실패했습니다: {exception.Message}");
+                return false;
+            }
+            finally
+            {
+                CompleteRequest(resetCancellation);
                 presentationDriver.SetBusy(false);
             }
         }
@@ -191,6 +220,30 @@ namespace AiCharacterKit.Core
             }
 
             requestCancellation.Dispose();
+        }
+
+        /// <summary>
+        /// Reserves the shared send-or-reset gate and links caller cancellation.
+        /// </summary>
+        private bool TryBeginOperation(
+            CancellationToken cancellationToken,
+            out CancellationTokenSource operationCancellation)
+        {
+            lock (requestLock)
+            {
+                ThrowIfDisposed();
+                if (isRequestInProgress)
+                {
+                    operationCancellation = null;
+                    return false;
+                }
+
+                isRequestInProgress = true;
+                operationCancellation =
+                    CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                activeRequestCancellation = operationCancellation;
+                return true;
+            }
         }
 
         /// <summary>

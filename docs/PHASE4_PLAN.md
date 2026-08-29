@@ -1,6 +1,6 @@
 # Phase 4 — Local Backend and OpenAI Structured Output
 
-> 상태: 완료 — `main`의 `Phase4` 체크포인트
+> 상태: 완료 — `ab53815 (Phase4_1)`
 > 기준 커밋: `cfc5b04 (Phase3)`
 > 목표: API 키를 Unity 밖에 둔 채 V1 계약으로 실제 모델 응답 하나를 화면에 표시한다.
 

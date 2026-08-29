@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 2,
+  "requestId": "req-v2-001",
+  "status": "success",
+  "result": {
+    "dialogue": "Luna: 파란색을 좋아하는구나! 기억할게.",
+    "emotion": "happy",
+    "gesture": "nod"
+  }
+}

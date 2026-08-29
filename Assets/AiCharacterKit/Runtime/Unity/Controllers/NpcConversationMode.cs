@@ -1,11 +1,12 @@
 namespace AiCharacterKit.Unity
 {
     /// <summary>
-    /// Selects the existing deterministic client or the local Phase 4 backend client.
+    /// Selects deterministic, stateless backend, or session-aware backend composition.
     /// </summary>
     public enum NpcConversationMode
     {
         Mock = 0,
-        Backend = 1
+        Backend = 1,
+        BackendSession = 2
     }
 }

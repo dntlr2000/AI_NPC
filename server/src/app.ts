@@ -3,22 +3,34 @@ import Fastify, {
   type FastifyServerOptions,
 } from "fastify";
 import {
-  aiNpcRequestSchema,
-  createErrorResponse,
-  createSuccessResponse,
-  readRequestId,
-  SCHEMA_VERSION,
+  aiNpcRequestSchema as aiNpcRequestSchemaV1,
+  createErrorResponse as createErrorResponseV1,
+  createSuccessResponse as createSuccessResponseV1,
+  readRequestId as readRequestIdV1,
+  SCHEMA_VERSION as SCHEMA_VERSION_V1,
 } from "./contracts/v1.js";
+import {
+  aiNpcRequestSchema as aiNpcRequestSchemaV2,
+  aiNpcSessionResetRequestSchema,
+  createErrorResponse as createErrorResponseV2,
+  createResetErrorResponse,
+  createResetSuccessResponse,
+  createSuccessResponse as createSuccessResponseV2,
+  readRequestId as readRequestIdV2,
+  SCHEMA_VERSION as SCHEMA_VERSION_V2,
+} from "./contracts/v2.js";
 import { REQUEST_BODY_LIMIT_BYTES } from "./config.js";
 import { NpcServiceError } from "./errors.js";
 import type { NpcResponseGenerator } from "./generator.js";
+import type { SessionConversationService } from "./sessions.js";
 
 export interface AppDependencies {
   readonly generator: NpcResponseGenerator;
+  readonly sessionService: SessionConversationService;
   readonly logger?: FastifyServerOptions["logger"];
 }
 
-/** Creates a local-only HTTP application around an injected NPC response generator. */
+/** Creates a local-only HTTP application around injected stateless and session services. */
 export function createApp(dependencies: AppDependencies): FastifyInstance {
   const app = Fastify({
     bodyLimit: REQUEST_BODY_LIMIT_BYTES,
@@ -28,23 +40,23 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
   app.get("/healthz", async () => ({ status: "ok" }));
 
   app.post("/v1/npc/respond", async (request, reply) => {
-    const requestId = readRequestId(request.body, request.id);
+    const requestId = readRequestIdV1(request.body, request.id);
     const version = readSchemaVersion(request.body);
-    if (version !== undefined && version !== SCHEMA_VERSION) {
+    if (version !== undefined && version !== SCHEMA_VERSION_V1) {
       return reply.status(400).send(
-        createErrorResponse(
+        createErrorResponseV1(
           requestId,
           "unsupported_schema_version",
-          "Only AI NPC contract version 1 is supported.",
+          "Only AI NPC contract version 1 is supported on this endpoint.",
           false,
         ),
       );
     }
 
-    const parsedRequest = aiNpcRequestSchema.safeParse(request.body);
+    const parsedRequest = aiNpcRequestSchemaV1.safeParse(request.body);
     if (!parsedRequest.success) {
       return reply.status(400).send(
-        createErrorResponse(
+        createErrorResponseV1(
           requestId,
           "invalid_request",
           "The AI NPC request is invalid.",
@@ -56,35 +68,22 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
     const cancellation = createRequestCancellation(request.raw, reply.raw);
     try {
       const generated = await dependencies.generator.generate(
-        parsedRequest.data,
+        {
+          character: parsedRequest.data.character,
+          history: [],
+          userText: parsedRequest.data.userText,
+        },
         cancellation.signal,
       );
-      request.log.info(
-        {
-          contractRequestId: parsedRequest.data.requestId,
-          openAiResponseId: generated.telemetry.openAiResponseId,
-          inputTokens: generated.telemetry.inputTokens,
-          outputTokens: generated.telemetry.outputTokens,
-          totalTokens: generated.telemetry.totalTokens,
-        },
-        "AI NPC response generated",
-      );
+      logGenerationSuccess(request.log, parsedRequest.data.requestId, generated);
       return reply.status(200).send(
-        createSuccessResponse(parsedRequest.data.requestId, generated.result),
+        createSuccessResponseV1(parsedRequest.data.requestId, generated.result),
       );
     } catch (error: unknown) {
       const serviceError = normalizeServiceError(error);
-      request.log.warn(
-        {
-          contractRequestId: parsedRequest.data.requestId,
-          category: serviceError.logCategory,
-          statusCode: serviceError.statusCode,
-          retryable: serviceError.retryable,
-        },
-        "AI NPC request failed",
-      );
+      logServiceFailure(request.log, parsedRequest.data.requestId, serviceError);
       return reply.status(serviceError.statusCode).send(
-        createErrorResponse(
+        createErrorResponseV1(
           parsedRequest.data.requestId,
           serviceError.code,
           serviceError.message,
@@ -93,6 +92,107 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
       );
     } finally {
       cancellation.dispose();
+    }
+  });
+
+  app.post("/v2/npc/respond", async (request, reply) => {
+    const requestId = readRequestIdV2(request.body, request.id);
+    const version = readSchemaVersion(request.body);
+    if (version !== undefined && version !== SCHEMA_VERSION_V2) {
+      return reply.status(400).send(
+        createErrorResponseV2(
+          requestId,
+          "unsupported_schema_version",
+          "Only AI NPC contract version 2 is supported on this endpoint.",
+          false,
+        ),
+      );
+    }
+
+    const parsedRequest = aiNpcRequestSchemaV2.safeParse(request.body);
+    if (!parsedRequest.success) {
+      return reply.status(400).send(
+        createErrorResponseV2(
+          requestId,
+          "invalid_request",
+          "The session-aware AI NPC request is invalid.",
+          false,
+        ),
+      );
+    }
+
+    const cancellation = createRequestCancellation(request.raw, reply.raw);
+    try {
+      const generated = await dependencies.sessionService.respond(
+        parsedRequest.data,
+        cancellation.signal,
+      );
+      logGenerationSuccess(request.log, parsedRequest.data.requestId, generated);
+      return reply.status(200).send(
+        createSuccessResponseV2(parsedRequest.data.requestId, generated.result),
+      );
+    } catch (error: unknown) {
+      const serviceError = normalizeServiceError(error);
+      logServiceFailure(request.log, parsedRequest.data.requestId, serviceError);
+      return reply.status(serviceError.statusCode).send(
+        createErrorResponseV2(
+          parsedRequest.data.requestId,
+          serviceError.code,
+          serviceError.message,
+          serviceError.retryable,
+        ),
+      );
+    } finally {
+      cancellation.dispose();
+    }
+  });
+
+  app.post("/v2/npc/sessions/reset", async (request, reply) => {
+    const requestId = readRequestIdV2(request.body, request.id);
+    const version = readSchemaVersion(request.body);
+    if (version !== undefined && version !== SCHEMA_VERSION_V2) {
+      return reply.status(400).send(
+        createResetErrorResponse(
+          requestId,
+          "unsupported_schema_version",
+          "Only AI NPC contract version 2 is supported on this endpoint.",
+          false,
+        ),
+      );
+    }
+
+    const parsedRequest = aiNpcSessionResetRequestSchema.safeParse(request.body);
+    if (!parsedRequest.success) {
+      return reply.status(400).send(
+        createResetErrorResponse(
+          requestId,
+          "invalid_request",
+          "The session reset request is invalid.",
+          false,
+        ),
+      );
+    }
+
+    try {
+      dependencies.sessionService.reset(parsedRequest.data);
+      request.log.info(
+        { contractRequestId: parsedRequest.data.requestId },
+        "AI NPC session reset",
+      );
+      return reply.status(200).send(
+        createResetSuccessResponse(parsedRequest.data.requestId),
+      );
+    } catch (error: unknown) {
+      const serviceError = normalizeServiceError(error);
+      logServiceFailure(request.log, parsedRequest.data.requestId, serviceError);
+      return reply.status(serviceError.statusCode).send(
+        createResetErrorResponse(
+          parsedRequest.data.requestId,
+          serviceError.code,
+          serviceError.message,
+          serviceError.retryable,
+        ),
+      );
     }
   });
 
@@ -115,8 +215,21 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
       },
       "AI NPC HTTP request rejected",
     );
+
+    if (request.url.startsWith("/v2/npc/sessions/reset")) {
+      return reply.status(statusCode).send(
+        createResetErrorResponse(request.id, code, message, false),
+      );
+    }
+
+    if (request.url.startsWith("/v2/")) {
+      return reply.status(statusCode).send(
+        createErrorResponseV2(request.id, code, message, false),
+      );
+    }
+
     return reply.status(statusCode).send(
-      createErrorResponse(request.id, code, message, false),
+      createErrorResponseV1(request.id, code, message, false),
     );
   });
 
@@ -136,6 +249,41 @@ function createLoggerOptions(): FastifyServerOptions["logger"] {
   };
 }
 
+/** Logs model identifiers and usage without storing conversation or session content. */
+function logGenerationSuccess(
+  logger: { info: (data: object, message: string) => void },
+  requestId: string,
+  generated: Awaited<ReturnType<NpcResponseGenerator["generate"]>>,
+): void {
+  logger.info(
+    {
+      contractRequestId: requestId,
+      openAiResponseId: generated.telemetry.openAiResponseId,
+      inputTokens: generated.telemetry.inputTokens,
+      outputTokens: generated.telemetry.outputTokens,
+      totalTokens: generated.telemetry.totalTokens,
+    },
+    "AI NPC response generated",
+  );
+}
+
+/** Logs one safe failure category without request, profile, or session content. */
+function logServiceFailure(
+  logger: { warn: (data: object, message: string) => void },
+  requestId: string,
+  serviceError: NpcServiceError,
+): void {
+  logger.warn(
+    {
+      contractRequestId: requestId,
+      category: serviceError.logCategory,
+      statusCode: serviceError.statusCode,
+      retryable: serviceError.retryable,
+    },
+    "AI NPC request failed",
+  );
+}
+
 /** Reads a numeric schema version early so unsupported versions get a stable code. */
 function readSchemaVersion(value: unknown): number | undefined {
   if (typeof value !== "object" || value === null) {
@@ -146,7 +294,7 @@ function readSchemaVersion(value: unknown): number | undefined {
   return typeof schemaVersion === "number" ? schemaVersion : undefined;
 }
 
-/** Links a disconnected HTTP request to the upstream OpenAI cancellation signal. */
+/** Links a disconnected HTTP request to the upstream cancellation signal. */
 function createRequestCancellation(
   request: NodeJS.EventEmitter,
   response: NodeJS.EventEmitter & { writableEnded?: boolean },

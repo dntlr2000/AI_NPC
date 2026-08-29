@@ -114,6 +114,96 @@ namespace AiCharacterKit.Core.Tests
         }
 
         /// <summary>
+        /// Confirms that a supported reset shares busy presentation and completes successfully.
+        /// </summary>
+        [Test]
+        public async Task ResetConversationAsync_SupportedClient_UsesSharedBusyGate()
+        {
+            var client = new RecordingResettableConversationClient();
+            var presentation = new RecordingPresentationDriver();
+            var controller = new NpcAIController(client, presentation);
+
+            var succeeded = await controller.ResetConversationAsync(
+                CancellationToken.None);
+
+            Assert.That(controller.SupportsReset, Is.True);
+            Assert.That(succeeded, Is.True);
+            Assert.That(client.ResetCount, Is.EqualTo(1));
+            Assert.That(presentation.BusyStates, Is.EqualTo(new[] { true, false }));
+            Assert.That(controller.IsRequestInProgress, Is.False);
+            controller.Dispose();
+        }
+
+        /// <summary>
+        /// Confirms that stateless clients reject reset without entering busy state.
+        /// </summary>
+        [Test]
+        public async Task ResetConversationAsync_UnsupportedClient_ReturnsFalse()
+        {
+            var presentation = new RecordingPresentationDriver();
+            var controller = new NpcAIController(
+                new MockConversationClient(TimeSpan.Zero),
+                presentation);
+
+            var succeeded = await controller.ResetConversationAsync(
+                CancellationToken.None);
+
+            Assert.That(controller.SupportsReset, Is.False);
+            Assert.That(succeeded, Is.False);
+            Assert.That(presentation.Error, Does.Contain("지원하지 않습니다"));
+            Assert.That(presentation.BusyStates, Is.Empty);
+            controller.Dispose();
+        }
+
+        /// <summary>
+        /// Confirms that reset cannot overlap a pending submission on the same controller.
+        /// </summary>
+        [Test]
+        public async Task ResetConversationAsync_WhileSubmissionActive_IsRejected()
+        {
+            var client = new BlockingResettableConversationClient();
+            var presentation = new RecordingPresentationDriver();
+            var controller = new NpcAIController(client, presentation);
+            var submission = controller.SubmitAsync(
+                CreateRequest("대기"),
+                CancellationToken.None);
+
+            var resetSucceeded = await controller.ResetConversationAsync(
+                CancellationToken.None);
+
+            Assert.That(resetSucceeded, Is.False);
+            Assert.That(client.ResetCount, Is.Zero);
+            Assert.That(presentation.Error, Does.Contain("이미"));
+            client.Complete(new AiNpcResponse(
+                "완료",
+                NpcEmotion.Neutral,
+                NpcGesture.None));
+            Assert.That(await submission, Is.True);
+            controller.Dispose();
+        }
+
+        /// <summary>
+        /// Confirms that reset failures are presented safely and release the shared gate.
+        /// </summary>
+        [Test]
+        public async Task ResetConversationAsync_ClientFailure_PresentsErrorAndUnlocks()
+        {
+            var client = new RecordingResettableConversationClient(
+                new InvalidOperationException("reset failure"));
+            var presentation = new RecordingPresentationDriver();
+            var controller = new NpcAIController(client, presentation);
+
+            var succeeded = await controller.ResetConversationAsync(
+                CancellationToken.None);
+
+            Assert.That(succeeded, Is.False);
+            Assert.That(presentation.Error, Does.Contain("기억 초기화에 실패"));
+            Assert.That(presentation.BusyStates, Is.EqualTo(new[] { true, false }));
+            Assert.That(controller.IsRequestInProgress, Is.False);
+            controller.Dispose();
+        }
+
+        /// <summary>
         /// Creates a valid request used by controller behavior tests.
         /// </summary>
         private static AiNpcRequest CreateRequest(string userText)
@@ -241,6 +331,92 @@ namespace AiCharacterKit.Core.Tests
             {
                 return Task.FromException<AiNpcResponse>(
                     new InvalidOperationException("mock failure"));
+            }
+        }
+
+        /// <summary>
+        /// Provides completed sends and configurable reset outcomes.
+        /// </summary>
+        private sealed class RecordingResettableConversationClient
+            : IResettableAiConversationClient
+        {
+            private readonly Exception resetFailure;
+
+            public int ResetCount { get; private set; }
+
+            /// <summary>
+            /// Captures an optional deterministic reset failure.
+            /// </summary>
+            public RecordingResettableConversationClient(
+                Exception resetFailure = null)
+            {
+                this.resetFailure = resetFailure;
+            }
+
+            /// <summary>
+            /// Returns one fixed response without external work.
+            /// </summary>
+            public Task<AiNpcResponse> SendAsync(
+                AiNpcRequest request,
+                CancellationToken cancellationToken)
+            {
+                return Task.FromResult(new AiNpcResponse(
+                    "완료",
+                    NpcEmotion.Neutral,
+                    NpcGesture.None));
+            }
+
+            /// <summary>
+            /// Records reset and returns the configured success or failure.
+            /// </summary>
+            public Task ResetAsync(CancellationToken cancellationToken)
+            {
+                ResetCount++;
+                return resetFailure == null
+                    ? Task.CompletedTask
+                    : Task.FromException(resetFailure);
+            }
+        }
+
+        /// <summary>
+        /// Holds one send open while exposing a separately counted reset operation.
+        /// </summary>
+        private sealed class BlockingResettableConversationClient
+            : IResettableAiConversationClient
+        {
+            private readonly TaskCompletionSource<AiNpcResponse> completion =
+                new TaskCompletionSource<AiNpcResponse>(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+
+            public int ResetCount { get; private set; }
+
+            /// <summary>
+            /// Returns the pending task until the test completes it.
+            /// </summary>
+            public Task<AiNpcResponse> SendAsync(
+                AiNpcRequest request,
+                CancellationToken cancellationToken)
+            {
+                cancellationToken.Register(
+                    () => completion.TrySetCanceled(cancellationToken));
+                return completion.Task;
+            }
+
+            /// <summary>
+            /// Records an unexpected reset call.
+            /// </summary>
+            public Task ResetAsync(CancellationToken cancellationToken)
+            {
+                ResetCount++;
+                return Task.CompletedTask;
+            }
+
+            /// <summary>
+            /// Completes the pending fake send with a selected response.
+            /// </summary>
+            public void Complete(AiNpcResponse response)
+            {
+                completion.TrySetResult(response);
             }
         }
     }

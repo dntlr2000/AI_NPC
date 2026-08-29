@@ -25,6 +25,8 @@ namespace AiCharacterKit.Editor
         private const string ScenesFolder = MockNpcFolder + "/Scenes";
         private const string BackendNpcFolder = SamplesFolder + "/BackendNpc";
         private const string BackendScenesFolder = BackendNpcFolder + "/Scenes";
+        private const string MemoryNpcFolder = SamplesFolder + "/MemoryNpc";
+        private const string MemoryScenesFolder = MemoryNpcFolder + "/Scenes";
         private const string ProfilePath = ProfilesFolder + "/PrototypeCharacter.asset";
         private const string ScenePath = ScenesFolder + "/MockNpcPrototype.unity";
         private const string LunaProfilePath = ProfilesFolder + "/Luna.asset";
@@ -33,8 +35,14 @@ namespace AiCharacterKit.Editor
             ScenesFolder + "/MultiCharacterMock.unity";
         private const string BackendScenePath =
             BackendScenesFolder + "/BackendNpcPrototype.unity";
+        private const string MemoryScenePath =
+            MemoryScenesFolder + "/MemoryNpcPrototype.unity";
         private const string DefaultBackendEndpoint =
             "http://127.0.0.1:8787/v1/npc/respond";
+        private const string DefaultSessionBackendEndpoint =
+            "http://127.0.0.1:8787/v2/npc/respond";
+        private const string DefaultSessionResetEndpoint =
+            "http://127.0.0.1:8787/v2/npc/sessions/reset";
         private const int DefaultBackendTimeoutSeconds = 35;
         private const string InputActionsPath = "Assets/InputSystem_Actions.inputactions";
         private const float SinglePanelWidth = 560f;
@@ -169,6 +177,50 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
+        /// Creates or repairs the Phase 5 two-session memory sample interactively.
+        /// </summary>
+        [MenuItem("Tools/AI Character Kit/Create Memory NPC Prototype")]
+        public static void CreateMemoryScene()
+        {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                return;
+            }
+
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(MemoryScenePath) != null)
+            {
+                RepairMemoryScene();
+                EditorUtility.DisplayDialog(
+                    "Memory NPC Prototype",
+                    "The prototype already exists at:\n"
+                    + MemoryScenePath
+                    + "\n\nIts required references were refreshed.",
+                    "OK");
+                Selection.activeObject = AssetDatabase.LoadAssetAtPath<SceneAsset>(
+                    MemoryScenePath);
+                return;
+            }
+
+            CreateMemorySceneInternal();
+        }
+
+        /// <summary>
+        /// Creates or repairs the Phase 5 memory sample non-interactively for automation.
+        /// </summary>
+        public static void CreateMemorySceneBatch()
+        {
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(MemoryScenePath) != null)
+            {
+                RepairMemoryScene();
+                Debug.Log(
+                    $"Refreshed memory NPC prototype references at {MemoryScenePath}.");
+                return;
+            }
+
+            CreateMemorySceneInternal();
+        }
+
+        /// <summary>
         /// Creates folders, profile data, scene objects, UI, and serialized component wiring.
         /// </summary>
         private static void CreatePrototypeSceneInternal()
@@ -272,6 +324,51 @@ namespace AiCharacterKit.Editor
                 scene,
                 BackendScenePath,
                 "Created backend NPC prototype");
+        }
+
+        /// <summary>
+        /// Creates two independently resettable backend sessions in one generated scene.
+        /// </summary>
+        private static void CreateMemorySceneInternal()
+        {
+            EnsureSampleFolders();
+            var scene = EditorSceneManager.NewScene(
+                NewSceneSetup.DefaultGameObjects,
+                NewSceneMode.Single);
+            var lunaProfile = CreateOrLoadProfile(CreateLunaProfileDefinition());
+            var guardProfile = CreateOrLoadProfile(CreateGuardProfileDefinition());
+            EnsureDistinctProfileIds(lunaProfile, guardProfile);
+
+            ConfigureDefaultSceneObjects();
+            CreateGround();
+            CreateConfiguredNpc(
+                lunaProfile,
+                new Vector3(-1.7f, 0f, 0f),
+                "Luna",
+                true,
+                MultiPanelWidth,
+                "Memory NPC",
+                NpcConversationMode.BackendSession,
+                DefaultBackendEndpoint,
+                DefaultBackendTimeoutSeconds,
+                true);
+            CreateConfiguredNpc(
+                guardProfile,
+                new Vector3(1.7f, 0f, 0f),
+                "Guard",
+                false,
+                MultiPanelWidth,
+                "Memory NPC",
+                NpcConversationMode.BackendSession,
+                DefaultBackendEndpoint,
+                DefaultBackendTimeoutSeconds,
+                true);
+            CreateInputSystemEventSystem();
+
+            SaveGeneratedScene(
+                scene,
+                MemoryScenePath,
+                "Created memory NPC prototype");
         }
 
         /// <summary>
@@ -500,6 +597,49 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
+        /// Reloads the Phase 5 scene and restores both independent session UI sets.
+        /// </summary>
+        private static void RepairMemoryScene()
+        {
+            var scene = EditorSceneManager.OpenScene(
+                MemoryScenePath,
+                OpenSceneMode.Single);
+            var lunaProfile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(
+                LunaProfilePath);
+            var guardProfile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(
+                GuardProfilePath);
+            if (lunaProfile == null || guardProfile == null)
+            {
+                throw new InvalidOperationException(
+                    "The memory sample profiles are missing.");
+            }
+
+            ValidateProfile(lunaProfile, LunaProfilePath);
+            ValidateProfile(guardProfile, GuardProfilePath);
+            EnsureDistinctProfileIds(lunaProfile, guardProfile);
+            RepairNpcConfiguration(
+                lunaProfile,
+                "Memory NPC - Luna",
+                "Luna",
+                NpcConversationMode.BackendSession,
+                DefaultBackendEndpoint,
+                DefaultBackendTimeoutSeconds,
+                true);
+            RepairNpcConfiguration(
+                guardProfile,
+                "Memory NPC - Guard",
+                "Guard",
+                NpcConversationMode.BackendSession,
+                DefaultBackendEndpoint,
+                DefaultBackendTimeoutSeconds,
+                true);
+            SaveGeneratedScene(
+                scene,
+                MemoryScenePath,
+                "Repaired memory NPC prototype");
+        }
+
+        /// <summary>
         /// Positions the default camera and directional light for the prototype NPC.
         /// </summary>
         private static void ConfigureDefaultSceneObjects()
@@ -563,7 +703,8 @@ namespace AiCharacterKit.Editor
             string compositionLabel,
             NpcConversationMode conversationMode,
             string backendEndpoint,
-            int backendTimeoutSeconds)
+            int backendTimeoutSeconds,
+            bool includeSessionControls = false)
         {
             var npc = CreateNpc(profile.DisplayName, position, compositionLabel);
             var presentationDriver = npc.GetComponent<NpcTextPresentationDriver>();
@@ -573,7 +714,8 @@ namespace AiCharacterKit.Editor
                 objectSuffix,
                 alignPanelLeft,
                 panelWidth,
-                compositionLabel);
+                compositionLabel,
+                includeSessionControls);
 
             ConfigurePresentationDriver(
                 presentationDriver,
@@ -592,6 +734,14 @@ namespace AiCharacterKit.Editor
                 ui.InputField,
                 ui.SendButton,
                 conversationBehaviour);
+            if (includeSessionControls)
+            {
+                ConfigureSessionControlView(
+                    ui.SessionControlView,
+                    ui.ResetButton,
+                    ui.MemoryStatusText,
+                    conversationBehaviour);
+            }
         }
 
         /// <summary>
@@ -602,7 +752,8 @@ namespace AiCharacterKit.Editor
             string objectSuffix,
             bool alignPanelLeft,
             float panelWidth,
-            string compositionLabel)
+            string compositionLabel,
+            bool includeSessionControls)
         {
             var canvasObject = new GameObject(
                 GetObjectName(compositionLabel + " Canvas", objectSuffix),
@@ -689,14 +840,31 @@ namespace AiCharacterKit.Editor
                 new Vector2(contentWidth, 38f));
             status.color = new Color(0.75f, 0.8f, 0.9f);
 
+            Text memoryStatus = null;
+            if (includeSessionControls)
+            {
+                memoryStatus = CreateText(
+                    resources,
+                    panel.transform,
+                    GetObjectName("Memory Status", objectSuffix),
+                    "단기 기억: 활성",
+                    16,
+                    TextAnchor.MiddleLeft,
+                    new Vector2(20f, -392f),
+                    new Vector2(contentWidth, 28f));
+                memoryStatus.color = new Color(0.55f, 0.9f, 0.72f);
+            }
+
             var hint = CreateText(
                 resources,
                 panel.transform,
                 GetObjectName("Input Hint", objectSuffix),
-                "Try: 안녕 / 고마워 / 무엇을 좋아해?",
+                includeSessionControls
+                    ? "사실을 말한 뒤 재질문하고 Reset을 눌러 보세요."
+                    : "Try: 안녕 / 고마워 / 무엇을 좋아해?",
                 16,
                 TextAnchor.MiddleLeft,
-                new Vector2(20f, -400f),
+                new Vector2(20f, includeSessionControls ? -424f : -400f),
                 new Vector2(contentWidth, 32f));
             hint.color = new Color(0.65f, 0.7f, 0.8f);
 
@@ -705,8 +873,10 @@ namespace AiCharacterKit.Editor
             inputObject.transform.SetParent(panel.transform, false);
             SetTopLeftRect(
                 inputObject.GetComponent<RectTransform>(),
-                new Vector2(20f, -452f),
-                new Vector2(panelWidth - 175f, 64f));
+                new Vector2(20f, includeSessionControls ? -464f : -452f),
+                new Vector2(
+                    includeSessionControls ? panelWidth - 240f : panelWidth - 175f,
+                    includeSessionControls ? 56f : 64f));
 
             var inputField = inputObject.GetComponent<InputField>();
             inputField.lineType = InputField.LineType.SingleLine;
@@ -720,8 +890,12 @@ namespace AiCharacterKit.Editor
             buttonObject.transform.SetParent(panel.transform, false);
             SetTopLeftRect(
                 buttonObject.GetComponent<RectTransform>(),
-                new Vector2(panelWidth - 140f, -452f),
-                new Vector2(120f, 64f));
+                new Vector2(
+                    includeSessionControls ? panelWidth - 205f : panelWidth - 140f,
+                    includeSessionControls ? -464f : -452f),
+                new Vector2(
+                    includeSessionControls ? 80f : 120f,
+                    includeSessionControls ? 56f : 64f));
 
             var sendButton = buttonObject.GetComponent<Button>();
             var buttonLabel = buttonObject.GetComponentInChildren<Text>();
@@ -729,18 +903,40 @@ namespace AiCharacterKit.Editor
             buttonLabel.fontSize = 20;
             buttonLabel.fontStyle = FontStyle.Bold;
 
+            Button resetButton = null;
+            if (includeSessionControls)
+            {
+                var resetObject = DefaultControls.CreateButton(resources);
+                resetObject.name = GetObjectName("Reset Button", objectSuffix);
+                resetObject.transform.SetParent(panel.transform, false);
+                SetTopLeftRect(
+                    resetObject.GetComponent<RectTransform>(),
+                    new Vector2(panelWidth - 110f, -464f),
+                    new Vector2(90f, 56f));
+                resetButton = resetObject.GetComponent<Button>();
+                var resetLabel = resetObject.GetComponentInChildren<Text>();
+                resetLabel.text = "Reset";
+                resetLabel.fontSize = 18;
+                resetLabel.fontStyle = FontStyle.Bold;
+            }
+
             var instructions = CreateText(
                 resources,
                 panel.transform,
                 GetObjectName("Verification Instructions", objectSuffix),
-                "응답 후 NPC 색상은 감정, 기울기는 제스처를 표시합니다.",
+                includeSessionControls
+                    ? "각 NPC는 독립 세션입니다. Reset은 선택한 NPC 기억만 지웁니다."
+                    : "응답 후 NPC 색상은 감정, 기울기는 제스처를 표시합니다.",
                 15,
                 TextAnchor.UpperLeft,
-                new Vector2(20f, -532f),
+                new Vector2(20f, includeSessionControls ? -536f : -532f),
                 new Vector2(contentWidth, 58f));
             instructions.color = new Color(0.65f, 0.7f, 0.8f);
 
             var inputView = panel.AddComponent<NpcTextInputView>();
+            var sessionControlView = includeSessionControls
+                ? panel.AddComponent<NpcSessionControlView>()
+                : null;
             return new PrototypeUiReferences
             {
                 DialogueText = dialogue,
@@ -749,7 +945,10 @@ namespace AiCharacterKit.Editor
                 StatusText = status,
                 InputField = inputField,
                 SendButton = sendButton,
-                InputView = inputView
+                ResetButton = resetButton,
+                MemoryStatusText = memoryStatus,
+                InputView = inputView,
+                SessionControlView = sessionControlView
             };
         }
 
@@ -793,7 +992,8 @@ namespace AiCharacterKit.Editor
             string objectSuffix,
             NpcConversationMode conversationMode,
             string backendEndpoint,
-            int backendTimeoutSeconds)
+            int backendTimeoutSeconds,
+            bool includeSessionControls = false)
         {
             var npc = FindRequiredGameObject(npcObjectName);
             var presentationDriver = npc.GetComponent<NpcTextPresentationDriver>();
@@ -804,7 +1004,7 @@ namespace AiCharacterKit.Editor
                     $"Generated NPC '{npcObjectName}' is missing required runtime components.");
             }
 
-            var ui = FindUiReferences(objectSuffix);
+            var ui = FindUiReferences(objectSuffix, includeSessionControls);
             ConfigurePresentationDriver(
                 presentationDriver,
                 ui,
@@ -822,14 +1022,24 @@ namespace AiCharacterKit.Editor
                 ui.InputField,
                 ui.SendButton,
                 conversationBehaviour);
+            if (includeSessionControls)
+            {
+                ConfigureSessionControlView(
+                    ui.SessionControlView,
+                    ui.ResetButton,
+                    ui.MemoryStatusText,
+                    conversationBehaviour);
+            }
         }
 
         /// <summary>
         /// Finds one generated UI set by its optional Phase 2 character suffix.
         /// </summary>
-        private static PrototypeUiReferences FindUiReferences(string objectSuffix)
+        private static PrototypeUiReferences FindUiReferences(
+            string objectSuffix,
+            bool includeSessionControls)
         {
-            return new PrototypeUiReferences
+            var references = new PrototypeUiReferences
             {
                 DialogueText = FindRequiredComponent<Text>(
                     GetObjectName("Dialogue Output", objectSuffix)),
@@ -846,6 +1056,19 @@ namespace AiCharacterKit.Editor
                 InputView = FindRequiredComponent<NpcTextInputView>(
                     GetObjectName("Conversation Panel", objectSuffix))
             };
+
+            if (includeSessionControls)
+            {
+                references.ResetButton = FindRequiredComponent<Button>(
+                    GetObjectName("Reset Button", objectSuffix));
+                references.MemoryStatusText = FindRequiredComponent<Text>(
+                    GetObjectName("Memory Status", objectSuffix));
+                references.SessionControlView =
+                    FindRequiredComponent<NpcSessionControlView>(
+                        GetObjectName("Conversation Panel", objectSuffix));
+            }
+
+            return references;
         }
 
         /// <summary>
@@ -895,6 +1118,7 @@ namespace AiCharacterKit.Editor
             SetObjectReference(serializedDriver, "gestureText", ui.GestureText);
             SetObjectReference(serializedDriver, "statusText", ui.StatusText);
             SetObjectReference(serializedDriver, "sendButton", ui.SendButton);
+            SetObjectReference(serializedDriver, "resetButton", ui.ResetButton);
             SetObjectReference(serializedDriver, "emotionRenderer", npcRenderer);
             SetObjectReference(serializedDriver, "gestureTarget", npcTransform);
             serializedDriver.ApplyModifiedPropertiesWithoutUndo();
@@ -932,6 +1156,14 @@ namespace AiCharacterKit.Editor
                 serializedBehaviour,
                 "backendEndpoint",
                 backendEndpoint);
+            SetStringValue(
+                serializedBehaviour,
+                "sessionBackendEndpoint",
+                DefaultSessionBackendEndpoint);
+            SetStringValue(
+                serializedBehaviour,
+                "sessionResetEndpoint",
+                DefaultSessionResetEndpoint);
             SetIntegerValue(
                 serializedBehaviour,
                 "backendTimeoutSeconds",
@@ -965,6 +1197,33 @@ namespace AiCharacterKit.Editor
                 "conversationBehaviour",
                 conversationBehaviour);
             serializedInputView.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// Wires one reset button and memory label into the optional session view.
+        /// </summary>
+        private static void ConfigureSessionControlView(
+            NpcSessionControlView sessionControlView,
+            Button resetButton,
+            Text memoryStatusText,
+            NpcConversationBehaviour conversationBehaviour)
+        {
+            if (sessionControlView == null
+                || resetButton == null
+                || memoryStatusText == null)
+            {
+                throw new InvalidOperationException(
+                    "Session controls require a view, reset button, and status label.");
+            }
+
+            var serializedView = new SerializedObject(sessionControlView);
+            SetObjectReference(serializedView, "resetButton", resetButton);
+            SetObjectReference(serializedView, "memoryStatusText", memoryStatusText);
+            SetObjectReference(
+                serializedView,
+                "conversationBehaviour",
+                conversationBehaviour);
+            serializedView.ApplyModifiedPropertiesWithoutUndo();
         }
 
         /// <summary>
@@ -1209,6 +1468,8 @@ namespace AiCharacterKit.Editor
             EnsureFolder(ScenesFolder);
             EnsureFolder(BackendNpcFolder);
             EnsureFolder(BackendScenesFolder);
+            EnsureFolder(MemoryNpcFolder);
+            EnsureFolder(MemoryScenesFolder);
         }
 
         /// <summary>
@@ -1316,7 +1577,10 @@ namespace AiCharacterKit.Editor
             public Text StatusText;
             public InputField InputField;
             public Button SendButton;
+            public Button ResetButton;
+            public Text MemoryStatusText;
             public NpcTextInputView InputView;
+            public NpcSessionControlView SessionControlView;
         }
     }
 }

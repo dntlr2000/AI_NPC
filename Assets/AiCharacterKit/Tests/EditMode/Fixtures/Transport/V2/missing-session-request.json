@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "requestId": "req-v2-missing-session",
+  "character": {
+    "characterId": "sample-luna",
+    "displayName": "Luna",
+    "personality": "Playful, curious, and friendly.",
+    "speechStyle": "Warm, casual, short sentences.",
+    "exampleDialogue": "새로운 모험 이야기를 들려줄래?",
+    "defaultEmotion": "happy"
+  },
+  "userText": "안녕!"
+}

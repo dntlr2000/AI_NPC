@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 2,
+  "requestId": "req-v2-reset",
+  "status": "success",
+  "result": {
+    "reset": true
+  }
+}

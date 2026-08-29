@@ -25,6 +25,9 @@ namespace AiCharacterKit.Unity
         private Button sendButton;
 
         [SerializeField]
+        private Button resetButton;
+
+        [SerializeField]
         private Renderer emotionRenderer;
 
         [SerializeField]
@@ -67,6 +70,11 @@ namespace AiCharacterKit.Unity
             if (sendButton != null)
             {
                 sendButton.interactable = !isBusy;
+            }
+
+            if (resetButton != null)
+            {
+                resetButton.interactable = !isBusy;
             }
         }
 
