@@ -1,6 +1,6 @@
 # Phase 4 — Local Backend and OpenAI Structured Output
 
-> 상태: 완료 — `e9ebd45 (Phase4)`
+> 상태: 완료 — `main`의 `Phase4` 체크포인트
 > 기준 커밋: `cfc5b04 (Phase3)`
 > 목표: API 키를 Unity 밖에 둔 채 V1 계약으로 실제 모델 응답 하나를 화면에 표시한다.
 
@@ -60,7 +60,7 @@ CharacterProfile + user text
 
 - 2026-08-29 사용자가 로컬 환경변수로 API 키를 주입하고 Backend NPC scene을 Play Mode에서 검증했다.
 - 실제 OpenAI Structured Output이 V1 응답으로 전달되어 대사·감정·제스처 표현까지 정상 동작함을 확인했다.
-- 검증 후 Phase 4 체크포인트 `e9ebd45 (Phase4)`를 `main`에 생성했다.
+- 검증 후 커밋 제목이 `Phase4`인 체크포인트를 `main`에 생성했다.
 
 ## 완료 기준
 
@@ -70,7 +70,7 @@ CharacterProfile + user text
 - [x] Packages와 ProjectSettings를 변경하지 않았다.
 - [x] 서버와 Unity 자동 테스트가 모두 통과했다.
 - [x] 사용자가 환경변수로 키를 설정하고 Backend scene에서 실제 응답 1회를 확인했다.
-- [x] 라이브 검증 후 Phase 4 체크포인트 커밋을 만들었다 (`e9ebd45`).
+- [x] 라이브 검증 후 `main`에 Phase 4 체크포인트 커밋을 만들었다.
 
 ## 남은 위험
 

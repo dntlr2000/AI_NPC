@@ -33,7 +33,7 @@ The Unity project root is the repository root. Do not assume a separate `unity/`
 
 ## Current milestone
 
-Phase 4 is complete at `e9ebd45 (Phase4)`: a local Unity-to-OpenAI vertical slice using the V1 contract. Phase 5 has not been planned or approved yet, so preserve the Phase 4 checkpoint until a new plan is accepted.
+Phase 4 is complete on `main` at the `Phase4` checkpoint: a local Unity-to-OpenAI vertical slice using the V1 contract. Phase 5 has not been planned or approved yet, so preserve this checkpoint until a new plan is accepted.
 
 The completed Phase 4 checkpoint includes:
 

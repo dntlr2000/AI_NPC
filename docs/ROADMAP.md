@@ -7,7 +7,7 @@
 
 저장소는 수정된 로드맵의 순서와 제약을 잘 따르고 있다. **Phase 1~4는 `main` 체크포인트로 완료됐으며, Phase 4의 로컬 Backend·실제 OpenAI end-to-end 경로까지 수동 검증했다.** Mock 재사용성과 V1 계약을 먼저 고정한 뒤 네트워크를 연결했기 때문에 기존 오프라인 경로도 유지된다.
 
-현재 기준선은 `e9ebd45 (Phase4)`이며 다음 작업은 Phase 5의 세션·단기 기억 범위를 먼저 계획하는 것이다. Phase 4 상세 기록은 [`PHASE4_PLAN.md`](PHASE4_PLAN.md), wire 규격은 [`CONTRACT_V1.md`](CONTRACT_V1.md)를 따른다.
+현재 기준선은 `main`의 `Phase4` 체크포인트이며 다음 작업은 Phase 5의 세션·단기 기억 범위를 먼저 계획하는 것이다. Phase 4 상세 기록은 [`PHASE4_PLAN.md`](PHASE4_PLAN.md), wire 규격은 [`CONTRACT_V1.md`](CONTRACT_V1.md)를 따른다.
 
 ## 우리가 만드는 것
 
@@ -50,7 +50,7 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - 주요 설치 패키지: URP `17.5.0`, Input System `1.19.0`, uGUI `2.5.0`, Test Framework `1.7.0`
 - 구현 위치: `Assets/AiCharacterKit/`
 - 샘플: `MockNpcPrototype.unity`, `MultiCharacterMock.unity`, `BackendNpcPrototype.unity`
-- Git 기준선: `main`, Phase 4 체크포인트 `e9ebd45`
+- Git 기준선: `main`의 `Phase4` 체크포인트
 - Backend: Node.js 24 + TypeScript + Fastify + OpenAI SDK, loopback 전용
 - 제외 범위: 기억, TTS, STT, Realtime, 원격 배포, client auth, streaming
 
@@ -117,7 +117,7 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 ### Phase 4 — Backend와 실제 OpenAI Structured Output
 
-- **상태: 완료 — `e9ebd45 (Phase4)`**
+- **상태: 완료 — `main`의 `Phase4` 체크포인트**
 - 상세 구현 기록: [`PHASE4_PLAN.md`](PHASE4_PLAN.md)
 - API 키를 서버에만 두고 `IAiConversationClient`의 네트워크 어댑터를 추가한다.
 - 스키마 검증, 취소, timeout, 재시도 제한, 오류 매핑, 민감정보 없는 로그를 구현한다.
