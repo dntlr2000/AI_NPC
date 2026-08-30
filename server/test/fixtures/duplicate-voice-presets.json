@@ -1,0 +1,16 @@
+{
+  "presets": [
+    {
+      "id": "warm-friendly",
+      "voice": "marin",
+      "instructions": "Warm.",
+      "speed": 1
+    },
+    {
+      "id": "warm-friendly",
+      "voice": "cedar",
+      "instructions": "Also warm.",
+      "speed": 1
+    }
+  ]
+}

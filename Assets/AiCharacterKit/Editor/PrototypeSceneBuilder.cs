@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using AiCharacterKit.Core;
 using AiCharacterKit.Unity;
+using AiCharacterKit.Unity.Speech;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -27,6 +28,9 @@ namespace AiCharacterKit.Editor
         private const string BackendScenesFolder = BackendNpcFolder + "/Scenes";
         private const string MemoryNpcFolder = SamplesFolder + "/MemoryNpc";
         private const string MemoryScenesFolder = MemoryNpcFolder + "/Scenes";
+        private const string SpeechNpcFolder = SamplesFolder + "/SpeechNpc";
+        private const string SpeechProfilesFolder = SpeechNpcFolder + "/Profiles";
+        private const string SpeechScenesFolder = SpeechNpcFolder + "/Scenes";
         private const string ProfilePath = ProfilesFolder + "/PrototypeCharacter.asset";
         private const string ScenePath = ScenesFolder + "/MockNpcPrototype.unity";
         private const string LunaProfilePath = ProfilesFolder + "/Luna.asset";
@@ -37,12 +41,20 @@ namespace AiCharacterKit.Editor
             BackendScenesFolder + "/BackendNpcPrototype.unity";
         private const string MemoryScenePath =
             MemoryScenesFolder + "/MemoryNpcPrototype.unity";
+        private const string SpeechScenePath =
+            SpeechScenesFolder + "/SpeechNpcPrototype.unity";
+        private const string WarmVoiceProfilePath =
+            SpeechProfilesFolder + "/WarmFriendlyVoice.asset";
+        private const string CalmVoiceProfilePath =
+            SpeechProfilesFolder + "/CalmFormalVoice.asset";
         private const string DefaultBackendEndpoint =
             "http://127.0.0.1:8787/v1/npc/respond";
         private const string DefaultSessionBackendEndpoint =
             "http://127.0.0.1:8787/v2/npc/respond";
         private const string DefaultSessionResetEndpoint =
             "http://127.0.0.1:8787/v2/npc/sessions/reset";
+        private const string DefaultSpeechEndpoint =
+            "http://127.0.0.1:8787/v1/speech/synthesize";
         private const int DefaultBackendTimeoutSeconds = 35;
         private const string InputActionsPath = "Assets/InputSystem_Actions.inputactions";
         private const float SinglePanelWidth = 560f;
@@ -221,6 +233,50 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
+        /// Creates or repairs the Phase 6 reusable speech sample interactively.
+        /// </summary>
+        [MenuItem("Tools/AI Character Kit/Create Speech NPC Prototype")]
+        public static void CreateSpeechScene()
+        {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                return;
+            }
+
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(SpeechScenePath) != null)
+            {
+                RepairSpeechScene();
+                EditorUtility.DisplayDialog(
+                    "Speech NPC Prototype",
+                    "The prototype already exists at:\n"
+                    + SpeechScenePath
+                    + "\n\nIts required references were refreshed.",
+                    "OK");
+                Selection.activeObject = AssetDatabase.LoadAssetAtPath<SceneAsset>(
+                    SpeechScenePath);
+                return;
+            }
+
+            CreateSpeechSceneInternal();
+        }
+
+        /// <summary>
+        /// Creates or repairs the Phase 6 speech sample non-interactively for automation.
+        /// </summary>
+        public static void CreateSpeechSceneBatch()
+        {
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(SpeechScenePath) != null)
+            {
+                RepairSpeechScene();
+                Debug.Log(
+                    $"Refreshed speech NPC prototype references at {SpeechScenePath}.");
+                return;
+            }
+
+            CreateSpeechSceneInternal();
+        }
+
+        /// <summary>
         /// Creates folders, profile data, scene objects, UI, and serialized component wiring.
         /// </summary>
         private static void CreatePrototypeSceneInternal()
@@ -372,6 +428,52 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
+        /// Creates two V2 NPCs with independent sessions and data-selected speech presets.
+        /// </summary>
+        private static void CreateSpeechSceneInternal()
+        {
+            EnsureSampleFolders();
+            CreateOrLoadProfile(CreateLunaProfileDefinition());
+            CreateOrLoadProfile(CreateGuardProfileDefinition());
+            CreateOrLoadVoiceProfile(
+                WarmVoiceProfilePath,
+                "WarmFriendlyVoice",
+                "warm-friendly");
+            CreateOrLoadVoiceProfile(
+                CalmVoiceProfilePath,
+                "CalmFormalVoice",
+                "calm-formal");
+            var scene = EditorSceneManager.NewScene(
+                NewSceneSetup.DefaultGameObjects,
+                NewSceneMode.Single);
+            var lunaProfile = LoadRequiredCharacterProfile(LunaProfilePath);
+            var guardProfile = LoadRequiredCharacterProfile(GuardProfilePath);
+            var lunaVoice = LoadRequiredVoiceProfile(WarmVoiceProfilePath);
+            var guardVoice = LoadRequiredVoiceProfile(CalmVoiceProfilePath);
+            EnsureDistinctProfileIds(lunaProfile, guardProfile);
+            ConfigureDefaultSceneObjects();
+            CreateGround();
+            CreateConfiguredSpeechNpc(
+                lunaProfile,
+                lunaVoice,
+                new Vector3(-1.7f, 0f, 0f),
+                "Luna",
+                true);
+            CreateConfiguredSpeechNpc(
+                guardProfile,
+                guardVoice,
+                new Vector3(1.7f, 0f, 0f),
+                "Guard",
+                false);
+            CreateInputSystemEventSystem();
+
+            SaveGeneratedScene(
+                scene,
+                SpeechScenePath,
+                "Created speech NPC prototype");
+        }
+
+        /// <summary>
         /// Creates one profile once and validates existing assets without overwriting them.
         /// </summary>
         private static CharacterProfile CreateOrLoadProfile(
@@ -419,6 +521,80 @@ namespace AiCharacterKit.Editor
 
             ValidateProfile(savedProfile, definition.AssetPath);
             return savedProfile;
+        }
+
+        /// <summary>
+        /// Creates one reusable voice preset asset once and validates existing data.
+        /// </summary>
+        private static NpcVoiceProfile CreateOrLoadVoiceProfile(
+            string assetPath,
+            string assetName,
+            string voicePresetId)
+        {
+            var existingProfile = AssetDatabase.LoadAssetAtPath<NpcVoiceProfile>(
+                assetPath);
+            if (existingProfile != null)
+            {
+                ValidateVoiceProfile(existingProfile, assetPath);
+                return existingProfile;
+            }
+
+            var profile = ScriptableObject.CreateInstance<NpcVoiceProfile>();
+            profile.name = assetName;
+            var serializedProfile = new SerializedObject(profile);
+            serializedProfile.FindProperty("voicePresetId").stringValue =
+                voicePresetId;
+            serializedProfile.ApplyModifiedPropertiesWithoutUndo();
+
+            AssetDatabase.CreateAsset(profile, assetPath);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.ImportAsset(
+                assetPath,
+                ImportAssetOptions.ForceSynchronousImport);
+
+            var savedProfile = AssetDatabase.LoadAssetAtPath<NpcVoiceProfile>(
+                assetPath);
+            if (savedProfile == null)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to reload the created voice profile at {assetPath}.");
+            }
+
+            ValidateVoiceProfile(savedProfile, assetPath);
+            return savedProfile;
+        }
+
+        /// <summary>
+        /// Reloads a voice asset after all imports so its Unity object handle remains current.
+        /// </summary>
+        private static NpcVoiceProfile LoadRequiredVoiceProfile(string assetPath)
+        {
+            var profile = AssetDatabase.LoadAssetAtPath<NpcVoiceProfile>(assetPath);
+            if (profile == null)
+            {
+                throw new InvalidOperationException(
+                    $"Voice profile was not found at {assetPath}.");
+            }
+
+            ValidateVoiceProfile(profile, assetPath);
+            return profile;
+        }
+
+        /// <summary>
+        /// Reloads a character asset after all imports so its Unity object handle remains current.
+        /// </summary>
+        private static CharacterProfile LoadRequiredCharacterProfile(
+            string assetPath)
+        {
+            var profile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(assetPath);
+            if (profile == null)
+            {
+                throw new InvalidOperationException(
+                    $"Character profile was not found at {assetPath}.");
+            }
+
+            ValidateProfile(profile, assetPath);
+            return profile;
         }
 
         /// <summary>
@@ -478,6 +654,26 @@ namespace AiCharacterKit.Editor
             {
                 throw new InvalidOperationException(
                     $"Character profile at {assetPath} is invalid: {validationError}");
+            }
+        }
+
+        /// <summary>
+        /// Rejects invalid reusable voice assets without silently replacing user data.
+        /// </summary>
+        private static void ValidateVoiceProfile(
+            NpcVoiceProfile profile,
+            string assetPath)
+        {
+            if (profile == null)
+            {
+                throw new InvalidOperationException(
+                    $"Voice profile '{assetPath}' is missing.");
+            }
+
+            if (!profile.TryValidate(out var error))
+            {
+                throw new InvalidOperationException(
+                    $"Voice profile '{assetPath}' is invalid: {error}");
             }
         }
 
@@ -640,6 +836,41 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
+        /// Reloads the Phase 6 scene and restores conversation, session, and speech wiring.
+        /// </summary>
+        private static void RepairSpeechScene()
+        {
+            var scene = EditorSceneManager.OpenScene(
+                SpeechScenePath,
+                OpenSceneMode.Single);
+            var lunaProfile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(
+                LunaProfilePath);
+            var guardProfile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(
+                GuardProfilePath);
+            var lunaVoice = AssetDatabase.LoadAssetAtPath<NpcVoiceProfile>(
+                WarmVoiceProfilePath);
+            var guardVoice = AssetDatabase.LoadAssetAtPath<NpcVoiceProfile>(
+                CalmVoiceProfilePath);
+            if (lunaProfile == null || guardProfile == null)
+            {
+                throw new InvalidOperationException(
+                    "The speech sample character profiles are missing.");
+            }
+
+            ValidateProfile(lunaProfile, LunaProfilePath);
+            ValidateProfile(guardProfile, GuardProfilePath);
+            ValidateVoiceProfile(lunaVoice, WarmVoiceProfilePath);
+            ValidateVoiceProfile(guardVoice, CalmVoiceProfilePath);
+            EnsureDistinctProfileIds(lunaProfile, guardProfile);
+            RepairSpeechNpcConfiguration(lunaProfile, lunaVoice, "Luna");
+            RepairSpeechNpcConfiguration(guardProfile, guardVoice, "Guard");
+            SaveGeneratedScene(
+                scene,
+                SpeechScenePath,
+                "Repaired speech NPC prototype");
+        }
+
+        /// <summary>
         /// Positions the default camera and directional light for the prototype NPC.
         /// </summary>
         private static void ConfigureDefaultSceneObjects()
@@ -745,6 +976,78 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
+        /// Creates one V2 NPC with visual fallback, optional speech, and independent controls.
+        /// </summary>
+        private static void CreateConfiguredSpeechNpc(
+            CharacterProfile characterProfile,
+            NpcVoiceProfile voiceProfile,
+            Vector3 position,
+            string objectSuffix,
+            bool alignPanelLeft)
+        {
+            var npc = CreateNpc(
+                characterProfile.DisplayName,
+                position,
+                "Speech NPC");
+            var playback = npc.AddComponent<UnityPcmSpeechPlaybackDriver>();
+            var audioSource = npc.GetComponent<AudioSource>();
+            audioSource.playOnAwake = false;
+            audioSource.loop = false;
+            audioSource.spatialBlend = 0f;
+            var speechOutput = npc.AddComponent<NpcSpeechOutput>();
+            var augmentedPresentation =
+                npc.AddComponent<SpeechAugmentedPresentationDriver>();
+            var visualPresentation = npc.GetComponent<NpcTextPresentationDriver>();
+            var conversation = npc.GetComponent<NpcConversationBehaviour>();
+            var ui = CreateUserInterface(
+                characterProfile.DisplayName,
+                objectSuffix,
+                alignPanelLeft,
+                MultiPanelWidth,
+                "Speech NPC",
+                true,
+                true);
+
+            ConfigurePresentationDriver(
+                visualPresentation,
+                ui,
+                npc.GetComponent<Renderer>(),
+                npc.transform);
+            ConfigureSpeechOutput(
+                speechOutput,
+                voiceProfile,
+                playback);
+            ConfigureSpeechPresentation(
+                augmentedPresentation,
+                visualPresentation,
+                speechOutput);
+            ConfigureConversationBehaviour(
+                conversation,
+                characterProfile,
+                augmentedPresentation,
+                NpcConversationMode.BackendSession,
+                DefaultBackendEndpoint,
+                DefaultBackendTimeoutSeconds);
+            ConfigureInputView(
+                ui.InputView,
+                ui.InputField,
+                ui.SendButton,
+                conversation);
+            ConfigureSessionControlView(
+                ui.SessionControlView,
+                ui.ResetButton,
+                ui.MemoryStatusText,
+                conversation);
+            ConfigureSpeechControlView(
+                ui.SpeechControlView,
+                speechOutput,
+                ui.SpeechToggle,
+                ui.StopSpeechButton,
+                ui.SpeechStatusText,
+                ui.SpeechDisclosureText);
+        }
+
+        /// <summary>
         /// Creates a screen-space uGUI panel with all required input and output controls.
         /// </summary>
         private static PrototypeUiReferences CreateUserInterface(
@@ -753,7 +1056,8 @@ namespace AiCharacterKit.Editor
             bool alignPanelLeft,
             float panelWidth,
             string compositionLabel,
-            bool includeSessionControls)
+            bool includeSessionControls,
+            bool includeSpeechControls = false)
         {
             var canvasObject = new GameObject(
                 GetObjectName(compositionLabel + " Canvas", objectSuffix),
@@ -783,6 +1087,11 @@ namespace AiCharacterKit.Editor
                 panel.GetComponent<RectTransform>(),
                 alignPanelLeft,
                 panelWidth);
+            if (includeSpeechControls)
+            {
+                panel.GetComponent<RectTransform>().sizeDelta =
+                    new Vector2(panelWidth, 690f);
+            }
 
             var contentWidth = panelWidth - 40f;
 
@@ -924,7 +1233,9 @@ namespace AiCharacterKit.Editor
                 resources,
                 panel.transform,
                 GetObjectName("Verification Instructions", objectSuffix),
-                includeSessionControls
+                includeSpeechControls
+                    ? "응답 텍스트는 음성 실패와 무관하게 유지됩니다."
+                    : includeSessionControls
                     ? "각 NPC는 독립 세션입니다. Reset은 선택한 NPC 기억만 지웁니다."
                     : "응답 후 NPC 색상은 감정, 기울기는 제스처를 표시합니다.",
                 15,
@@ -933,9 +1244,66 @@ namespace AiCharacterKit.Editor
                 new Vector2(contentWidth, 58f));
             instructions.color = new Color(0.65f, 0.7f, 0.8f);
 
+            Text speechStatus = null;
+            Text speechDisclosure = null;
+            Toggle speechToggle = null;
+            Button stopSpeechButton = null;
+            if (includeSpeechControls)
+            {
+                speechStatus = CreateText(
+                    resources,
+                    panel.transform,
+                    GetObjectName("Speech Status", objectSuffix),
+                    "음성: 준비",
+                    15,
+                    TextAnchor.MiddleLeft,
+                    new Vector2(20f, -590f),
+                    new Vector2(contentWidth, 26f));
+                speechStatus.color = new Color(0.55f, 0.85f, 1f);
+
+                var toggleObject = DefaultControls.CreateToggle(resources);
+                toggleObject.name = GetObjectName("Speech Toggle", objectSuffix);
+                toggleObject.transform.SetParent(panel.transform, false);
+                SetTopLeftRect(
+                    toggleObject.GetComponent<RectTransform>(),
+                    new Vector2(20f, -620f),
+                    new Vector2(180f, 30f));
+                speechToggle = toggleObject.GetComponent<Toggle>();
+                speechToggle.isOn = true;
+                var toggleLabel = toggleObject.GetComponentInChildren<Text>();
+                toggleLabel.text = "음성 출력";
+                toggleLabel.fontSize = 15;
+
+                var stopObject = DefaultControls.CreateButton(resources);
+                stopObject.name = GetObjectName("Stop Speech Button", objectSuffix);
+                stopObject.transform.SetParent(panel.transform, false);
+                SetTopLeftRect(
+                    stopObject.GetComponent<RectTransform>(),
+                    new Vector2(panelWidth - 125f, -620f),
+                    new Vector2(105f, 30f));
+                stopSpeechButton = stopObject.GetComponent<Button>();
+                var stopLabel = stopObject.GetComponentInChildren<Text>();
+                stopLabel.text = "음성 정지";
+                stopLabel.fontSize = 14;
+
+                speechDisclosure = CreateText(
+                    resources,
+                    panel.transform,
+                    GetObjectName("Speech Disclosure", objectSuffix),
+                    "이 음성은 AI로 생성됩니다.",
+                    14,
+                    TextAnchor.MiddleLeft,
+                    new Vector2(20f, -654f),
+                    new Vector2(contentWidth, 24f));
+                speechDisclosure.color = new Color(0.9f, 0.75f, 0.45f);
+            }
+
             var inputView = panel.AddComponent<NpcTextInputView>();
             var sessionControlView = includeSessionControls
                 ? panel.AddComponent<NpcSessionControlView>()
+                : null;
+            var speechControlView = includeSpeechControls
+                ? panel.AddComponent<NpcSpeechControlView>()
                 : null;
             return new PrototypeUiReferences
             {
@@ -948,7 +1316,12 @@ namespace AiCharacterKit.Editor
                 ResetButton = resetButton,
                 MemoryStatusText = memoryStatus,
                 InputView = inputView,
-                SessionControlView = sessionControlView
+                SessionControlView = sessionControlView,
+                SpeechToggle = speechToggle,
+                StopSpeechButton = stopSpeechButton,
+                SpeechStatusText = speechStatus,
+                SpeechDisclosureText = speechDisclosure,
+                SpeechControlView = speechControlView
             };
         }
 
@@ -1033,11 +1406,79 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
+        /// Restores every serialized connection for one generated speech NPC.
+        /// </summary>
+        private static void RepairSpeechNpcConfiguration(
+            CharacterProfile characterProfile,
+            NpcVoiceProfile voiceProfile,
+            string objectSuffix)
+        {
+            var npc = FindRequiredGameObject("Speech NPC - " + objectSuffix);
+            var visualPresentation = npc.GetComponent<NpcTextPresentationDriver>();
+            var augmentedPresentation =
+                npc.GetComponent<SpeechAugmentedPresentationDriver>();
+            var conversation = npc.GetComponent<NpcConversationBehaviour>();
+            var playback = npc.GetComponent<UnityPcmSpeechPlaybackDriver>();
+            var speechOutput = npc.GetComponent<NpcSpeechOutput>();
+            var audioSource = npc.GetComponent<AudioSource>();
+            if (visualPresentation == null
+                || augmentedPresentation == null
+                || conversation == null
+                || playback == null
+                || speechOutput == null
+                || audioSource == null)
+            {
+                throw new InvalidOperationException(
+                    $"Generated speech NPC '{objectSuffix}' is missing runtime components.");
+            }
+
+            audioSource.playOnAwake = false;
+            audioSource.loop = false;
+            audioSource.spatialBlend = 0f;
+            var ui = FindUiReferences(objectSuffix, true, true);
+            ConfigurePresentationDriver(
+                visualPresentation,
+                ui,
+                npc.GetComponent<Renderer>(),
+                npc.transform);
+            ConfigureSpeechOutput(speechOutput, voiceProfile, playback);
+            ConfigureSpeechPresentation(
+                augmentedPresentation,
+                visualPresentation,
+                speechOutput);
+            ConfigureConversationBehaviour(
+                conversation,
+                characterProfile,
+                augmentedPresentation,
+                NpcConversationMode.BackendSession,
+                DefaultBackendEndpoint,
+                DefaultBackendTimeoutSeconds);
+            ConfigureInputView(
+                ui.InputView,
+                ui.InputField,
+                ui.SendButton,
+                conversation);
+            ConfigureSessionControlView(
+                ui.SessionControlView,
+                ui.ResetButton,
+                ui.MemoryStatusText,
+                conversation);
+            ConfigureSpeechControlView(
+                ui.SpeechControlView,
+                speechOutput,
+                ui.SpeechToggle,
+                ui.StopSpeechButton,
+                ui.SpeechStatusText,
+                ui.SpeechDisclosureText);
+        }
+
+        /// <summary>
         /// Finds one generated UI set by its optional Phase 2 character suffix.
         /// </summary>
         private static PrototypeUiReferences FindUiReferences(
             string objectSuffix,
-            bool includeSessionControls)
+            bool includeSessionControls,
+            bool includeSpeechControls = false)
         {
             var references = new PrototypeUiReferences
             {
@@ -1065,6 +1506,21 @@ namespace AiCharacterKit.Editor
                     GetObjectName("Memory Status", objectSuffix));
                 references.SessionControlView =
                     FindRequiredComponent<NpcSessionControlView>(
+                        GetObjectName("Conversation Panel", objectSuffix));
+            }
+
+            if (includeSpeechControls)
+            {
+                references.SpeechToggle = FindRequiredComponent<Toggle>(
+                    GetObjectName("Speech Toggle", objectSuffix));
+                references.StopSpeechButton = FindRequiredComponent<Button>(
+                    GetObjectName("Stop Speech Button", objectSuffix));
+                references.SpeechStatusText = FindRequiredComponent<Text>(
+                    GetObjectName("Speech Status", objectSuffix));
+                references.SpeechDisclosureText = FindRequiredComponent<Text>(
+                    GetObjectName("Speech Disclosure", objectSuffix));
+                references.SpeechControlView =
+                    FindRequiredComponent<NpcSpeechControlView>(
                         GetObjectName("Conversation Panel", objectSuffix));
             }
 
@@ -1125,12 +1581,73 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
+        /// Wires one voice asset, PCM driver, and local Speech V1 endpoint into an NPC.
+        /// </summary>
+        private static void ConfigureSpeechOutput(
+            NpcSpeechOutput speechOutput,
+            NpcVoiceProfile voiceProfile,
+            UnityPcmSpeechPlaybackDriver playbackDriver)
+        {
+            if (voiceProfile == null)
+            {
+                throw new InvalidOperationException(
+                    "Speech output requires an NpcVoiceProfile asset.");
+            }
+
+            ValidateVoiceProfile(
+                voiceProfile,
+                AssetDatabase.GetAssetPath(voiceProfile));
+
+            var serializedOutput = new SerializedObject(speechOutput);
+            SetObjectReference(serializedOutput, "voiceProfile", voiceProfile);
+            SetObjectReference(serializedOutput, "playbackDriver", playbackDriver);
+            SetStringValue(
+                serializedOutput,
+                "backendEndpoint",
+                DefaultSpeechEndpoint);
+            SetIntegerValue(
+                serializedOutput,
+                "backendTimeoutSeconds",
+                DefaultBackendTimeoutSeconds);
+            var enabledProperty = serializedOutput.FindProperty("speechEnabled");
+            if (enabledProperty == null)
+            {
+                throw new InvalidOperationException(
+                    "Serialized property 'speechEnabled' was not found.");
+            }
+
+            enabledProperty.boolValue = true;
+            serializedOutput.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(speechOutput);
+        }
+
+        /// <summary>
+        /// Wires the visual fallback and optional speech output into the presentation decorator.
+        /// </summary>
+        private static void ConfigureSpeechPresentation(
+            SpeechAugmentedPresentationDriver augmentedPresentation,
+            NpcTextPresentationDriver visualPresentation,
+            NpcSpeechOutput speechOutput)
+        {
+            var serializedPresentation = new SerializedObject(augmentedPresentation);
+            SetObjectReference(
+                serializedPresentation,
+                "visualDriverSource",
+                visualPresentation);
+            SetObjectReference(
+                serializedPresentation,
+                "speechOutput",
+                speechOutput);
+            serializedPresentation.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
         /// Wires the profile and presentation interface source into the Unity bridge.
         /// </summary>
         private static void ConfigureConversationBehaviour(
             NpcConversationBehaviour conversationBehaviour,
             CharacterProfile profile,
-            NpcTextPresentationDriver presentationDriver,
+            MonoBehaviour presentationDriver,
             NpcConversationMode conversationMode,
             string backendEndpoint,
             int backendTimeoutSeconds)
@@ -1223,6 +1740,43 @@ namespace AiCharacterKit.Editor
                 serializedView,
                 "conversationBehaviour",
                 conversationBehaviour);
+            serializedView.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// Wires local speech preference, stop, status, and disclosure controls.
+        /// </summary>
+        private static void ConfigureSpeechControlView(
+            NpcSpeechControlView speechControlView,
+            NpcSpeechOutput speechOutput,
+            Toggle speechToggle,
+            Button stopSpeechButton,
+            Text speechStatusText,
+            Text speechDisclosureText)
+        {
+            if (speechControlView == null
+                || speechOutput == null
+                || speechToggle == null
+                || stopSpeechButton == null
+                || speechStatusText == null
+                || speechDisclosureText == null)
+            {
+                throw new InvalidOperationException(
+                    "Speech controls require complete output and UI references.");
+            }
+
+            var serializedView = new SerializedObject(speechControlView);
+            SetObjectReference(serializedView, "speechOutput", speechOutput);
+            SetObjectReference(serializedView, "speechToggle", speechToggle);
+            SetObjectReference(serializedView, "stopButton", stopSpeechButton);
+            SetObjectReference(
+                serializedView,
+                "speechStatusText",
+                speechStatusText);
+            SetObjectReference(
+                serializedView,
+                "disclosureText",
+                speechDisclosureText);
             serializedView.ApplyModifiedPropertiesWithoutUndo();
         }
 
@@ -1470,6 +2024,9 @@ namespace AiCharacterKit.Editor
             EnsureFolder(BackendScenesFolder);
             EnsureFolder(MemoryNpcFolder);
             EnsureFolder(MemoryScenesFolder);
+            EnsureFolder(SpeechNpcFolder);
+            EnsureFolder(SpeechProfilesFolder);
+            EnsureFolder(SpeechScenesFolder);
         }
 
         /// <summary>
@@ -1581,6 +2138,11 @@ namespace AiCharacterKit.Editor
             public Text MemoryStatusText;
             public NpcTextInputView InputView;
             public NpcSessionControlView SessionControlView;
+            public Toggle SpeechToggle;
+            public Button StopSpeechButton;
+            public Text SpeechStatusText;
+            public Text SpeechDisclosureText;
+            public NpcSpeechControlView SpeechControlView;
         }
     }
 }

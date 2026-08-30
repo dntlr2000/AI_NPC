@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "requestId": "speech-001",
+  "status": "error",
+  "error": {
+    "code": "voice_preset_not_found",
+    "message": "요청한 음성 프리셋을 찾을 수 없습니다.",
+    "retryable": false
+  }
+}

@@ -19,14 +19,33 @@ import {
   readRequestId as readRequestIdV2,
   SCHEMA_VERSION as SCHEMA_VERSION_V2,
 } from "./contracts/v2.js";
+import {
+  createSpeechErrorResponse,
+  readSpeechRequestId,
+  SPEECH_AUDIO_FORMAT,
+  SPEECH_AUDIO_FORMAT_HEADER,
+  SPEECH_CHANNELS,
+  SPEECH_CHANNELS_HEADER,
+  SPEECH_CONTENT_TYPE,
+  SPEECH_REQUEST_ID_HEADER,
+  SPEECH_SAMPLE_RATE,
+  SPEECH_SAMPLE_RATE_HEADER,
+  SPEECH_SCHEMA_VERSION,
+  SPEECH_VERSION_HEADER,
+  speechSynthesisRequestSchema,
+} from "./contracts/speech-v1.js";
 import { REQUEST_BODY_LIMIT_BYTES } from "./config.js";
 import { NpcServiceError } from "./errors.js";
 import type { NpcResponseGenerator } from "./generator.js";
 import type { SessionConversationService } from "./sessions.js";
+import type { SpeechGenerator } from "./speech.js";
+import type { VoicePresetResolver } from "./voice-presets.js";
 
 export interface AppDependencies {
   readonly generator: NpcResponseGenerator;
   readonly sessionService: SessionConversationService;
+  readonly speechGenerator: SpeechGenerator;
+  readonly voicePresetResolver: VoicePresetResolver;
   readonly logger?: FastifyServerOptions["logger"];
 }
 
@@ -196,6 +215,84 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
     }
   });
 
+  app.post("/v1/speech/synthesize", async (request, reply) => {
+    const requestId = readSpeechRequestId(request.body, request.id);
+    const version = readSchemaVersion(request.body);
+    if (version !== undefined && version !== SPEECH_SCHEMA_VERSION) {
+      return reply.status(400).send(
+        createSpeechErrorResponse(
+          requestId,
+          "unsupported_schema_version",
+          "Only speech contract version 1 is supported on this endpoint.",
+          false,
+        ),
+      );
+    }
+
+    const parsedRequest = speechSynthesisRequestSchema.safeParse(request.body);
+    if (!parsedRequest.success) {
+      return reply.status(400).send(
+        createSpeechErrorResponse(
+          requestId,
+          "invalid_request",
+          "The speech synthesis request is invalid.",
+          false,
+        ),
+      );
+    }
+
+    const preset = dependencies.voicePresetResolver.resolve(
+      parsedRequest.data.voicePresetId,
+    );
+    if (preset === undefined) {
+      return reply.status(400).send(
+        createSpeechErrorResponse(
+          parsedRequest.data.requestId,
+          "voice_preset_not_found",
+          "The requested voice preset is not configured.",
+          false,
+        ),
+      );
+    }
+
+    const cancellation = createRequestCancellation(request.raw, reply.raw);
+    const startedAt = Date.now();
+    try {
+      const generated = await dependencies.speechGenerator.generate(
+        { text: parsedRequest.data.text, preset },
+        cancellation.signal,
+      );
+      logSpeechSuccess(
+        request.log,
+        parsedRequest.data.requestId,
+        generated.pcmAudio.byteLength,
+        Date.now() - startedAt,
+      );
+      return reply
+        .header(SPEECH_VERSION_HEADER, String(SPEECH_SCHEMA_VERSION))
+        .header(SPEECH_REQUEST_ID_HEADER, parsedRequest.data.requestId)
+        .header(SPEECH_AUDIO_FORMAT_HEADER, SPEECH_AUDIO_FORMAT)
+        .header(SPEECH_SAMPLE_RATE_HEADER, String(SPEECH_SAMPLE_RATE))
+        .header(SPEECH_CHANNELS_HEADER, String(SPEECH_CHANNELS))
+        .type(SPEECH_CONTENT_TYPE)
+        .status(200)
+        .send(generated.pcmAudio);
+    } catch (error: unknown) {
+      const serviceError = normalizeSpeechServiceError(error);
+      logServiceFailure(request.log, parsedRequest.data.requestId, serviceError);
+      return reply.status(serviceError.statusCode).send(
+        createSpeechErrorResponse(
+          parsedRequest.data.requestId,
+          serviceError.code,
+          serviceError.message,
+          serviceError.retryable,
+        ),
+      );
+    } finally {
+      cancellation.dispose();
+    }
+  });
+
   app.setErrorHandler((error, request, reply) => {
     const isBodyTooLarge =
       readUnknownString(error, "code") === "FST_ERR_CTP_BODY_TOO_LARGE";
@@ -215,6 +312,12 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
       },
       "AI NPC HTTP request rejected",
     );
+
+    if (request.url.startsWith("/v1/speech/")) {
+      return reply.status(statusCode).send(
+        createSpeechErrorResponse(request.id, code, message, false),
+      );
+    }
 
     if (request.url.startsWith("/v2/npc/sessions/reset")) {
       return reply.status(statusCode).send(
@@ -264,6 +367,19 @@ function logGenerationSuccess(
       totalTokens: generated.telemetry.totalTokens,
     },
     "AI NPC response generated",
+  );
+}
+
+/** Logs only correlation, size, and latency for successful speech generation. */
+function logSpeechSuccess(
+  logger: { info: (data: object, message: string) => void },
+  requestId: string,
+  audioBytes: number,
+  elapsedMilliseconds: number,
+): void {
+  logger.info(
+    { contractRequestId: requestId, audioBytes, elapsedMilliseconds },
+    "AI NPC speech generated",
   );
 }
 
@@ -330,6 +446,22 @@ function normalizeServiceError(error: unknown): NpcServiceError {
     500,
     false,
     "backend_unexpected_error",
+    { cause: error },
+  );
+}
+
+/** Converts an unexpected speech route failure into one safe non-retryable error. */
+function normalizeSpeechServiceError(error: unknown): NpcServiceError {
+  if (error instanceof NpcServiceError) {
+    return error;
+  }
+
+  return new NpcServiceError(
+    "internal_error",
+    "The backend could not complete the speech request.",
+    500,
+    false,
+    "backend_unexpected_speech_error",
     { cause: error },
   );
 }

@@ -20,8 +20,8 @@ The framework will eventually support:
 - `Assets/`: Unity source code, scenes, prefabs, ScriptableObjects, and other game assets
 - `Packages/`: Unity package manifest and dependency lock file
 - `ProjectSettings/`: project-wide Unity editor and runtime settings
-- `docs/`: requirements, architecture, plans, and decisions; see `docs/ROADMAP.md`, `docs/PHASE5_PLAN.md`, `docs/CONTRACT_V1.md`, and `docs/CONTRACT_V2.md`
-- `server/`: Node.js 24, TypeScript, Fastify, and OpenAI SDK local backend for the V1 stateless and V2 session paths
+- `docs/`: requirements, architecture, plans, and decisions; see `docs/ROADMAP.md`, `docs/PHASE6_PLAN.md`, `docs/CONTRACT_V2.md`, and `docs/SPEECH_CONTRACT_V1.md`
+- `server/`: Node.js 24, TypeScript, Fastify, and OpenAI SDK local backend for conversation and optional speech paths
 
 The Unity project root is the repository root. Do not assume a separate `unity/` directory.
 
@@ -33,23 +33,23 @@ The Unity project root is the repository root. Do not assume a separate `unity/`
 
 ## Current milestone
 
-Phase 5 is complete on `main` at `d8ae5f7 (Phase5)`, including automated regression coverage and manual live-memory Play Mode verification. Phase 6 has not been planned or approved yet, so preserve this checkpoint until a new plan is accepted.
+Phase 5 is complete and documented on `main` at `1206654`. Phase 6 implementation, automated verification, and manual live TTS Play Mode verification are complete. The commit containing the Phase 6 implementation and completion documentation is the Phase 6 checkpoint.
 
-The completed Phase 5 checkpoint includes:
+The Phase 6 implementation scope is:
 
-- The unchanged stateless V1 and Mock paths
-- A V2 contract with `/v2/npc/respond` and `/v2/npc/sessions/reset`
-- Bounded process-memory sessions with turn, byte, TTL, count, and concurrency limits
-- A component-lifetime Unity session client and shared send/reset operation gate
-- An Editor-generated two-character `MemoryNpcPrototype` sample scene
-- Server tests and full Unity EditMode regression coverage
+- A provider-neutral pure C# speech controller and synthesis/playback interfaces
+- A separate Speech V1 JSON/binary PCM contract and loopback backend endpoint
+- Server-owned JSON voice presets selected by opaque Unity `voicePresetId` data
+- Buffered 24 kHz, 16-bit, mono PCM playback with cancellation and replacement
+- A presentation decorator that preserves text when speech fails or is disabled
+- An Editor-generated two-character `SpeechNpcPrototype` sample scene
 
 Until the next milestone is approved, do not add:
 
 - Persistent or long-term memory
-- TTS
 - STT
 - Realtime voice
+- Streaming speech, custom voice training, lip sync, or audio caching
 - Animator-based presentation
 - Vector databases
 - Remote deployment, client authentication, automatic retries, or streaming
@@ -66,6 +66,8 @@ Until the next milestone is approved, do not add:
 - Use interfaces for external systems.
 - Use `IAiConversationClient` for dialogue generation.
 - Use `INpcPresentationDriver` for dialogue, emotion, and gesture presentation.
+- Keep provider-neutral speech coordination in `AiCharacterKit.Speech`; it must not reference Unity, HTTP, or OpenAI.
+- Use `ISpeechSynthesisClient` and `ISpeechPlaybackDriver` for optional TTS boundaries.
 - Character-specific behavior must be stored in data, preferably ScriptableObject profiles.
 - Do not place character personality directly inside MonoBehaviour code.
 - Do not use static global state unless there is a documented reason.
@@ -90,6 +92,7 @@ Until the next milestone is approved, do not add:
 - Do not log API keys, profile text, user messages, generated dialogue, or raw upstream errors.
 - The backend binds only to `127.0.0.1`; remote exposure requires a separate security design.
 - Phase 5 memory is process-local and must never be written to logs or disk.
+- Unity stores only opaque voice preset IDs; OpenAI voice names, instructions, and speed remain in the server preset file.
 
 ## Completion requirements
 

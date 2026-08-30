@@ -3,6 +3,7 @@
     "rootNamespace": "AiCharacterKit.Unity",
     "references": [
         "AiCharacterKit.Core",
+        "AiCharacterKit.Speech",
         "AiCharacterKit.Transport",
         "UnityEngine.UI"
     ],

@@ -1,0 +1,10 @@
+{
+  "presets": [
+    {
+      "id": "Invalid_Preset",
+      "voice": "unknown",
+      "instructions": "",
+      "speed": 10
+    }
+  ]
+}

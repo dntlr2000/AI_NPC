@@ -1,13 +1,13 @@
 # AI NPC Framework 진행 점검 및 로드맵
 
-> 기준일: 2026-08-30
-> 비교 기준: ChatGPT 대화 **“Unity Ai NPC 만들기”**의 초기 구상과 이후 합의된 Phase 1~5 범위
+> 기준일: 2026-08-31
+> 비교 기준: ChatGPT 대화 **“Unity Ai NPC 만들기”**의 초기 구상과 이후 합의된 Phase 1~6 범위
 
 ## 결론
 
-저장소는 수정된 로드맵의 순서와 제약을 잘 따르고 있다. **Phase 1~5는 `main` 체크포인트로 완료됐으며, Phase 5의 제한된 단기 기억도 실제 OpenAI Play Mode에서 검증했다.** Mock 재사용성과 stateless V1 계약은 그대로 유지된다.
+저장소는 수정된 로드맵의 순서와 제약을 잘 따르고 있다. **Phase 1~6의 구현과 검증이 완료됐으며, Phase 6의 재사용 가능한 선택형 TTS pipeline도 실제 OpenAI TTS Play Mode 검증을 통과했다.** Mock 재사용성, stateless V1과 session V2 계약은 그대로 유지된다.
 
-현재 커밋 기준선은 `d8ae5f7 (Phase5)`이다. Phase 5 범위와 검증은 [`PHASE5_PLAN.md`](PHASE5_PLAN.md), session wire 규격은 [`CONTRACT_V2.md`](CONTRACT_V2.md)를 따른다. 기존 V1 규격은 [`CONTRACT_V1.md`](CONTRACT_V1.md)에 고정돼 있다.
+Phase 6 시작 기준선은 `1206654`이며, 이 문서 갱신과 구현 변경을 포함하는 다음 커밋이 Phase 6 체크포인트다. 구현 범위는 [`PHASE6_PLAN.md`](PHASE6_PLAN.md), speech wire 규격은 [`SPEECH_CONTRACT_V1.md`](SPEECH_CONTRACT_V1.md)를 따른다. 대화 V1/V2 규격은 [`CONTRACT_V1.md`](CONTRACT_V1.md), [`CONTRACT_V2.md`](CONTRACT_V2.md)에 고정돼 있다.
 
 ## 우리가 만드는 것
 
@@ -31,8 +31,10 @@
     AiNpcResponse
         ↓
  INpcPresentationDriver
-        ↓
-대사 UI + 감정 표현 + 제스처/애니메이션
+        ├─ 대사 UI + 감정 표현 + 제스처/애니메이션
+        └─ [Phase 6] Speech decorator
+                    → ISpeechSynthesisClient → Speech Backend
+                    → fixed PCM → ISpeechPlaybackDriver
 ```
 
 프레임워크가 제공할 핵심은 다음과 같다.
@@ -43,19 +45,20 @@
 - 대사와 감정·제스처 명령을 전달하는 버전 고정 JSON 계약
 - 최근 성공 turn만 제한적으로 보관하고 NPC별로 reset 가능한 process-local session
 - uGUI, 3D 캐릭터 또는 다른 표현 방식을 교체할 수 있는 presentation 경계
+- 캐릭터별 provider 설정을 숨기는 opaque voice preset과 선택형 TTS 경계
 - 샘플, 자동 테스트, 두 번째 프로젝트 검증을 거친 최종 UPM 패키지
 
-API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유한다. 제한된 단기 기억까지 검증됐으며 TTS·STT·Realtime은 이후 선택형 기능으로 추가한다. 퀘스트, 관계도, 범용 자율 에이전트와 게임별 행동 트리는 이 프레임워크의 현재 목표가 아니다.
+API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유한다. TTS도 대화 Core를 변경하지 않는 선택형 adapter로 추가하며, STT·Realtime은 이후 요구를 검증한 뒤 진행한다. 퀘스트, 관계도, 범용 자율 에이전트와 게임별 행동 트리는 이 프레임워크의 현재 목표가 아니다.
 
 ## 현재 기준선
 
 - Unity: `6000.5.3f1`
 - 주요 설치 패키지: URP `17.5.0`, Input System `1.19.0`, uGUI `2.5.0`, Test Framework `1.7.0`
 - 구현 위치: `Assets/AiCharacterKit/`
-- 샘플: `MockNpcPrototype.unity`, `MultiCharacterMock.unity`, `BackendNpcPrototype.unity`, `MemoryNpcPrototype.unity`
-- Git 기준선: `d8ae5f7 (Phase5)`
-- Backend: Node.js 24 + TypeScript + Fastify + OpenAI SDK, V1 stateless와 V2 session, loopback 전용
-- 제외 범위: 영구·장기·Vector 기억, TTS, STT, Realtime, 원격 배포, client auth, streaming
+- 샘플: `MockNpcPrototype.unity`, `MultiCharacterMock.unity`, `BackendNpcPrototype.unity`, `MemoryNpcPrototype.unity`, `SpeechNpcPrototype.unity`
+- Git 기준선: `1206654` (Phase 6 시작점)
+- Backend: Node.js 24 + TypeScript + Fastify + OpenAI SDK, 대화 V1/V2와 선택형 Speech V1, loopback 전용
+- 제외 범위: 영구·장기·Vector 기억, STT, Realtime, 원격 배포, client auth, streaming speech
 
 ## 초기 로드맵과의 비교
 
@@ -69,7 +72,8 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 | 표현 명령 | 색상으로 감정, 회전으로 제스처를 확인 | vertical slice 충족; Animator 연동은 의도적으로 미구현 |
 | 실제 모델·백엔드 | loopback Backend와 Structured Output 경로 구현 및 라이브 1회 검증 | Phase 4 완료 |
 | 제한된 단기 기억 | V2 session/reset, bounded process memory, 두 NPC 샘플 구현 | Phase 5 완료; 실제 모델 수동 검증 완료 |
-| 장기 기억·음성·패키지화 | 구현하지 않음 | 선행 구현을 피한 올바른 상태 |
+| 선택형 TTS | pure speech 경계, preset 기반 Backend, PCM Unity playback 구현 | Phase 6 자동·수동 검증 완료 |
+| 장기 기억·STT·Realtime·패키지화 | 구현하지 않음 | 선행 구현을 피한 올바른 상태 |
 
 초기 대화에서는 실제 GPT/JSON 응답이 비교적 앞에 있었으나, 이후 계획은 Mock → 프로필 재사용 → 전송 계약 → 백엔드 순서로 정리됐다. 현재 저장소는 이 수정된 순서를 따른다.
 
@@ -80,10 +84,11 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - Unity 경계: `CharacterProfile`, `NpcConversationBehaviour`, uGUI 입력, `INpcPresentationDriver` 구현
 - Backend: V1 stateless 경로, V2 검증과 bounded session store, OpenAI Structured Output, 취소·timeout·오류 매핑과 안전한 telemetry log
 - Unity networking: V1 client/gateway와 V2 session client/gateway; 기존 Mock mode 유지
-- 자동 설정: `PrototypeSceneBuilder`가 Editor API로 프로필과 Mock/Backend/Memory 샘플 씬을 생성·복구
+- Speech: provider-neutral controller/interface, 별도 Speech V1 계약, Backend voice preset, Unity PCM playback과 presentation decorator 구현
+- 자동 설정: `PrototypeSceneBuilder`가 Editor API로 프로필과 Mock/Backend/Memory/Speech 샘플 씬을 생성·복구
 - 의존성: Core asmdef는 `noEngineReferences: true`; Runtime에는 `UnityEditor` 참조가 없음
-- 자동 검증: Server build 및 Vitest **43/43**, Unity 컴파일·Memory scene builder 및 EditMode **72/72** 통과, 실패·건너뜀 0
-- 수동 검증: Phase 1·2 Play Mode, Phase 3 계약, Phase 4 실제 모델 smoke test, Phase 5 live memory와 reset 검증 완료
+- 자동 검증: Server build 및 Vitest **61/61**, Unity 6000.5.3f1 컴파일, Speech scene 생성·복구와 EditMode **89/89** 통과, 실패·건너뜀 0
+- 수동 검증: Phase 1·2 Play Mode, Phase 3 계약, Phase 4 실제 모델 smoke test, Phase 5 live memory/reset, Phase 6 live TTS·교체·중지·fallback 검증 완료
 
 ## Phase 1 완료 기록
 
@@ -138,8 +143,12 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 ### Phase 6 — TTS
 
-- 텍스트 응답이 안정된 뒤 음성 출력 어댑터를 추가한다.
-- 재생 취소, 새 응답으로의 교체, 텍스트 fallback을 먼저 검증한다.
+- **상태: 완료 — 자동 검증 및 실제 OpenAI TTS Play Mode 수동 검증 통과**
+- 상세 구현 계획: [`PHASE6_PLAN.md`](PHASE6_PLAN.md)
+- Speech wire 규격: [`SPEECH_CONTRACT_V1.md`](SPEECH_CONTRACT_V1.md)
+- 대화 Core와 캐릭터 코드를 변경하지 않는 선택형 synthesis/playback 경계를 추가한다.
+- Unity에는 opaque `voicePresetId`만 두고 실제 OpenAI voice 설정은 Backend JSON preset이 소유한다.
+- 재생 취소·교체, on/off, text fallback과 AI-generated disclosure를 검증한다.
 
 ### Phase 7 — STT 이후 Realtime
 
@@ -173,4 +182,4 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 ## 바로 다음 행동
 
-**Phase 6 TTS의 책임과 최소 범위를 먼저 계획한다.** 음성 공급자 경계, 재생 취소·교체, text fallback, API 키 보관 위치와 Mock 가능성을 확정한 뒤 별도 승인을 받아 구현한다.
+**이 문서 갱신과 Phase 6 구현을 함께 체크포인트로 커밋한다.** 이후 Phase 7 범위와 필요성을 다시 검토하고 승인된 계획 없이 STT 또는 Realtime 구현을 시작하지 않는다.

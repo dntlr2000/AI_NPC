@@ -1,10 +1,12 @@
 import { createApp } from "./app.js";
 import { loadServerConfig, SERVER_HOST } from "./config.js";
 import { OpenAiNpcResponseGenerator } from "./generator.js";
+import { OpenAiSpeechGenerator } from "./speech.js";
 import {
   InMemoryConversationSessionStore,
   SessionConversationService,
 } from "./sessions.js";
+import { loadVoicePresetResolver } from "./voice-presets.js";
 
 /** Starts the local backend after validating credentials and bounded session settings. */
 async function startServer(): Promise<void> {
@@ -18,7 +20,20 @@ async function startServer(): Promise<void> {
     new InMemoryConversationSessionStore(config.sessionOptions),
     generator,
   );
-  const app = createApp({ generator, sessionService });
+  const speechGenerator = new OpenAiSpeechGenerator({
+    apiKey: config.apiKey,
+    model: config.ttsModel,
+    timeoutMs: config.openAiTtsTimeoutMs,
+  });
+  const voicePresetResolver = loadVoicePresetResolver(
+    config.ttsVoicePresetsPath,
+  );
+  const app = createApp({
+    generator,
+    sessionService,
+    speechGenerator,
+    voicePresetResolver,
+  });
 
   registerShutdownSignal("SIGINT", app);
   registerShutdownSignal("SIGTERM", app);

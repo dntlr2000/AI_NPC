@@ -3,7 +3,9 @@
     "rootNamespace": "AiCharacterKit.Editor",
     "references": [
         "AiCharacterKit.Core",
+        "AiCharacterKit.Speech",
         "AiCharacterKit.Unity",
+        "AiCharacterKit.Unity.Speech",
         "UnityEngine.UI",
         "Unity.InputSystem"
     ],

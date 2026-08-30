@@ -1,0 +1,16 @@
+{
+  "presets": [
+    {
+      "id": "warm-friendly",
+      "voice": "marin",
+      "instructions": "Speak warmly and naturally with lively but controlled energy.",
+      "speed": 1.0
+    },
+    {
+      "id": "calm-formal",
+      "voice": "cedar",
+      "instructions": "Speak calmly, clearly, and formally with measured pacing.",
+      "speed": 0.95
+    }
+  ]
+}

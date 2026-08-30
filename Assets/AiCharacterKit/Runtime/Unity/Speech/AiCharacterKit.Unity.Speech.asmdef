@@ -1,0 +1,20 @@
+{
+    "name": "AiCharacterKit.Unity.Speech",
+    "rootNamespace": "AiCharacterKit.Unity.Speech",
+    "references": [
+        "AiCharacterKit.Core",
+        "AiCharacterKit.Speech",
+        "AiCharacterKit.Transport",
+        "AiCharacterKit.Unity",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

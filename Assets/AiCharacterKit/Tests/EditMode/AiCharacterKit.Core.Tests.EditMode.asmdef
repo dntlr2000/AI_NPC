@@ -3,8 +3,10 @@
     "rootNamespace": "AiCharacterKit.Core.Tests",
     "references": [
         "AiCharacterKit.Core",
+        "AiCharacterKit.Speech",
         "AiCharacterKit.Transport",
         "AiCharacterKit.Unity",
+        "AiCharacterKit.Unity.Speech",
         "UnityEngine.UI",
         "Unity.InputSystem"
     ],

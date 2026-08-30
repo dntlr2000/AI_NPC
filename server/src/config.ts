@@ -3,6 +3,9 @@ import type { SessionStoreOptions } from "./sessions.js";
 export const DEFAULT_MODEL = "gpt-5.6-luna";
 export const DEFAULT_PORT = 8787;
 export const DEFAULT_OPENAI_TIMEOUT_MS = 30_000;
+export const DEFAULT_TTS_MODEL = "gpt-4o-mini-tts";
+export const DEFAULT_OPENAI_TTS_TIMEOUT_MS = 30_000;
+export const DEFAULT_TTS_VOICE_PRESETS_PATH = "config/voice-presets.json";
 export const DEFAULT_SESSION_MAX_TURNS = 8;
 export const DEFAULT_SESSION_MAX_CONTEXT_BYTES = 16 * 1024;
 export const DEFAULT_SESSION_IDLE_TTL_SECONDS = 1_800;
@@ -15,6 +18,9 @@ export interface ServerConfig {
   readonly model: string;
   readonly port: number;
   readonly openAiTimeoutMs: number;
+  readonly ttsModel: string;
+  readonly openAiTtsTimeoutMs: number;
+  readonly ttsVoicePresetsPath: string;
   readonly sessionOptions: SessionStoreOptions;
 }
 
@@ -42,6 +48,17 @@ export function loadServerConfig(
     120_000,
     "OPENAI_TIMEOUT_MS",
   );
+  const ttsModel = environment.OPENAI_TTS_MODEL?.trim() || DEFAULT_TTS_MODEL;
+  const openAiTtsTimeoutMs = readInteger(
+    environment.OPENAI_TTS_TIMEOUT_MS,
+    DEFAULT_OPENAI_TTS_TIMEOUT_MS,
+    1_000,
+    120_000,
+    "OPENAI_TTS_TIMEOUT_MS",
+  );
+  const ttsVoicePresetsPath =
+    environment.NPC_TTS_VOICE_PRESETS_PATH?.trim()
+    || DEFAULT_TTS_VOICE_PRESETS_PATH;
   const sessionMaxTurns = readInteger(
     environment.NPC_SESSION_MAX_TURNS,
     DEFAULT_SESSION_MAX_TURNS,
@@ -76,6 +93,9 @@ export function loadServerConfig(
     model,
     port,
     openAiTimeoutMs,
+    ttsModel,
+    openAiTtsTimeoutMs,
+    ttsVoicePresetsPath,
     sessionOptions: {
       maxTurns: sessionMaxTurns,
       maxContextBytes: sessionMaxContextBytes,
