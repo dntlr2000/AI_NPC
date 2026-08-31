@@ -2,6 +2,7 @@ import { createApp } from "./app.js";
 import { loadServerConfig, SERVER_HOST } from "./config.js";
 import { OpenAiNpcResponseGenerator } from "./generator.js";
 import { OpenAiSpeechGenerator } from "./speech.js";
+import { OpenAiTranscriptionGenerator } from "./transcription.js";
 import {
   InMemoryConversationSessionStore,
   SessionConversationService,
@@ -28,11 +29,17 @@ async function startServer(): Promise<void> {
   const voicePresetResolver = loadVoicePresetResolver(
     config.ttsVoicePresetsPath,
   );
+  const transcriptionGenerator = new OpenAiTranscriptionGenerator({
+    apiKey: config.apiKey,
+    model: config.transcriptionModel,
+    timeoutMs: config.openAiTranscriptionTimeoutMs,
+  });
   const app = createApp({
     generator,
     sessionService,
     speechGenerator,
     voicePresetResolver,
+    transcriptionGenerator,
   });
 
   registerShutdownSignal("SIGINT", app);

@@ -4,6 +4,7 @@
     "references": [
         "AiCharacterKit.Core",
         "AiCharacterKit.Speech",
+        "AiCharacterKit.Transcription",
         "AiCharacterKit.Transport",
         "UnityEngine.UI"
     ],

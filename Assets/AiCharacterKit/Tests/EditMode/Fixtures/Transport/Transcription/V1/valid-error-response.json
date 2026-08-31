@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "requestId": "transcription-001",
+  "status": "error",
+  "error": {
+    "code": "rate_limited",
+    "message": "잠시 후 다시 시도해 주세요.",
+    "retryable": true
+  }
+}

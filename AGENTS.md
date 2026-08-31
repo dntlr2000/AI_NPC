@@ -20,7 +20,7 @@ The framework will eventually support:
 - `Assets/`: Unity source code, scenes, prefabs, ScriptableObjects, and other game assets
 - `Packages/`: Unity package manifest and dependency lock file
 - `ProjectSettings/`: project-wide Unity editor and runtime settings
-- `docs/`: requirements, architecture, plans, and decisions; see `docs/ROADMAP.md`, `docs/PHASE6_PLAN.md`, `docs/CONTRACT_V2.md`, and `docs/SPEECH_CONTRACT_V1.md`
+- `docs/`: requirements, architecture, plans, and decisions; see `docs/ROADMAP.md`, `docs/PHASE7_PLAN.md`, `docs/CONTRACT_V2.md`, `docs/SPEECH_CONTRACT_V1.md`, and `docs/TRANSCRIPTION_CONTRACT_V1.md`
 - `server/`: Node.js 24, TypeScript, Fastify, and OpenAI SDK local backend for conversation and optional speech paths
 
 The Unity project root is the repository root. Do not assume a separate `unity/` directory.
@@ -33,23 +33,21 @@ The Unity project root is the repository root. Do not assume a separate `unity/`
 
 ## Current milestone
 
-Phase 5 is complete and documented on `main` at `1206654`. Phase 6 implementation, automated verification, and manual live TTS Play Mode verification are complete. The commit containing the Phase 6 implementation and completion documentation is the Phase 6 checkpoint.
+Phase 6 is complete on `main` at `0501e6d`. Phase 7 push-to-talk STT implementation, automated verification, and manual live microphone/OpenAI Play Mode verification are complete. The commit containing the Phase 7 implementation and completion documentation is the Phase 7 checkpoint.
 
-The Phase 6 implementation scope is:
+The Phase 7 implementation scope is:
 
-- A provider-neutral pure C# speech controller and synthesis/playback interfaces
-- A separate Speech V1 JSON/binary PCM contract and loopback backend endpoint
-- Server-owned JSON voice presets selected by opaque Unity `voicePresetId` data
-- Buffered 24 kHz, 16-bit, mono PCM playback with cancellation and replacement
-- A presentation decorator that preserves text when speech fails or is disabled
-- An Editor-generated two-character `SpeechNpcPrototype` sample scene
+- A provider-neutral pure C# voice input controller and capture/transcription interfaces
+- A separate Transcription V1 raw WAV/JSON contract and loopback backend endpoint
+- Bounded PCM16 mono microphone capture with cancellation and duplicate prevention
+- A reviewed-input flow that fills the existing text field and never auto-sends
+- An Editor-generated single-character `VoiceInputNpcPrototype` sample scene
 
 Until the next milestone is approved, do not add:
 
 - Persistent or long-term memory
-- STT
 - Realtime voice
-- Streaming speech, custom voice training, lip sync, or audio caching
+- Streaming STT/TTS, VAD, barge-in, custom voice training, lip sync, or audio caching
 - Animator-based presentation
 - Vector databases
 - Remote deployment, client authentication, automatic retries, or streaming
@@ -68,6 +66,8 @@ Until the next milestone is approved, do not add:
 - Use `INpcPresentationDriver` for dialogue, emotion, and gesture presentation.
 - Keep provider-neutral speech coordination in `AiCharacterKit.Speech`; it must not reference Unity, HTTP, or OpenAI.
 - Use `ISpeechSynthesisClient` and `ISpeechPlaybackDriver` for optional TTS boundaries.
+- Keep provider-neutral voice input coordination in `AiCharacterKit.Transcription`; it must not reference Unity, HTTP, or OpenAI.
+- Use `IAudioCaptureDriver` and `ITranscriptionClient` for optional STT boundaries.
 - Character-specific behavior must be stored in data, preferably ScriptableObject profiles.
 - Do not place character personality directly inside MonoBehaviour code.
 - Do not use static global state unless there is a documented reason.
@@ -93,6 +93,7 @@ Until the next milestone is approved, do not add:
 - The backend binds only to `127.0.0.1`; remote exposure requires a separate security design.
 - Phase 5 memory is process-local and must never be written to logs or disk.
 - Unity stores only opaque voice preset IDs; OpenAI voice names, instructions, and speed remain in the server preset file.
+- Microphone audio and transcription text must not be logged or persisted; Phase 7 sends only bounded WAV to the loopback backend.
 
 ## Completion requirements
 

@@ -19,6 +19,21 @@ namespace AiCharacterKit.Unity
         private NpcConversationBehaviour conversationBehaviour;
 
         /// <summary>
+        /// Replaces the editable text without submitting it and focuses the field for review.
+        /// </summary>
+        public void SetInputText(string value)
+        {
+            if (inputField == null)
+            {
+                return;
+            }
+
+            inputField.text = value ?? string.Empty;
+            inputField.ActivateInputField();
+            inputField.MoveTextEnd(false);
+        }
+
+        /// <summary>
         /// Registers the send button listener for the enabled lifetime.
         /// </summary>
         private void OnEnable()

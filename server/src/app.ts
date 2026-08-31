@@ -34,11 +34,26 @@ import {
   SPEECH_VERSION_HEADER,
   speechSynthesisRequestSchema,
 } from "./contracts/speech-v1.js";
+import {
+  createTranscriptionErrorResponse,
+  createTranscriptionSuccessResponse,
+  MAX_TRANSCRIPTION_AUDIO_BYTES,
+  readTranscriptionRequestId,
+  TRANSCRIPTION_CONTENT_TYPE,
+  TRANSCRIPTION_REQUEST_ID_HEADER,
+  TRANSCRIPTION_SCHEMA_VERSION,
+  TRANSCRIPTION_VERSION_HEADER,
+} from "./contracts/transcription-v1.js";
 import { REQUEST_BODY_LIMIT_BYTES } from "./config.js";
 import { NpcServiceError } from "./errors.js";
 import type { NpcResponseGenerator } from "./generator.js";
 import type { SessionConversationService } from "./sessions.js";
 import type { SpeechGenerator } from "./speech.js";
+import {
+  type TranscriptionGenerator,
+  type ValidatedTranscriptionAudio,
+  validateCanonicalPcm16Wave,
+} from "./transcription.js";
 import type { VoicePresetResolver } from "./voice-presets.js";
 
 export interface AppDependencies {
@@ -46,6 +61,7 @@ export interface AppDependencies {
   readonly sessionService: SessionConversationService;
   readonly speechGenerator: SpeechGenerator;
   readonly voicePresetResolver: VoicePresetResolver;
+  readonly transcriptionGenerator: TranscriptionGenerator;
   readonly logger?: FastifyServerOptions["logger"];
 }
 
@@ -55,6 +71,12 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
     bodyLimit: REQUEST_BODY_LIMIT_BYTES,
     logger: dependencies.logger ?? createLoggerOptions(),
   });
+
+  app.addContentTypeParser(
+    TRANSCRIPTION_CONTENT_TYPE,
+    { parseAs: "buffer", bodyLimit: MAX_TRANSCRIPTION_AUDIO_BYTES },
+    (_request, body, done) => done(null, body),
+  );
 
   app.get("/healthz", async () => ({ status: "ok" }));
 
@@ -293,6 +315,77 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
     }
   });
 
+  app.post("/v1/speech/transcribe", async (request, reply) => {
+    const requestId = readTranscriptionRequestId(
+      request.headers[TRANSCRIPTION_REQUEST_ID_HEADER.toLowerCase()],
+      request.id,
+    );
+    const version = readSingleHeader(
+      request.headers[TRANSCRIPTION_VERSION_HEADER.toLowerCase()],
+    );
+    if (version !== String(TRANSCRIPTION_SCHEMA_VERSION)) {
+      const hasVersion = version !== undefined;
+      return reply.status(400).send(
+        createTranscriptionErrorResponse(
+          requestId,
+          hasVersion ? "unsupported_schema_version" : "invalid_request",
+          hasVersion
+            ? "Only transcription contract version 1 is supported on this endpoint."
+            : "The transcription version header is required.",
+          false,
+        ),
+      );
+    }
+
+    let audio: ValidatedTranscriptionAudio;
+    try {
+      audio = validateCanonicalPcm16Wave(request.body);
+    } catch (error: unknown) {
+      const serviceError = normalizeTranscriptionServiceError(error);
+      logServiceFailure(request.log, requestId, serviceError);
+      return reply.status(serviceError.statusCode).send(
+        createTranscriptionErrorResponse(
+          requestId,
+          serviceError.code,
+          serviceError.message,
+          serviceError.retryable,
+        ),
+      );
+    }
+
+    const cancellation = createRequestCancellation(request.raw, reply.raw);
+    const startedAt = Date.now();
+    try {
+      const generated = await dependencies.transcriptionGenerator.generate(
+        audio,
+        cancellation.signal,
+      );
+      logTranscriptionSuccess(
+        request.log,
+        requestId,
+        audio.waveAudio.byteLength,
+        audio.durationMilliseconds,
+        Date.now() - startedAt,
+      );
+      return reply.status(200).send(
+        createTranscriptionSuccessResponse(requestId, generated.text),
+      );
+    } catch (error: unknown) {
+      const serviceError = normalizeTranscriptionServiceError(error);
+      logServiceFailure(request.log, requestId, serviceError);
+      return reply.status(serviceError.statusCode).send(
+        createTranscriptionErrorResponse(
+          requestId,
+          serviceError.code,
+          serviceError.message,
+          serviceError.retryable,
+        ),
+      );
+    } finally {
+      cancellation.dispose();
+    }
+  });
+
   app.setErrorHandler((error, request, reply) => {
     const isBodyTooLarge =
       readUnknownString(error, "code") === "FST_ERR_CTP_BODY_TOO_LARGE";
@@ -312,6 +405,16 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
       },
       "AI NPC HTTP request rejected",
     );
+
+    if (request.url.startsWith("/v1/speech/transcribe")) {
+      const requestId = readTranscriptionRequestId(
+        request.headers[TRANSCRIPTION_REQUEST_ID_HEADER.toLowerCase()],
+        request.id,
+      );
+      return reply.status(statusCode).send(
+        createTranscriptionErrorResponse(requestId, code, message, false),
+      );
+    }
 
     if (request.url.startsWith("/v1/speech/")) {
       return reply.status(statusCode).send(
@@ -380,6 +483,25 @@ function logSpeechSuccess(
   logger.info(
     { contractRequestId: requestId, audioBytes, elapsedMilliseconds },
     "AI NPC speech generated",
+  );
+}
+
+/** Logs only correlation, bounded audio metadata, and latency after transcription. */
+function logTranscriptionSuccess(
+  logger: { info: (data: object, message: string) => void },
+  requestId: string,
+  audioBytes: number,
+  durationMilliseconds: number,
+  elapsedMilliseconds: number,
+): void {
+  logger.info(
+    {
+      contractRequestId: requestId,
+      audioBytes,
+      durationMilliseconds,
+      elapsedMilliseconds,
+    },
+    "AI NPC audio transcribed",
   );
 }
 
@@ -464,6 +586,29 @@ function normalizeSpeechServiceError(error: unknown): NpcServiceError {
     "backend_unexpected_speech_error",
     { cause: error },
   );
+}
+
+/** Converts an unexpected transcription failure into one safe non-retryable error. */
+function normalizeTranscriptionServiceError(error: unknown): NpcServiceError {
+  if (error instanceof NpcServiceError) {
+    return error;
+  }
+
+  return new NpcServiceError(
+    "internal_error",
+    "The backend could not complete the transcription request.",
+    500,
+    false,
+    "backend_unexpected_transcription_error",
+    { cause: error },
+  );
+}
+
+/** Reads one single HTTP header value without accepting ambiguous duplicates. */
+function readSingleHeader(
+  value: string | string[] | undefined,
+): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
 }
 
 /** Reads one string property from an unknown Fastify or parser error. */

@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_OPENAI_TTS_TIMEOUT_MS,
+  DEFAULT_OPENAI_TRANSCRIPTION_TIMEOUT_MS,
   DEFAULT_SESSION_IDLE_TTL_SECONDS,
   DEFAULT_SESSION_MAX_CONTEXT_BYTES,
   DEFAULT_SESSION_MAX_COUNT,
   DEFAULT_SESSION_MAX_TURNS,
   DEFAULT_TTS_MODEL,
+  DEFAULT_TRANSCRIPTION_MODEL,
   DEFAULT_TTS_VOICE_PRESETS_PATH,
   loadServerConfig,
 } from "../src/config.js";
@@ -23,6 +25,9 @@ describe("server configuration", () => {
     expect(config.ttsModel).toBe(DEFAULT_TTS_MODEL);
     expect(config.openAiTtsTimeoutMs).toBe(DEFAULT_OPENAI_TTS_TIMEOUT_MS);
     expect(config.ttsVoicePresetsPath).toBe(DEFAULT_TTS_VOICE_PRESETS_PATH);
+    expect(config.transcriptionModel).toBe(DEFAULT_TRANSCRIPTION_MODEL);
+    expect(config.openAiTranscriptionTimeoutMs)
+      .toBe(DEFAULT_OPENAI_TRANSCRIPTION_TIMEOUT_MS);
   });
 
   it("loads validated TTS model, timeout, and preset path overrides", () => {
@@ -43,6 +48,21 @@ describe("server configuration", () => {
       OPENAI_API_KEY: "test-key",
       OPENAI_TTS_TIMEOUT_MS: "500",
     })).toThrow("OPENAI_TTS_TIMEOUT_MS");
+  });
+
+  it("loads and validates transcription model and timeout overrides", () => {
+    const config = loadServerConfig({
+      OPENAI_API_KEY: "test-key",
+      OPENAI_TRANSCRIPTION_MODEL: "gpt-transcribe-2026-01-15",
+      OPENAI_TRANSCRIPTION_TIMEOUT_MS: "45000",
+    });
+
+    expect(config.transcriptionModel).toBe("gpt-transcribe-2026-01-15");
+    expect(config.openAiTranscriptionTimeoutMs).toBe(45_000);
+    expect(() => loadServerConfig({
+      OPENAI_API_KEY: "test-key",
+      OPENAI_TRANSCRIPTION_TIMEOUT_MS: "500",
+    })).toThrow("OPENAI_TRANSCRIPTION_TIMEOUT_MS");
   });
 
   it("loads every supported session environment override", () => {

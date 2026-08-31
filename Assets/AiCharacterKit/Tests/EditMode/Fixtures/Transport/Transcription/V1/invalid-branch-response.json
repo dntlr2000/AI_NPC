@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "requestId": "transcription-001",
+  "status": "success",
+  "result": {
+    "text": "안녕하세요."
+  },
+  "error": {
+    "code": "invalid_audio",
+    "message": "Invalid audio.",
+    "retryable": false
+  }
+}

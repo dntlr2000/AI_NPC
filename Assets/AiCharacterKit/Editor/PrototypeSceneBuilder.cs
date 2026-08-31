@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using AiCharacterKit.Core;
 using AiCharacterKit.Unity;
 using AiCharacterKit.Unity.Speech;
+using AiCharacterKit.Unity.Transcription;
 using UnityEditor;
+using UnityEditor.Events;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -31,6 +33,9 @@ namespace AiCharacterKit.Editor
         private const string SpeechNpcFolder = SamplesFolder + "/SpeechNpc";
         private const string SpeechProfilesFolder = SpeechNpcFolder + "/Profiles";
         private const string SpeechScenesFolder = SpeechNpcFolder + "/Scenes";
+        private const string VoiceInputNpcFolder = SamplesFolder + "/VoiceInputNpc";
+        private const string VoiceInputScenesFolder =
+            VoiceInputNpcFolder + "/Scenes";
         private const string ProfilePath = ProfilesFolder + "/PrototypeCharacter.asset";
         private const string ScenePath = ScenesFolder + "/MockNpcPrototype.unity";
         private const string LunaProfilePath = ProfilesFolder + "/Luna.asset";
@@ -43,6 +48,8 @@ namespace AiCharacterKit.Editor
             MemoryScenesFolder + "/MemoryNpcPrototype.unity";
         private const string SpeechScenePath =
             SpeechScenesFolder + "/SpeechNpcPrototype.unity";
+        private const string VoiceInputScenePath =
+            VoiceInputScenesFolder + "/VoiceInputNpcPrototype.unity";
         private const string WarmVoiceProfilePath =
             SpeechProfilesFolder + "/WarmFriendlyVoice.asset";
         private const string CalmVoiceProfilePath =
@@ -55,10 +62,13 @@ namespace AiCharacterKit.Editor
             "http://127.0.0.1:8787/v2/npc/sessions/reset";
         private const string DefaultSpeechEndpoint =
             "http://127.0.0.1:8787/v1/speech/synthesize";
+        private const string DefaultTranscriptionEndpoint =
+            "http://127.0.0.1:8787/v1/speech/transcribe";
         private const int DefaultBackendTimeoutSeconds = 35;
         private const string InputActionsPath = "Assets/InputSystem_Actions.inputactions";
         private const float SinglePanelWidth = 560f;
         private const float MultiPanelWidth = 440f;
+        private const float VoicePanelWidth = 600f;
 
         /// <summary>
         /// Creates the prototype from the Unity menu after protecting unsaved user scenes.
@@ -277,6 +287,50 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
+        /// Creates or repairs the Phase 7 push-to-talk sample interactively.
+        /// </summary>
+        [MenuItem("Tools/AI Character Kit/Create Voice Input NPC Prototype")]
+        public static void CreateVoiceInputScene()
+        {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                return;
+            }
+
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(VoiceInputScenePath) != null)
+            {
+                RepairVoiceInputScene();
+                EditorUtility.DisplayDialog(
+                    "Voice Input NPC Prototype",
+                    "The prototype already exists at:\n"
+                    + VoiceInputScenePath
+                    + "\n\nIts required references were refreshed.",
+                    "OK");
+                Selection.activeObject = AssetDatabase.LoadAssetAtPath<SceneAsset>(
+                    VoiceInputScenePath);
+                return;
+            }
+
+            CreateVoiceInputSceneInternal();
+        }
+
+        /// <summary>
+        /// Creates or repairs the Phase 7 sample non-interactively for automation.
+        /// </summary>
+        public static void CreateVoiceInputSceneBatch()
+        {
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(VoiceInputScenePath) != null)
+            {
+                RepairVoiceInputScene();
+                Debug.Log(
+                    $"Refreshed voice input NPC prototype references at {VoiceInputScenePath}.");
+                return;
+            }
+
+            CreateVoiceInputSceneInternal();
+        }
+
+        /// <summary>
         /// Creates folders, profile data, scene objects, UI, and serialized component wiring.
         /// </summary>
         private static void CreatePrototypeSceneInternal()
@@ -471,6 +525,34 @@ namespace AiCharacterKit.Editor
                 scene,
                 SpeechScenePath,
                 "Created speech NPC prototype");
+        }
+
+        /// <summary>
+        /// Creates one V2 NPC with optional TTS and reviewed push-to-talk text input.
+        /// </summary>
+        private static void CreateVoiceInputSceneInternal()
+        {
+            EnsureSampleFolders();
+            CreateOrLoadProfile(CreateLunaProfileDefinition());
+            CreateOrLoadVoiceProfile(
+                WarmVoiceProfilePath,
+                "WarmFriendlyVoice",
+                "warm-friendly");
+            var scene = EditorSceneManager.NewScene(
+                NewSceneSetup.DefaultGameObjects,
+                NewSceneMode.Single);
+            var characterProfile = LoadRequiredCharacterProfile(LunaProfilePath);
+            var voiceProfile = LoadRequiredVoiceProfile(WarmVoiceProfilePath);
+
+            ConfigureDefaultSceneObjects();
+            CreateGround();
+            CreateConfiguredVoiceInputNpc(characterProfile, voiceProfile);
+            CreateInputSystemEventSystem();
+
+            SaveGeneratedScene(
+                scene,
+                VoiceInputScenePath,
+                "Created voice input NPC prototype");
         }
 
         /// <summary>
@@ -871,6 +953,33 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
+        /// Reloads the Phase 7 scene and restores conversation, speech, and voice input wiring.
+        /// </summary>
+        private static void RepairVoiceInputScene()
+        {
+            var scene = EditorSceneManager.OpenScene(
+                VoiceInputScenePath,
+                OpenSceneMode.Single);
+            var characterProfile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(
+                LunaProfilePath);
+            var voiceProfile = AssetDatabase.LoadAssetAtPath<NpcVoiceProfile>(
+                WarmVoiceProfilePath);
+            if (characterProfile == null)
+            {
+                throw new InvalidOperationException(
+                    "The voice input sample character profile is missing.");
+            }
+
+            ValidateProfile(characterProfile, LunaProfilePath);
+            ValidateVoiceProfile(voiceProfile, WarmVoiceProfilePath);
+            RepairVoiceInputNpcConfiguration(characterProfile, voiceProfile);
+            SaveGeneratedScene(
+                scene,
+                VoiceInputScenePath,
+                "Repaired voice input NPC prototype");
+        }
+
+        /// <summary>
         /// Positions the default camera and directional light for the prototype NPC.
         /// </summary>
         private static void ConfigureDefaultSceneObjects()
@@ -1048,6 +1157,89 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
+        /// Creates one V2 NPC with visual fallback, TTS, and reviewed push-to-talk input.
+        /// </summary>
+        private static void CreateConfiguredVoiceInputNpc(
+            CharacterProfile characterProfile,
+            NpcVoiceProfile voiceProfile)
+        {
+            var npc = CreateNpc(
+                characterProfile.DisplayName,
+                Vector3.zero,
+                "Voice Input NPC");
+            var playback = npc.AddComponent<UnityPcmSpeechPlaybackDriver>();
+            var audioSource = npc.GetComponent<AudioSource>();
+            audioSource.playOnAwake = false;
+            audioSource.loop = false;
+            audioSource.spatialBlend = 0f;
+            var speechOutput = npc.AddComponent<NpcSpeechOutput>();
+            var augmentedPresentation =
+                npc.AddComponent<SpeechAugmentedPresentationDriver>();
+            var captureDriver = npc.AddComponent<UnityMicrophoneCaptureDriver>();
+            var voiceInput = npc.AddComponent<NpcVoiceInput>();
+            var visualPresentation = npc.GetComponent<NpcTextPresentationDriver>();
+            var conversation = npc.GetComponent<NpcConversationBehaviour>();
+            var ui = CreateUserInterface(
+                characterProfile.DisplayName,
+                string.Empty,
+                false,
+                VoicePanelWidth,
+                "Voice Input NPC",
+                true,
+                true,
+                true);
+
+            ConfigurePresentationDriver(
+                visualPresentation,
+                ui,
+                npc.GetComponent<Renderer>(),
+                npc.transform);
+            ConfigureSpeechOutput(speechOutput, voiceProfile, playback);
+            ConfigureSpeechPresentation(
+                augmentedPresentation,
+                visualPresentation,
+                speechOutput);
+            ConfigureConversationBehaviour(
+                conversation,
+                characterProfile,
+                augmentedPresentation,
+                NpcConversationMode.BackendSession,
+                DefaultBackendEndpoint,
+                DefaultBackendTimeoutSeconds);
+            ConfigureInputView(
+                ui.InputView,
+                ui.InputField,
+                ui.SendButton,
+                conversation);
+            ConfigureSessionControlView(
+                ui.SessionControlView,
+                ui.ResetButton,
+                ui.MemoryStatusText,
+                conversation);
+            ConfigureSpeechControlView(
+                ui.SpeechControlView,
+                speechOutput,
+                ui.SpeechToggle,
+                ui.StopSpeechButton,
+                ui.SpeechStatusText,
+                ui.SpeechDisclosureText);
+            ConfigureVoiceInput(
+                voiceInput,
+                captureDriver,
+                DefaultTranscriptionEndpoint,
+                DefaultBackendTimeoutSeconds);
+            ConfigurePushToTalkView(
+                ui.PushToTalkInputView,
+                voiceInput,
+                ui.InputView,
+                ui.PushToTalkButton,
+                ui.CancelTranscriptionButton,
+                ui.TranscriptionStatusText,
+                ui.TranscriptionDisclosureText,
+                speechOutput);
+        }
+
+        /// <summary>
         /// Creates a screen-space uGUI panel with all required input and output controls.
         /// </summary>
         private static PrototypeUiReferences CreateUserInterface(
@@ -1057,7 +1249,8 @@ namespace AiCharacterKit.Editor
             float panelWidth,
             string compositionLabel,
             bool includeSessionControls,
-            bool includeSpeechControls = false)
+            bool includeSpeechControls = false,
+            bool includeTranscriptionControls = false)
         {
             var canvasObject = new GameObject(
                 GetObjectName(compositionLabel + " Canvas", objectSuffix),
@@ -1090,10 +1283,21 @@ namespace AiCharacterKit.Editor
             if (includeSpeechControls)
             {
                 panel.GetComponent<RectTransform>().sizeDelta =
-                    new Vector2(panelWidth, 690f);
+                    new Vector2(panelWidth, includeTranscriptionControls ? 700f : 690f);
             }
 
             var contentWidth = panelWidth - 40f;
+            var dialogueHeight = includeTranscriptionControls ? 112f : 170f;
+            var emotionY = includeTranscriptionControls ? -192f : -266f;
+            var gestureY = includeTranscriptionControls ? -222f : -310f;
+            var requestStatusY = includeTranscriptionControls ? -252f : -354f;
+            var memoryStatusY = includeTranscriptionControls ? -282f : -392f;
+            var hintY = includeTranscriptionControls
+                ? -308f
+                : includeSessionControls ? -424f : -400f;
+            var inputY = includeTranscriptionControls
+                ? -340f
+                : includeSessionControls ? -464f : -452f;
 
             var resources = new DefaultControls.Resources();
             var title = CreateText(
@@ -1116,7 +1320,7 @@ namespace AiCharacterKit.Editor
                 20,
                 TextAnchor.UpperLeft,
                 new Vector2(20f, -78f),
-                new Vector2(contentWidth, 170f));
+                new Vector2(contentWidth, dialogueHeight));
 
             var emotion = CreateText(
                 resources,
@@ -1125,8 +1329,8 @@ namespace AiCharacterKit.Editor
                 "감정: Neutral",
                 20,
                 TextAnchor.MiddleLeft,
-                new Vector2(20f, -266f),
-                new Vector2(contentWidth, 38f));
+                new Vector2(20f, emotionY),
+                new Vector2(contentWidth, includeTranscriptionControls ? 28f : 38f));
 
             var gesture = CreateText(
                 resources,
@@ -1135,8 +1339,8 @@ namespace AiCharacterKit.Editor
                 "제스처: None",
                 20,
                 TextAnchor.MiddleLeft,
-                new Vector2(20f, -310f),
-                new Vector2(contentWidth, 38f));
+                new Vector2(20f, gestureY),
+                new Vector2(contentWidth, includeTranscriptionControls ? 28f : 38f));
 
             var status = CreateText(
                 resources,
@@ -1145,8 +1349,8 @@ namespace AiCharacterKit.Editor
                 "상태: 준비",
                 18,
                 TextAnchor.MiddleLeft,
-                new Vector2(20f, -354f),
-                new Vector2(contentWidth, 38f));
+                new Vector2(20f, requestStatusY),
+                new Vector2(contentWidth, includeTranscriptionControls ? 28f : 38f));
             status.color = new Color(0.75f, 0.8f, 0.9f);
 
             Text memoryStatus = null;
@@ -1159,8 +1363,8 @@ namespace AiCharacterKit.Editor
                     "단기 기억: 활성",
                     16,
                     TextAnchor.MiddleLeft,
-                    new Vector2(20f, -392f),
-                    new Vector2(contentWidth, 28f));
+                    new Vector2(20f, memoryStatusY),
+                    new Vector2(contentWidth, includeTranscriptionControls ? 24f : 28f));
                 memoryStatus.color = new Color(0.55f, 0.9f, 0.72f);
             }
 
@@ -1173,8 +1377,8 @@ namespace AiCharacterKit.Editor
                     : "Try: 안녕 / 고마워 / 무엇을 좋아해?",
                 16,
                 TextAnchor.MiddleLeft,
-                new Vector2(20f, includeSessionControls ? -424f : -400f),
-                new Vector2(contentWidth, 32f));
+                new Vector2(20f, hintY),
+                new Vector2(contentWidth, includeTranscriptionControls ? 28f : 32f));
             hint.color = new Color(0.65f, 0.7f, 0.8f);
 
             var inputObject = DefaultControls.CreateInputField(resources);
@@ -1182,10 +1386,12 @@ namespace AiCharacterKit.Editor
             inputObject.transform.SetParent(panel.transform, false);
             SetTopLeftRect(
                 inputObject.GetComponent<RectTransform>(),
-                new Vector2(20f, includeSessionControls ? -464f : -452f),
+                new Vector2(20f, inputY),
                 new Vector2(
                     includeSessionControls ? panelWidth - 240f : panelWidth - 175f,
-                    includeSessionControls ? 56f : 64f));
+                    includeTranscriptionControls
+                        ? 48f
+                        : includeSessionControls ? 56f : 64f));
 
             var inputField = inputObject.GetComponent<InputField>();
             inputField.lineType = InputField.LineType.SingleLine;
@@ -1201,10 +1407,12 @@ namespace AiCharacterKit.Editor
                 buttonObject.GetComponent<RectTransform>(),
                 new Vector2(
                     includeSessionControls ? panelWidth - 205f : panelWidth - 140f,
-                    includeSessionControls ? -464f : -452f),
+                    inputY),
                 new Vector2(
                     includeSessionControls ? 80f : 120f,
-                    includeSessionControls ? 56f : 64f));
+                    includeTranscriptionControls
+                        ? 48f
+                        : includeSessionControls ? 56f : 64f));
 
             var sendButton = buttonObject.GetComponent<Button>();
             var buttonLabel = buttonObject.GetComponentInChildren<Text>();
@@ -1220,8 +1428,8 @@ namespace AiCharacterKit.Editor
                 resetObject.transform.SetParent(panel.transform, false);
                 SetTopLeftRect(
                     resetObject.GetComponent<RectTransform>(),
-                    new Vector2(panelWidth - 110f, -464f),
-                    new Vector2(90f, 56f));
+                    new Vector2(panelWidth - 110f, inputY),
+                    new Vector2(90f, includeTranscriptionControls ? 48f : 56f));
                 resetButton = resetObject.GetComponent<Button>();
                 var resetLabel = resetObject.GetComponentInChildren<Text>();
                 resetLabel.text = "Reset";
@@ -1229,19 +1437,88 @@ namespace AiCharacterKit.Editor
                 resetLabel.fontStyle = FontStyle.Bold;
             }
 
+            Button pushToTalkButton = null;
+            Button cancelTranscriptionButton = null;
+            Text transcriptionStatus = null;
+            Text transcriptionDisclosure = null;
+            NpcPushToTalkInputView pushToTalkInputView = null;
+            if (includeTranscriptionControls)
+            {
+                var pushToTalkObject = DefaultControls.CreateButton(resources);
+                pushToTalkObject.name = GetObjectName(
+                    "Push To Talk Button",
+                    objectSuffix);
+                pushToTalkObject.transform.SetParent(panel.transform, false);
+                SetTopLeftRect(
+                    pushToTalkObject.GetComponent<RectTransform>(),
+                    new Vector2(20f, -396f),
+                    new Vector2(190f, 42f));
+                pushToTalkButton = pushToTalkObject.GetComponent<Button>();
+                var pushToTalkLabel = pushToTalkObject.GetComponentInChildren<Text>();
+                pushToTalkLabel.text = "누르는 동안 말하기";
+                pushToTalkLabel.fontSize = 16;
+                pushToTalkLabel.fontStyle = FontStyle.Bold;
+                pushToTalkInputView =
+                    pushToTalkObject.AddComponent<NpcPushToTalkInputView>();
+
+                var cancelObject = DefaultControls.CreateButton(resources);
+                cancelObject.name = GetObjectName(
+                    "Cancel Transcription Button",
+                    objectSuffix);
+                cancelObject.transform.SetParent(panel.transform, false);
+                SetTopLeftRect(
+                    cancelObject.GetComponent<RectTransform>(),
+                    new Vector2(220f, -396f),
+                    new Vector2(100f, 42f));
+                cancelTranscriptionButton = cancelObject.GetComponent<Button>();
+                var cancelLabel = cancelObject.GetComponentInChildren<Text>();
+                cancelLabel.text = "취소";
+                cancelLabel.fontSize = 16;
+
+                transcriptionStatus = CreateText(
+                    resources,
+                    panel.transform,
+                    GetObjectName("Transcription Status", objectSuffix),
+                    "음성 입력: 준비",
+                    15,
+                    TextAnchor.MiddleLeft,
+                    new Vector2(330f, -396f),
+                    new Vector2(contentWidth - 310f, 42f));
+                transcriptionStatus.color = new Color(0.55f, 0.85f, 1f);
+
+                transcriptionDisclosure = CreateText(
+                    resources,
+                    panel.transform,
+                    GetObjectName("Transcription Disclosure", objectSuffix),
+                    "마이크 음성이 AI 전사를 위해 처리됩니다.",
+                    14,
+                    TextAnchor.MiddleLeft,
+                    new Vector2(20f, -442f),
+                    new Vector2(contentWidth, 34f));
+                transcriptionDisclosure.color = new Color(0.9f, 0.75f, 0.45f);
+            }
+
             var instructions = CreateText(
                 resources,
                 panel.transform,
                 GetObjectName("Verification Instructions", objectSuffix),
-                includeSpeechControls
+                includeTranscriptionControls
+                    ? "전사 결과를 확인·수정한 뒤 전송하세요. 자동 전송되지 않습니다."
+                    : includeSpeechControls
                     ? "응답 텍스트는 음성 실패와 무관하게 유지됩니다."
                     : includeSessionControls
                     ? "각 NPC는 독립 세션입니다. Reset은 선택한 NPC 기억만 지웁니다."
                     : "응답 후 NPC 색상은 감정, 기울기는 제스처를 표시합니다.",
                 15,
                 TextAnchor.UpperLeft,
-                new Vector2(20f, includeSessionControls ? -536f : -532f),
-                new Vector2(contentWidth, 58f));
+                new Vector2(
+                    20f,
+                    includeTranscriptionControls
+                        ? -480f
+                        : includeSessionControls ? -536f : -532f),
+                new Vector2(
+                    contentWidth,
+                    includeTranscriptionControls ? 54f : 58f));
             instructions.color = new Color(0.65f, 0.7f, 0.8f);
 
             Text speechStatus = null;
@@ -1257,7 +1534,9 @@ namespace AiCharacterKit.Editor
                     "음성: 준비",
                     15,
                     TextAnchor.MiddleLeft,
-                    new Vector2(20f, -590f),
+                    new Vector2(
+                        20f,
+                        includeTranscriptionControls ? -538f : -590f),
                     new Vector2(contentWidth, 26f));
                 speechStatus.color = new Color(0.55f, 0.85f, 1f);
 
@@ -1266,7 +1545,9 @@ namespace AiCharacterKit.Editor
                 toggleObject.transform.SetParent(panel.transform, false);
                 SetTopLeftRect(
                     toggleObject.GetComponent<RectTransform>(),
-                    new Vector2(20f, -620f),
+                    new Vector2(
+                        20f,
+                        includeTranscriptionControls ? -568f : -620f),
                     new Vector2(180f, 30f));
                 speechToggle = toggleObject.GetComponent<Toggle>();
                 speechToggle.isOn = true;
@@ -1279,7 +1560,9 @@ namespace AiCharacterKit.Editor
                 stopObject.transform.SetParent(panel.transform, false);
                 SetTopLeftRect(
                     stopObject.GetComponent<RectTransform>(),
-                    new Vector2(panelWidth - 125f, -620f),
+                    new Vector2(
+                        panelWidth - 125f,
+                        includeTranscriptionControls ? -568f : -620f),
                     new Vector2(105f, 30f));
                 stopSpeechButton = stopObject.GetComponent<Button>();
                 var stopLabel = stopObject.GetComponentInChildren<Text>();
@@ -1293,7 +1576,9 @@ namespace AiCharacterKit.Editor
                     "이 음성은 AI로 생성됩니다.",
                     14,
                     TextAnchor.MiddleLeft,
-                    new Vector2(20f, -654f),
+                    new Vector2(
+                        20f,
+                        includeTranscriptionControls ? -602f : -654f),
                     new Vector2(contentWidth, 24f));
                 speechDisclosure.color = new Color(0.9f, 0.75f, 0.45f);
             }
@@ -1321,7 +1606,12 @@ namespace AiCharacterKit.Editor
                 StopSpeechButton = stopSpeechButton,
                 SpeechStatusText = speechStatus,
                 SpeechDisclosureText = speechDisclosure,
-                SpeechControlView = speechControlView
+                SpeechControlView = speechControlView,
+                PushToTalkButton = pushToTalkButton,
+                CancelTranscriptionButton = cancelTranscriptionButton,
+                TranscriptionStatusText = transcriptionStatus,
+                TranscriptionDisclosureText = transcriptionDisclosure,
+                PushToTalkInputView = pushToTalkInputView
             };
         }
 
@@ -1473,12 +1763,101 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
+        /// Restores every serialized connection for the generated push-to-talk NPC.
+        /// </summary>
+        private static void RepairVoiceInputNpcConfiguration(
+            CharacterProfile characterProfile,
+            NpcVoiceProfile voiceProfile)
+        {
+            var npc = FindRequiredGameObject("Voice Input NPC - Luna");
+            var visualPresentation = npc.GetComponent<NpcTextPresentationDriver>();
+            var augmentedPresentation =
+                npc.GetComponent<SpeechAugmentedPresentationDriver>();
+            var conversation = npc.GetComponent<NpcConversationBehaviour>();
+            var playback = npc.GetComponent<UnityPcmSpeechPlaybackDriver>();
+            var speechOutput = npc.GetComponent<NpcSpeechOutput>();
+            var captureDriver = npc.GetComponent<UnityMicrophoneCaptureDriver>();
+            var voiceInput = npc.GetComponent<NpcVoiceInput>();
+            var audioSource = npc.GetComponent<AudioSource>();
+            if (visualPresentation == null
+                || augmentedPresentation == null
+                || conversation == null
+                || playback == null
+                || speechOutput == null
+                || captureDriver == null
+                || voiceInput == null
+                || audioSource == null)
+            {
+                throw new InvalidOperationException(
+                    "Generated voice input NPC is missing runtime components.");
+            }
+
+            audioSource.playOnAwake = false;
+            audioSource.loop = false;
+            audioSource.spatialBlend = 0f;
+            var ui = FindUiReferences(
+                string.Empty,
+                true,
+                true,
+                true);
+            ConfigurePresentationDriver(
+                visualPresentation,
+                ui,
+                npc.GetComponent<Renderer>(),
+                npc.transform);
+            ConfigureSpeechOutput(speechOutput, voiceProfile, playback);
+            ConfigureSpeechPresentation(
+                augmentedPresentation,
+                visualPresentation,
+                speechOutput);
+            ConfigureConversationBehaviour(
+                conversation,
+                characterProfile,
+                augmentedPresentation,
+                NpcConversationMode.BackendSession,
+                DefaultBackendEndpoint,
+                DefaultBackendTimeoutSeconds);
+            ConfigureInputView(
+                ui.InputView,
+                ui.InputField,
+                ui.SendButton,
+                conversation);
+            ConfigureSessionControlView(
+                ui.SessionControlView,
+                ui.ResetButton,
+                ui.MemoryStatusText,
+                conversation);
+            ConfigureSpeechControlView(
+                ui.SpeechControlView,
+                speechOutput,
+                ui.SpeechToggle,
+                ui.StopSpeechButton,
+                ui.SpeechStatusText,
+                ui.SpeechDisclosureText);
+            ConfigureVoiceInput(
+                voiceInput,
+                captureDriver,
+                DefaultTranscriptionEndpoint,
+                DefaultBackendTimeoutSeconds);
+            ConfigurePushToTalkView(
+                ui.PushToTalkInputView,
+                voiceInput,
+                ui.InputView,
+                ui.PushToTalkButton,
+                ui.CancelTranscriptionButton,
+                ui.TranscriptionStatusText,
+                ui.TranscriptionDisclosureText,
+                speechOutput);
+        }
+
+        /// <summary>
         /// Finds one generated UI set by its optional Phase 2 character suffix.
         /// </summary>
         private static PrototypeUiReferences FindUiReferences(
             string objectSuffix,
             bool includeSessionControls,
-            bool includeSpeechControls = false)
+            bool includeSpeechControls = false,
+            bool includeTranscriptionControls = false)
         {
             var references = new PrototypeUiReferences
             {
@@ -1522,6 +1901,21 @@ namespace AiCharacterKit.Editor
                 references.SpeechControlView =
                     FindRequiredComponent<NpcSpeechControlView>(
                         GetObjectName("Conversation Panel", objectSuffix));
+            }
+
+            if (includeTranscriptionControls)
+            {
+                references.PushToTalkButton = FindRequiredComponent<Button>(
+                    GetObjectName("Push To Talk Button", objectSuffix));
+                references.CancelTranscriptionButton = FindRequiredComponent<Button>(
+                    GetObjectName("Cancel Transcription Button", objectSuffix));
+                references.TranscriptionStatusText = FindRequiredComponent<Text>(
+                    GetObjectName("Transcription Status", objectSuffix));
+                references.TranscriptionDisclosureText = FindRequiredComponent<Text>(
+                    GetObjectName("Transcription Disclosure", objectSuffix));
+                references.PushToTalkInputView =
+                    FindRequiredComponent<NpcPushToTalkInputView>(
+                        GetObjectName("Push To Talk Button", objectSuffix));
             }
 
             return references;
@@ -1781,6 +2175,100 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
+        /// Wires one microphone capture driver and local Transcription V1 endpoint.
+        /// </summary>
+        private static void ConfigureVoiceInput(
+            NpcVoiceInput voiceInput,
+            UnityMicrophoneCaptureDriver captureDriver,
+            string backendEndpoint,
+            int backendTimeoutSeconds)
+        {
+            if (voiceInput == null || captureDriver == null)
+            {
+                throw new InvalidOperationException(
+                    "Voice input requires a component and microphone capture driver.");
+            }
+
+            var serializedInput = new SerializedObject(voiceInput);
+            SetObjectReference(
+                serializedInput,
+                "captureDriver",
+                captureDriver);
+            SetStringValue(
+                serializedInput,
+                "backendEndpoint",
+                backendEndpoint);
+            SetIntegerValue(
+                serializedInput,
+                "backendTimeoutSeconds",
+                backendTimeoutSeconds);
+            serializedInput.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(voiceInput);
+        }
+
+        /// <summary>
+        /// Wires push-to-talk controls, reviewed text target, disclosure, and TTS stop event.
+        /// </summary>
+        private static void ConfigurePushToTalkView(
+            NpcPushToTalkInputView pushToTalkView,
+            NpcVoiceInput voiceInput,
+            NpcTextInputView textInputView,
+            Button pushToTalkButton,
+            Button cancelButton,
+            Text statusText,
+            Text disclosureText,
+            NpcSpeechOutput speechOutput)
+        {
+            if (pushToTalkView == null
+                || voiceInput == null
+                || textInputView == null
+                || pushToTalkButton == null
+                || cancelButton == null
+                || statusText == null
+                || disclosureText == null
+                || speechOutput == null)
+            {
+                throw new InvalidOperationException(
+                    "Push-to-talk controls require complete input, output, and UI references.");
+            }
+
+            var serializedView = new SerializedObject(pushToTalkView);
+            SetObjectReference(serializedView, "voiceInput", voiceInput);
+            SetObjectReference(serializedView, "textInputView", textInputView);
+            SetObjectReference(
+                serializedView,
+                "pushToTalkButton",
+                pushToTalkButton);
+            SetObjectReference(serializedView, "cancelButton", cancelButton);
+            SetObjectReference(
+                serializedView,
+                "transcriptionStatusText",
+                statusText);
+            SetObjectReference(serializedView, "disclosureText", disclosureText);
+            serializedView.ApplyModifiedPropertiesWithoutUndo();
+
+            var recordingStarted = pushToTalkView.RecordingStarted;
+            for (var index = recordingStarted.GetPersistentEventCount() - 1;
+                 index >= 0;
+                 index--)
+            {
+                if (recordingStarted.GetPersistentTarget(index) == speechOutput
+                    && recordingStarted.GetPersistentMethodName(index)
+                    == nameof(NpcSpeechOutput.StopSpeech))
+                {
+                    UnityEventTools.RemovePersistentListener(
+                        recordingStarted,
+                        index);
+                }
+            }
+
+            UnityEventTools.AddPersistentListener(
+                recordingStarted,
+                speechOutput.StopSpeech);
+            EditorUtility.SetDirty(pushToTalkView);
+        }
+
+        /// <summary>
         /// Creates a new Input System EventSystem and connects persistent UI action references.
         /// </summary>
         private static void CreateInputSystemEventSystem()
@@ -2027,6 +2515,8 @@ namespace AiCharacterKit.Editor
             EnsureFolder(SpeechNpcFolder);
             EnsureFolder(SpeechProfilesFolder);
             EnsureFolder(SpeechScenesFolder);
+            EnsureFolder(VoiceInputNpcFolder);
+            EnsureFolder(VoiceInputScenesFolder);
         }
 
         /// <summary>
@@ -2143,6 +2633,11 @@ namespace AiCharacterKit.Editor
             public Text SpeechStatusText;
             public Text SpeechDisclosureText;
             public NpcSpeechControlView SpeechControlView;
+            public Button PushToTalkButton;
+            public Button CancelTranscriptionButton;
+            public Text TranscriptionStatusText;
+            public Text TranscriptionDisclosureText;
+            public NpcPushToTalkInputView PushToTalkInputView;
         }
     }
 }

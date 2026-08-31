@@ -1,0 +1,14 @@
+{
+    "name": "AiCharacterKit.Transcription",
+    "rootNamespace": "AiCharacterKit.Transcription",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

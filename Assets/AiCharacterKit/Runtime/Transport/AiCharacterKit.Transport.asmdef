@@ -3,7 +3,8 @@
     "rootNamespace": "AiCharacterKit.Transport",
     "references": [
         "AiCharacterKit.Core",
-        "AiCharacterKit.Speech"
+        "AiCharacterKit.Speech",
+        "AiCharacterKit.Transcription"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
