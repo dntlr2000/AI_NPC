@@ -20,7 +20,7 @@ The framework will eventually support:
 - `Assets/`: Unity source code, scenes, prefabs, ScriptableObjects, and other game assets
 - `Packages/`: Unity package manifest and dependency lock file
 - `ProjectSettings/`: project-wide Unity editor and runtime settings
-- `docs/`: requirements, architecture, plans, and decisions; see `docs/ROADMAP.md`, `docs/PHASE7_PLAN.md`, `docs/CONTRACT_V2.md`, `docs/SPEECH_CONTRACT_V1.md`, and `docs/TRANSCRIPTION_CONTRACT_V1.md`
+- `docs/`: requirements, architecture, plans, and decisions; see `docs/ROADMAP.md`, `docs/PHASE8_PLAN.md`, `docs/REUSE_GUIDE.md`, `docs/CONTRACT_V2.md`, `docs/SPEECH_CONTRACT_V1.md`, and `docs/TRANSCRIPTION_CONTRACT_V1.md`
 - `server/`: Node.js 24, TypeScript, Fastify, and OpenAI SDK local backend for conversation and optional speech paths
 
 The Unity project root is the repository root. Do not assume a separate `unity/` directory.
@@ -33,15 +33,15 @@ The Unity project root is the repository root. Do not assume a separate `unity/`
 
 ## Current milestone
 
-Phase 6 is complete on `main` at `0501e6d`. Phase 7 push-to-talk STT implementation, automated verification, and manual live microphone/OpenAI Play Mode verification are complete. The commit containing the Phase 7 implementation and completion documentation is the Phase 7 checkpoint.
+Phase 7 is complete on `main` at `ea4187b`. Phase 8 is complete in the current worktree after automated validation and a separate Built-in/Legacy consumer Play Mode check. Its checkpoint commit is pending. Phase 8 proves that the kit compiles and runs from a different Assets path without requiring URP or the Input System package.
 
-The Phase 7 implementation scope is:
+The Phase 8 implementation scope is:
 
-- A provider-neutral pure C# voice input controller and capture/transcription interfaces
-- A separate Transcription V1 raw WAV/JSON contract and loopback backend endpoint
-- Bounded PCM16 mono microphone capture with cancellation and duplicate prevention
-- A reviewed-input flow that fills the existing text field and never auto-sends
-- An Editor-generated single-character `VoiceInputNpcPrototype` sample scene
+- Movable Editor and test asset paths instead of a fixed `Assets/AiCharacterKit` root
+- Optional Input System editor integration with a Legacy Input Manager fallback
+- A separate Built-in Render Pipeline consumer project under `E:\CodexValidation`
+- A consumer-owned `INpcPresentationDriver` and Mock sample proving extension without Core changes
+- Regression checks for existing dialogue, memory, TTS, and STT boundaries
 
 Until the next milestone is approved, do not add:
 
@@ -52,6 +52,7 @@ Until the next milestone is approved, do not add:
 - Vector databases
 - Remote deployment, client authentication, automatic retries, or streaming
 - Changes that replace the existing Mock Play Mode path
+- UPM package restructuring until Phase 9 is explicitly planned and approved
 
 ## Architecture rules
 

@@ -12,8 +12,8 @@ namespace AiCharacterKit.Core.Tests
     /// </summary>
     public sealed class AiNpcJsonCodecTests
     {
-        private const string FixtureRoot =
-            "Assets/AiCharacterKit/Tests/EditMode/Fixtures/Transport/V1/";
+        private static string FixtureRoot => AiCharacterKitTestPaths.Resolve(
+            "Tests/EditMode/Fixtures/Transport/V1") + "/";
 
         /// <summary>
         /// Confirms that the golden request decodes and maps every character value.

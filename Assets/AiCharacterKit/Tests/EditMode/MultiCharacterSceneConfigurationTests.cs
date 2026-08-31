@@ -3,7 +3,7 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.InputSystem.UI;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace AiCharacterKit.Core.Tests
@@ -13,14 +13,14 @@ namespace AiCharacterKit.Core.Tests
     /// </summary>
     public sealed class MultiCharacterSceneConfigurationTests
     {
-        private const string LunaProfilePath =
-            "Assets/AiCharacterKit/Samples/MockNpc/Profiles/Luna.asset";
+        private static string LunaProfilePath => AiCharacterKitTestPaths.Resolve(
+            "Samples/MockNpc/Profiles/Luna.asset");
 
-        private const string GuardProfilePath =
-            "Assets/AiCharacterKit/Samples/MockNpc/Profiles/Guard.asset";
+        private static string GuardProfilePath => AiCharacterKitTestPaths.Resolve(
+            "Samples/MockNpc/Profiles/Guard.asset");
 
-        private const string ScenePath =
-            "Assets/AiCharacterKit/Samples/MockNpc/Scenes/MultiCharacterMock.unity";
+        private static string ScenePath => AiCharacterKitTestPaths.Resolve(
+            "Samples/MockNpc/Scenes/MultiCharacterMock.unity");
 
         /// <summary>
         /// Reloads the generated scene and checks both independent NPC compositions.
@@ -65,7 +65,7 @@ namespace AiCharacterKit.Core.Tests
             var eventSystemObject = GameObject.Find("EventSystem");
             Assert.That(eventSystemObject, Is.Not.Null);
             Assert.That(
-                eventSystemObject.GetComponent<InputSystemUIInputModule>(),
+                eventSystemObject.GetComponent<BaseInputModule>(),
                 Is.Not.Null);
         }
 

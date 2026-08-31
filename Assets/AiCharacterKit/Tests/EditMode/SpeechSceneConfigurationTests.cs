@@ -4,7 +4,7 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.InputSystem.UI;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace AiCharacterKit.Core.Tests
@@ -14,12 +14,12 @@ namespace AiCharacterKit.Core.Tests
     /// </summary>
     public sealed class SpeechSceneConfigurationTests
     {
-        private const string ScenePath =
-            "Assets/AiCharacterKit/Samples/SpeechNpc/Scenes/SpeechNpcPrototype.unity";
-        private const string CharacterProfileRoot =
-            "Assets/AiCharacterKit/Samples/MockNpc/Profiles/";
-        private const string VoiceProfileRoot =
-            "Assets/AiCharacterKit/Samples/SpeechNpc/Profiles/";
+        private static string ScenePath => AiCharacterKitTestPaths.Resolve(
+            "Samples/SpeechNpc/Scenes/SpeechNpcPrototype.unity");
+        private static string CharacterProfileRoot =>
+            AiCharacterKitTestPaths.Resolve("Samples/MockNpc/Profiles") + "/";
+        private static string VoiceProfileRoot =>
+            AiCharacterKitTestPaths.Resolve("Samples/SpeechNpc/Profiles") + "/";
 
         /// <summary>
         /// Reloads the scene and checks independent V2, voice, PCM, and UI composition.
@@ -64,7 +64,7 @@ namespace AiCharacterKit.Core.Tests
             var eventSystem = GameObject.Find("EventSystem");
             Assert.That(eventSystem, Is.Not.Null);
             Assert.That(
-                eventSystem.GetComponent<InputSystemUIInputModule>(),
+                eventSystem.GetComponent<BaseInputModule>(),
                 Is.Not.Null);
         }
 

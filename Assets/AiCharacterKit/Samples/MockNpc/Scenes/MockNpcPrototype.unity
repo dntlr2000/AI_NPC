@@ -518,6 +518,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: AiCharacterKit.Unity::AiCharacterKit.Unity.NpcConversationBehaviour
   characterProfile: {fileID: 11400000, guid: 8311dc43f1cba7e4d82908f3c347ec61, type: 2}
   presentationDriverSource: {fileID: 348242686}
+  conversationMode: 0
+  backendEndpoint: http://127.0.0.1:8787/v1/npc/respond
+  sessionBackendEndpoint: http://127.0.0.1:8787/v2/npc/respond
+  sessionResetEndpoint: http://127.0.0.1:8787/v2/npc/sessions/reset
+  backendTimeoutSeconds: 35
 --- !u!114 &348242686
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -535,6 +540,7 @@ MonoBehaviour:
   gestureText: {fileID: 18118588}
   statusText: {fileID: 1653836696}
   sendButton: {fileID: 1549572164}
+  resetButton: {fileID: 0}
   emotionRenderer: {fileID: 348242688}
   gestureTarget: {fileID: 348242687}
 --- !u!4 &348242687

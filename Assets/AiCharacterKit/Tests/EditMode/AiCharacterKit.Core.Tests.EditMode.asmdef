@@ -8,8 +8,8 @@
         "AiCharacterKit.Transport",
         "AiCharacterKit.Unity",
         "AiCharacterKit.Unity.Speech",
-        "UnityEngine.UI",
-        "Unity.InputSystem"
+        "AiCharacterKit.Editor",
+        "UnityEngine.UI"
     ],
     "optionalUnityReferences": [
         "TestAssemblies"

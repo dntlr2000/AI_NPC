@@ -5,7 +5,7 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.InputSystem.UI;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace AiCharacterKit.Core.Tests
@@ -15,12 +15,12 @@ namespace AiCharacterKit.Core.Tests
     /// </summary>
     public sealed class VoiceInputSceneConfigurationTests
     {
-        private const string ScenePath =
-            "Assets/AiCharacterKit/Samples/VoiceInputNpc/Scenes/VoiceInputNpcPrototype.unity";
-        private const string CharacterProfilePath =
-            "Assets/AiCharacterKit/Samples/MockNpc/Profiles/Luna.asset";
-        private const string VoiceProfilePath =
-            "Assets/AiCharacterKit/Samples/SpeechNpc/Profiles/WarmFriendlyVoice.asset";
+        private static string ScenePath => AiCharacterKitTestPaths.Resolve(
+            "Samples/VoiceInputNpc/Scenes/VoiceInputNpcPrototype.unity");
+        private static string CharacterProfilePath => AiCharacterKitTestPaths.Resolve(
+            "Samples/MockNpc/Profiles/Luna.asset");
+        private static string VoiceProfilePath => AiCharacterKitTestPaths.Resolve(
+            "Samples/SpeechNpc/Profiles/WarmFriendlyVoice.asset");
 
         /// <summary>
         /// Reloads the scene and checks its V2, TTS, microphone, UI, and event wiring.
@@ -121,7 +121,7 @@ namespace AiCharacterKit.Core.Tests
                 Object.FindObjectsByType<Toggle>(),
                 Has.Length.EqualTo(1));
             Assert.That(
-                GameObject.Find("EventSystem").GetComponent<InputSystemUIInputModule>(),
+                GameObject.Find("EventSystem").GetComponent<BaseInputModule>(),
                 Is.Not.Null);
         }
 

@@ -1,13 +1,13 @@
 # AI NPC Framework 진행 점검 및 로드맵
 
-> 기준일: 2026-08-31
-> 비교 기준: ChatGPT 대화 **“Unity Ai NPC 만들기”**의 초기 구상과 이후 합의된 Phase 1~7 범위
+> 기준일: 2026-09-01
+> 비교 기준: ChatGPT 대화 **“Unity Ai NPC 만들기”**의 초기 구상과 이후 합의된 Phase 1~8 범위
 
 ## 결론
 
-저장소는 수정된 로드맵의 순서와 제약을 따르고 있다. **Phase 1~7의 구현과 검증이 완료됐으며, Phase 7의 재사용 가능한 Push-to-Talk STT 입력 adapter도 실제 microphone/OpenAI Play Mode 검증을 통과했다.** Mock 재사용성, stateless V1, session V2와 선택형 TTS 계약은 그대로 유지된다.
+저장소는 수정된 로드맵의 순서와 제약을 따르고 있다. **Phase 1~8의 구현과 검증이 완료됐으며, Phase 8은 별도 Built-in/Legacy 프로젝트에서 실제 입력·Mock 응답·consumer-owned presentation까지 확인했다.** Mock 재사용성, stateless V1, session V2와 선택형 TTS/STT 계약은 그대로 유지된다.
 
-Phase 6 체크포인트는 `0501e6d`다. 이 구현과 완료 문서를 포함하는 다음 커밋이 Phase 7 체크포인트다. Phase 7 범위는 [`PHASE7_PLAN.md`](PHASE7_PLAN.md), wire 규격은 [`TRANSCRIPTION_CONTRACT_V1.md`](TRANSCRIPTION_CONTRACT_V1.md)를 따른다. 기존 [`PHASE6_PLAN.md`](PHASE6_PLAN.md), [`SPEECH_CONTRACT_V1.md`](SPEECH_CONTRACT_V1.md), 대화 [`CONTRACT_V1.md`](CONTRACT_V1.md)·[`CONTRACT_V2.md`](CONTRACT_V2.md)는 변경 없이 유효하다.
+Phase 7 체크포인트는 `ea4187b`다. Phase 8 범위와 검증 환경은 [`PHASE8_PLAN.md`](PHASE8_PLAN.md), raw Assets 재사용 절차는 [`REUSE_GUIDE.md`](REUSE_GUIDE.md)를 따른다. 기존 대화·Speech·Transcription wire 계약은 변경 없이 유효하다.
 
 ## 우리가 만드는 것
 
@@ -62,7 +62,7 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - 주요 설치 패키지: URP `17.5.0`, Input System `1.19.0`, uGUI `2.5.0`, Test Framework `1.7.0`
 - 구현 위치: `Assets/AiCharacterKit/`
 - 샘플: `MockNpcPrototype.unity`, `MultiCharacterMock.unity`, `BackendNpcPrototype.unity`, `MemoryNpcPrototype.unity`, `SpeechNpcPrototype.unity`, `VoiceInputNpcPrototype.unity`
-- Git 기준선: `0501e6d` (Phase 6 체크포인트)
+- Git 기준선: `ea4187b` (Phase 7 체크포인트)
 - Backend: Node.js 24 + TypeScript + Fastify + OpenAI SDK, 대화 V1/V2와 선택형 Speech/Transcription V1, loopback 전용
 - 제외 범위: 영구·장기·Vector 기억, Realtime, VAD, 자동 전송, 원격 배포, client auth, streaming
 
@@ -170,8 +170,12 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 ### Phase 8 — 두 번째 Unity 프로젝트 재사용 검증
 
-- 다른 프로젝트로 옮겨 경로·Input System·URP·샘플 자산 가정을 찾아낸다.
-- 필요하면 2D 또는 다른 표현 드라이버를 추가하되 Core는 변경하지 않는다.
+- **상태: 완료 — 자동 검증 및 Built-in/Legacy consumer 수동 Play Mode 통과, 기준 `ea4187b`**
+- 상세 구현 계획: [`PHASE8_PLAN.md`](PHASE8_PLAN.md)
+- 재사용 절차: [`REUSE_GUIDE.md`](REUSE_GUIDE.md)
+- Built-in Render Pipeline과 Legacy Input Manager를 사용하는 별도 Unity 프로젝트의 alternate Assets 경로로 옮긴다.
+- 경로와 Input System 고정 의존성을 제거하고 consumer-owned presentation driver로 Core 무변경 확장을 검증한다.
+- UPM 구조 이동은 이 단계의 실제 의존성 증거를 확보한 뒤 Phase 9에서 수행한다.
 
 ### Phase 9 — UPM 패키지화
 
@@ -196,4 +200,4 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 ## 바로 다음 행동
 
-**Phase 7 변경을 체크포인트로 커밋한 뒤 Phase 8의 두 번째 Unity 프로젝트 재사용 검증 범위를 계획한다.** 별도 승인 전에는 Realtime이나 패키지화를 시작하지 않는다.
+**현재 변경을 검토하고 Phase 8 체크포인트로 커밋한다.** Phase 9 UPM 패키지화나 Realtime 작업은 별도 계획과 승인 후 시작한다.

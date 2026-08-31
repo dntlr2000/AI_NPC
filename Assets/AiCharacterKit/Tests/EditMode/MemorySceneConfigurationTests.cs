@@ -3,7 +3,7 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.InputSystem.UI;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace AiCharacterKit.Core.Tests
@@ -13,10 +13,10 @@ namespace AiCharacterKit.Core.Tests
     /// </summary>
     public sealed class MemorySceneConfigurationTests
     {
-        private const string ScenePath =
-            "Assets/AiCharacterKit/Samples/MemoryNpc/Scenes/MemoryNpcPrototype.unity";
-        private const string ProfileRoot =
-            "Assets/AiCharacterKit/Samples/MockNpc/Profiles/";
+        private static string ScenePath => AiCharacterKitTestPaths.Resolve(
+            "Samples/MemoryNpc/Scenes/MemoryNpcPrototype.unity");
+        private static string ProfileRoot => AiCharacterKitTestPaths.Resolve(
+            "Samples/MockNpc/Profiles") + "/";
 
         /// <summary>
         /// Reloads the scene and checks both NPCs, endpoints, reset controls, and input wiring.
@@ -51,7 +51,7 @@ namespace AiCharacterKit.Core.Tests
             var eventSystem = GameObject.Find("EventSystem");
             Assert.That(eventSystem, Is.Not.Null);
             Assert.That(
-                eventSystem.GetComponent<InputSystemUIInputModule>(),
+                eventSystem.GetComponent<BaseInputModule>(),
                 Is.Not.Null);
         }
 

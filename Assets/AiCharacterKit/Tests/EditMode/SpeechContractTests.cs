@@ -12,8 +12,8 @@ namespace AiCharacterKit.Core.Tests
     /// </summary>
     public sealed class SpeechContractTests
     {
-        private const string FixtureRoot =
-            "Assets/AiCharacterKit/Tests/EditMode/Fixtures/Transport/Speech/V1/";
+        private static string FixtureRoot => AiCharacterKitTestPaths.Resolve(
+            "Tests/EditMode/Fixtures/Transport/Speech/V1") + "/";
 
         /// <summary>
         /// Maps all provider-neutral values through a valid golden request.

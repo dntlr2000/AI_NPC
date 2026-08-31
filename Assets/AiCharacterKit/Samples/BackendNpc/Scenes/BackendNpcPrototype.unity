@@ -549,6 +549,8 @@ MonoBehaviour:
   presentationDriverSource: {fileID: 683087300}
   conversationMode: 1
   backendEndpoint: http://127.0.0.1:8787/v1/npc/respond
+  sessionBackendEndpoint: http://127.0.0.1:8787/v2/npc/respond
+  sessionResetEndpoint: http://127.0.0.1:8787/v2/npc/sessions/reset
   backendTimeoutSeconds: 35
 --- !u!114 &683087300
 MonoBehaviour:
@@ -567,6 +569,7 @@ MonoBehaviour:
   gestureText: {fileID: 157260603}
   statusText: {fileID: 1748610259}
   sendButton: {fileID: 1238169007}
+  resetButton: {fileID: 0}
   emotionRenderer: {fileID: 683087302}
   gestureTarget: {fileID: 683087301}
 --- !u!4 &683087301

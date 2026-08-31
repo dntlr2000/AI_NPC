@@ -313,6 +313,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: AiCharacterKit.Unity::AiCharacterKit.Unity.NpcConversationBehaviour
   characterProfile: {fileID: 11400000, guid: 5dc4dfa14b069a749847c502e94c5b86, type: 2}
   presentationDriverSource: {fileID: 65127984}
+  conversationMode: 0
+  backendEndpoint: http://127.0.0.1:8787/v1/npc/respond
+  sessionBackendEndpoint: http://127.0.0.1:8787/v2/npc/respond
+  sessionResetEndpoint: http://127.0.0.1:8787/v2/npc/sessions/reset
+  backendTimeoutSeconds: 35
 --- !u!114 &65127984
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -330,6 +335,7 @@ MonoBehaviour:
   gestureText: {fileID: 1539014864}
   statusText: {fileID: 212113724}
   sendButton: {fileID: 1548647842}
+  resetButton: {fileID: 0}
   emotionRenderer: {fileID: 65127986}
   gestureTarget: {fileID: 65127985}
 --- !u!4 &65127985
@@ -1827,6 +1833,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: AiCharacterKit.Unity::AiCharacterKit.Unity.NpcConversationBehaviour
   characterProfile: {fileID: 11400000, guid: 5f36c70b1cc743c4f9dd742c41bbec91, type: 2}
   presentationDriverSource: {fileID: 693389845}
+  conversationMode: 0
+  backendEndpoint: http://127.0.0.1:8787/v1/npc/respond
+  sessionBackendEndpoint: http://127.0.0.1:8787/v2/npc/respond
+  sessionResetEndpoint: http://127.0.0.1:8787/v2/npc/sessions/reset
+  backendTimeoutSeconds: 35
 --- !u!114 &693389845
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1844,6 +1855,7 @@ MonoBehaviour:
   gestureText: {fileID: 727812740}
   statusText: {fileID: 554730522}
   sendButton: {fileID: 822760528}
+  resetButton: {fileID: 0}
   emotionRenderer: {fileID: 693389847}
   gestureTarget: {fileID: 693389846}
 --- !u!4 &693389846

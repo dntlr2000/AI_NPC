@@ -3,7 +3,7 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.InputSystem.UI;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace AiCharacterKit.Core.Tests
@@ -13,14 +13,14 @@ namespace AiCharacterKit.Core.Tests
     /// </summary>
     public sealed class PrototypeSceneConfigurationTests
     {
-        private const string ProfilePath =
-            "Assets/AiCharacterKit/Samples/MockNpc/Profiles/PrototypeCharacter.asset";
+        private static string ProfilePath => AiCharacterKitTestPaths.Resolve(
+            "Samples/MockNpc/Profiles/PrototypeCharacter.asset");
 
-        private const string ScenePath =
-            "Assets/AiCharacterKit/Samples/MockNpc/Scenes/MockNpcPrototype.unity";
+        private static string ScenePath => AiCharacterKitTestPaths.Resolve(
+            "Samples/MockNpc/Scenes/MockNpcPrototype.unity");
 
         /// <summary>
-        /// Reloads the generated scene and checks its NPC, UI, profile, and Input System references.
+        /// Reloads the generated scene and checks its NPC, UI, profile, and active input backend.
         /// </summary>
         [Test]
         public void PrototypeScene_AfterReload_HasRequiredConfiguration()
@@ -60,7 +60,7 @@ namespace AiCharacterKit.Core.Tests
             var eventSystemObject = GameObject.Find("EventSystem");
             Assert.That(eventSystemObject, Is.Not.Null);
             Assert.That(
-                eventSystemObject.GetComponent<InputSystemUIInputModule>(),
+                eventSystemObject.GetComponent<BaseInputModule>(),
                 Is.Not.Null);
         }
 

@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using AiCharacterKit.Core;
 using AiCharacterKit.Unity;
 using AiCharacterKit.Unity.Speech;
@@ -8,9 +7,6 @@ using UnityEditor;
 using UnityEditor.Events;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.InputSystem;
-using UnityEngine.InputSystem.UI;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -21,38 +17,39 @@ namespace AiCharacterKit.Editor
     /// </summary>
     public static class PrototypeSceneBuilder
     {
-        private const string RootFolder = "Assets/AiCharacterKit";
-        private const string SamplesFolder = RootFolder + "/Samples";
-        private const string MockNpcFolder = SamplesFolder + "/MockNpc";
-        private const string ProfilesFolder = MockNpcFolder + "/Profiles";
-        private const string ScenesFolder = MockNpcFolder + "/Scenes";
-        private const string BackendNpcFolder = SamplesFolder + "/BackendNpc";
-        private const string BackendScenesFolder = BackendNpcFolder + "/Scenes";
-        private const string MemoryNpcFolder = SamplesFolder + "/MemoryNpc";
-        private const string MemoryScenesFolder = MemoryNpcFolder + "/Scenes";
-        private const string SpeechNpcFolder = SamplesFolder + "/SpeechNpc";
-        private const string SpeechProfilesFolder = SpeechNpcFolder + "/Profiles";
-        private const string SpeechScenesFolder = SpeechNpcFolder + "/Scenes";
-        private const string VoiceInputNpcFolder = SamplesFolder + "/VoiceInputNpc";
-        private const string VoiceInputScenesFolder =
+        private static string RootFolder => AiCharacterKitAssetPaths.RootFolder;
+        private static string SamplesFolder => RootFolder + "/Samples";
+        private static string MockNpcFolder => SamplesFolder + "/MockNpc";
+        private static string ProfilesFolder => MockNpcFolder + "/Profiles";
+        private static string ScenesFolder => MockNpcFolder + "/Scenes";
+        private static string BackendNpcFolder => SamplesFolder + "/BackendNpc";
+        private static string BackendScenesFolder => BackendNpcFolder + "/Scenes";
+        private static string MemoryNpcFolder => SamplesFolder + "/MemoryNpc";
+        private static string MemoryScenesFolder => MemoryNpcFolder + "/Scenes";
+        private static string SpeechNpcFolder => SamplesFolder + "/SpeechNpc";
+        private static string SpeechProfilesFolder => SpeechNpcFolder + "/Profiles";
+        private static string SpeechScenesFolder => SpeechNpcFolder + "/Scenes";
+        private static string VoiceInputNpcFolder => SamplesFolder + "/VoiceInputNpc";
+        private static string VoiceInputScenesFolder =>
             VoiceInputNpcFolder + "/Scenes";
-        private const string ProfilePath = ProfilesFolder + "/PrototypeCharacter.asset";
-        private const string ScenePath = ScenesFolder + "/MockNpcPrototype.unity";
-        private const string LunaProfilePath = ProfilesFolder + "/Luna.asset";
-        private const string GuardProfilePath = ProfilesFolder + "/Guard.asset";
-        private const string MultiCharacterScenePath =
+        private static string ProfilePath =>
+            ProfilesFolder + "/PrototypeCharacter.asset";
+        private static string ScenePath => ScenesFolder + "/MockNpcPrototype.unity";
+        private static string LunaProfilePath => ProfilesFolder + "/Luna.asset";
+        private static string GuardProfilePath => ProfilesFolder + "/Guard.asset";
+        private static string MultiCharacterScenePath =>
             ScenesFolder + "/MultiCharacterMock.unity";
-        private const string BackendScenePath =
+        private static string BackendScenePath =>
             BackendScenesFolder + "/BackendNpcPrototype.unity";
-        private const string MemoryScenePath =
+        private static string MemoryScenePath =>
             MemoryScenesFolder + "/MemoryNpcPrototype.unity";
-        private const string SpeechScenePath =
+        private static string SpeechScenePath =>
             SpeechScenesFolder + "/SpeechNpcPrototype.unity";
-        private const string VoiceInputScenePath =
+        private static string VoiceInputScenePath =>
             VoiceInputScenesFolder + "/VoiceInputNpcPrototype.unity";
-        private const string WarmVoiceProfilePath =
+        private static string WarmVoiceProfilePath =>
             SpeechProfilesFolder + "/WarmFriendlyVoice.asset";
-        private const string CalmVoiceProfilePath =
+        private static string CalmVoiceProfilePath =>
             SpeechProfilesFolder + "/CalmFormalVoice.asset";
         private const string DefaultBackendEndpoint =
             "http://127.0.0.1:8787/v1/npc/respond";
@@ -65,10 +62,22 @@ namespace AiCharacterKit.Editor
         private const string DefaultTranscriptionEndpoint =
             "http://127.0.0.1:8787/v1/speech/transcribe";
         private const int DefaultBackendTimeoutSeconds = 35;
-        private const string InputActionsPath = "Assets/InputSystem_Actions.inputactions";
         private const float SinglePanelWidth = 560f;
         private const float MultiPanelWidth = 440f;
         private const float VoicePanelWidth = 600f;
+
+        /// <summary>
+        /// Creates or repairs every shipped sample scene in one non-interactive validation pass.
+        /// </summary>
+        public static void RepairAllSampleScenesBatch()
+        {
+            CreatePrototypeSceneBatch();
+            CreateMultiCharacterSceneBatch();
+            CreateBackendSceneBatch();
+            CreateMemorySceneBatch();
+            CreateSpeechSceneBatch();
+            CreateVoiceInputSceneBatch();
+        }
 
         /// <summary>
         /// Creates the prototype from the Unity menu after protecting unsaved user scenes.
@@ -353,7 +362,7 @@ namespace AiCharacterKit.Editor
                 NpcConversationMode.Mock,
                 DefaultBackendEndpoint,
                 DefaultBackendTimeoutSeconds);
-            CreateInputSystemEventSystem();
+            EnsureCompatibleEventSystem();
 
             SaveGeneratedScene(
                 scene,
@@ -397,7 +406,7 @@ namespace AiCharacterKit.Editor
                 NpcConversationMode.Mock,
                 DefaultBackendEndpoint,
                 DefaultBackendTimeoutSeconds);
-            CreateInputSystemEventSystem();
+            EnsureCompatibleEventSystem();
 
             SaveGeneratedScene(
                 scene,
@@ -428,7 +437,7 @@ namespace AiCharacterKit.Editor
                 NpcConversationMode.Backend,
                 DefaultBackendEndpoint,
                 DefaultBackendTimeoutSeconds);
-            CreateInputSystemEventSystem();
+            EnsureCompatibleEventSystem();
 
             SaveGeneratedScene(
                 scene,
@@ -473,7 +482,7 @@ namespace AiCharacterKit.Editor
                 DefaultBackendEndpoint,
                 DefaultBackendTimeoutSeconds,
                 true);
-            CreateInputSystemEventSystem();
+            EnsureCompatibleEventSystem();
 
             SaveGeneratedScene(
                 scene,
@@ -519,7 +528,7 @@ namespace AiCharacterKit.Editor
                 new Vector3(1.7f, 0f, 0f),
                 "Guard",
                 false);
-            CreateInputSystemEventSystem();
+            EnsureCompatibleEventSystem();
 
             SaveGeneratedScene(
                 scene,
@@ -547,7 +556,7 @@ namespace AiCharacterKit.Editor
             ConfigureDefaultSceneObjects();
             CreateGround();
             CreateConfiguredVoiceInputNpc(characterProfile, voiceProfile);
-            CreateInputSystemEventSystem();
+            EnsureCompatibleEventSystem();
 
             SaveGeneratedScene(
                 scene,
@@ -782,6 +791,7 @@ namespace AiCharacterKit.Editor
         private static void RepairPrototypeScene()
         {
             var scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+            EnsureCompatibleEventSystem();
             var profile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(ProfilePath);
             if (profile == null)
             {
@@ -811,6 +821,7 @@ namespace AiCharacterKit.Editor
             var scene = EditorSceneManager.OpenScene(
                 MultiCharacterScenePath,
                 OpenSceneMode.Single);
+            EnsureCompatibleEventSystem();
             var lunaProfile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(
                 LunaProfilePath);
             var guardProfile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(
@@ -853,6 +864,7 @@ namespace AiCharacterKit.Editor
             var scene = EditorSceneManager.OpenScene(
                 BackendScenePath,
                 OpenSceneMode.Single);
+            EnsureCompatibleEventSystem();
             var profile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(LunaProfilePath);
             if (profile == null)
             {
@@ -882,6 +894,7 @@ namespace AiCharacterKit.Editor
             var scene = EditorSceneManager.OpenScene(
                 MemoryScenePath,
                 OpenSceneMode.Single);
+            EnsureCompatibleEventSystem();
             var lunaProfile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(
                 LunaProfilePath);
             var guardProfile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(
@@ -925,6 +938,7 @@ namespace AiCharacterKit.Editor
             var scene = EditorSceneManager.OpenScene(
                 SpeechScenePath,
                 OpenSceneMode.Single);
+            EnsureCompatibleEventSystem();
             var lunaProfile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(
                 LunaProfilePath);
             var guardProfile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(
@@ -960,6 +974,7 @@ namespace AiCharacterKit.Editor
             var scene = EditorSceneManager.OpenScene(
                 VoiceInputScenePath,
                 OpenSceneMode.Single);
+            EnsureCompatibleEventSystem();
             var characterProfile = AssetDatabase.LoadAssetAtPath<CharacterProfile>(
                 LunaProfilePath);
             var voiceProfile = AssetDatabase.LoadAssetAtPath<NpcVoiceProfile>(
@@ -2269,95 +2284,11 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
-        /// Creates a new Input System EventSystem and connects persistent UI action references.
+        /// Creates or repairs the sample EventSystem for the project's active input backend.
         /// </summary>
-        private static void CreateInputSystemEventSystem()
+        private static void EnsureCompatibleEventSystem()
         {
-            var eventSystemObject = new GameObject("EventSystem");
-            eventSystemObject.SetActive(false);
-            eventSystemObject.AddComponent<EventSystem>();
-            var inputModule = eventSystemObject.AddComponent<InputSystemUIInputModule>();
-
-            if (!TryConfigureProjectInputActions(inputModule))
-            {
-                inputModule.AssignDefaultActions();
-                Debug.LogWarning(
-                    "Project UI action references were unavailable; the prototype will use Input System defaults.");
-            }
-
-            eventSystemObject.SetActive(true);
-        }
-
-        /// <summary>
-        /// Loads persistent InputActionReference sub-assets from the project's existing action asset.
-        /// </summary>
-        private static bool TryConfigureProjectInputActions(
-            InputSystemUIInputModule inputModule)
-        {
-            var actionsAsset = AssetDatabase.LoadAssetAtPath<InputActionAsset>(
-                InputActionsPath);
-            if (actionsAsset == null)
-            {
-                return false;
-            }
-
-            var references = new Dictionary<string, InputActionReference>(
-                StringComparer.Ordinal);
-            foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(InputActionsPath))
-            {
-                if (asset is InputActionReference reference
-                    && reference.action != null
-                    && reference.action.actionMap != null
-                    && reference.action.actionMap.name == "UI")
-                {
-                    references[reference.action.name] = reference;
-                }
-            }
-
-            if (!TryGetReference(references, "Navigate", out var move)
-                || !TryGetReference(references, "Submit", out var submit)
-                || !TryGetReference(references, "Cancel", out var cancel)
-                || !TryGetReference(references, "Point", out var point)
-                || !TryGetReference(references, "Click", out var leftClick)
-                || !TryGetReference(references, "RightClick", out var rightClick)
-                || !TryGetReference(references, "MiddleClick", out var middleClick)
-                || !TryGetReference(references, "ScrollWheel", out var scrollWheel)
-                || !TryGetReference(
-                    references,
-                    "TrackedDevicePosition",
-                    out var trackedPosition)
-                || !TryGetReference(
-                    references,
-                    "TrackedDeviceOrientation",
-                    out var trackedOrientation))
-            {
-                return false;
-            }
-
-            inputModule.actionsAsset = actionsAsset;
-            inputModule.move = move;
-            inputModule.submit = submit;
-            inputModule.cancel = cancel;
-            inputModule.point = point;
-            inputModule.leftClick = leftClick;
-            inputModule.rightClick = rightClick;
-            inputModule.middleClick = middleClick;
-            inputModule.scrollWheel = scrollWheel;
-            inputModule.trackedDevicePosition = trackedPosition;
-            inputModule.trackedDeviceOrientation = trackedOrientation;
-            return true;
-        }
-
-        /// <summary>
-        /// Retrieves one named action reference without relying on exceptions.
-        /// </summary>
-        private static bool TryGetReference(
-            IReadOnlyDictionary<string, InputActionReference> references,
-            string actionName,
-            out InputActionReference reference)
-        {
-            return references.TryGetValue(actionName, out reference)
-                && reference != null;
+            UiEventSystemFactory.EnsureCompatibleEventSystem();
         }
 
         /// <summary>

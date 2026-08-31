@@ -3,7 +3,7 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.InputSystem.UI;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace AiCharacterKit.Core.Tests
@@ -13,11 +13,11 @@ namespace AiCharacterKit.Core.Tests
     /// </summary>
     public sealed class BackendSceneConfigurationTests
     {
-        private const string ProfilePath =
-            "Assets/AiCharacterKit/Samples/MockNpc/Profiles/Luna.asset";
+        private static string ProfilePath => AiCharacterKitTestPaths.Resolve(
+            "Samples/MockNpc/Profiles/Luna.asset");
 
-        private const string ScenePath =
-            "Assets/AiCharacterKit/Samples/BackendNpc/Scenes/BackendNpcPrototype.unity";
+        private static string ScenePath => AiCharacterKitTestPaths.Resolve(
+            "Samples/BackendNpc/Scenes/BackendNpcPrototype.unity");
 
         /// <summary>
         /// Reloads the backend scene and checks its mode, endpoint, profile, UI, and input wiring.
@@ -68,7 +68,7 @@ namespace AiCharacterKit.Core.Tests
             var eventSystemObject = GameObject.Find("EventSystem");
             Assert.That(eventSystemObject, Is.Not.Null);
             Assert.That(
-                eventSystemObject.GetComponent<InputSystemUIInputModule>(),
+                eventSystemObject.GetComponent<BaseInputModule>(),
                 Is.Not.Null);
         }
 
