@@ -8,6 +8,22 @@
 
 URP and the Input System are not required. Audio, JSON serialization, and UnityWebRequest are declared Unity module dependencies.
 
+## Tagged Git installation
+
+In Package Manager, select **Install package from git URL** and enter:
+
+```text
+https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.2.0
+```
+
+The equivalent consumer manifest entry is:
+
+```json
+"com.aicharacterkit.framework": "https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.2.0"
+```
+
+Keep the `path` query before the `#v0.2.0` revision. Pin a release tag instead of the default branch so the consumer lock file resolves an immutable source revision.
+
 ## Local installation
 
 Use Package Manager's **Install package from disk** action and select `Packages/com.aicharacterkit.framework/package.json`, or add a file dependency to the consumer's `Packages/manifest.json`:
@@ -24,9 +40,9 @@ Import **AI NPC Prototypes** from the Package Manager Samples tab. Imported samp
 
 ## Upgrade and removal
 
-Close Unity before replacing a local package folder. Preserve user-owned profiles, presentation drivers, and imported samples under `Assets`; package removal does not own those assets. Import the new version's sample after an upgrade. If older versioned sample folders coexist, Editor automation selects the currently installed package version; archive or remove older consumer-owned copies only when they are no longer needed. Let Unity recompile, repair the sample scenes, and run project tests before committing the lock file.
+For a Git installation, change only the URL revision to the desired immutable release tag. Close Unity before replacing a local package folder. Preserve user-owned profiles, presentation drivers, and imported samples under `Assets`; package removal does not own those assets. Import the new version's sample after an upgrade. If older versioned sample folders coexist, Editor automation selects the currently installed package version; archive or remove older consumer-owned copies only when they are no longer needed. Let Unity recompile, repair the sample scenes, and run project tests before committing the lock file.
 
-The reference Node backend is a separate repository component. Removing the package does not remove or modify server files.
+The reference Node backend is source in the same repository but is not part of the UPM package or an npm release. Check out the matching repository tag and follow `server/README.md` when optional Backend modes are required. Removing the Unity package does not remove or modify server files.
 
 ## Package tests
 

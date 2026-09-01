@@ -4,13 +4,27 @@ Phase 9부터 정식 재사용 경계는 raw `Assets` 복사가 아니라 UPM pa
 
 ## 설치
 
-Unity Package Manager에서 **+ > Install package from disk**를 선택하고 다음 파일을 지정한다.
+공개 version은 Unity Package Manager에서 **+ > Install package from git URL**을 선택하고 tag가 고정된 다음 URL을 입력한다.
+
+```text
+https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.2.0
+```
+
+또는 consumer의 `Packages/manifest.json`에 같은 Git dependency를 추가한다.
+
+```json
+"com.aicharacterkit.framework": "https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.2.0"
+```
+
+저장소의 package 하위 경로를 지정하는 `?path=`가 revision `#v0.2.0`보다 앞에 와야 한다. 기본 branch 대신 불변 release tag를 고정하고, upgrade할 때만 새 tag로 바꾼다.
+
+로컬 개발에서는 **Install package from disk**를 선택하고 다음 파일을 지정한다.
 
 ```text
 <AI_NPC 저장소>/Packages/com.aicharacterkit.framework/package.json
 ```
 
-또는 consumer의 `Packages/manifest.json`에 local file dependency를 추가한다.
+또는 local file dependency를 추가한다.
 
 ```json
 "com.aicharacterkit.framework": "file:E:/path/to/AI_NPC/Packages/com.aicharacterkit.framework"
@@ -41,7 +55,7 @@ Builder는 모델, UI, presentation 구현이나 prefab을 생성하지 않는�
 
 ## Backend와 선택형 음성
 
-V1/V2 대화, TTS와 STT는 compatible loopback backend가 필요하다. 이 저장소의 `server/`는 reference implementation이지만 UPM package에 포함되지 않는다. API key와 provider SDK는 server process에만 두며 Unity asset이나 source에 저장하지 않는다.
+V1/V2 대화, TTS와 STT는 compatible loopback backend가 필요하다. 이 저장소의 `server/`는 같은 Git tag에 포함되는 reference source지만 UPM package나 npm package로 배포되지 않는다. 필요한 사용자는 matching tag를 별도로 checkout하고 `server/README.md`에 따라 실행한다. API key와 provider SDK는 server process에만 두며 Unity asset이나 source에 저장하지 않는다.
 
 ## 제거와 업그레이드
 

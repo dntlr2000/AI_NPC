@@ -1,13 +1,13 @@
 # AI NPC Framework 진행 점검 및 로드맵
 
-> 기준일: 2026-09-01
+> 기준일: 2026-09-02
 > 비교 기준: ChatGPT 대화 **“Unity Ai NPC 만들기”**의 초기 구상과 이후 합의된 Phase 1~10 범위
 
 ## 결론
 
 저장소는 수정된 로드맵의 순서와 제약을 따르고 있다. **Phase 1~10의 구현과 검증이 완료됐다.** Phase 8은 별도 Built-in/Legacy 프로젝트에서 실제 재사용을 확인했고, Phase 9는 동일 소스를 UPM package로 옮겼다. Phase 10은 기존 Runtime 계약 위에서 consumer profile과 Scene/Prefab 연결을 단순화했으며 자동 회귀와 consumer 수동 Builder/Mock/Prefab/TTS 검증을 모두 통과했다.
 
-Phase 8 체크포인트는 `707123b`, Phase 9 체크포인트는 `cd5825b`, Phase 10 구현 기준선은 `071fbc3`다. Phase 10 범위와 검증 결과는 [`PHASE10_PLAN.md`](PHASE10_PLAN.md), UPM 설치·sample·migration 절차는 [`REUSE_GUIDE.md`](REUSE_GUIDE.md)를 따른다. 기존 대화·Speech·Transcription wire 계약은 변경 없이 유효하다.
+Phase 8 체크포인트는 `707123b`, Phase 9 체크포인트는 `cd5825b`, Phase 10 완료 커밋은 `4dc478f`다. Package `0.2.0`은 MIT 공개 GitHub release 후보로 준비 중이며, tag push와 GitHub Release 발행은 별도 최종 승인 전까지 수행하지 않는다. Phase 10 범위와 검증 결과는 [`PHASE10_PLAN.md`](PHASE10_PLAN.md), UPM 설치·sample·migration 절차는 [`REUSE_GUIDE.md`](REUSE_GUIDE.md), release 결정과 검증은 [`RELEASE_0.2.0.md`](RELEASE_0.2.0.md)를 따른다. 기존 대화·Speech·Transcription wire 계약은 변경 없이 유효하다.
 
 ## 우리가 만드는 것
 
@@ -62,7 +62,7 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - 주요 설치 패키지: URP `17.5.0`, Input System `1.19.0`, uGUI `2.5.0`, Test Framework `1.7.0`
 - 구현 위치: `Packages/com.aicharacterkit.framework/` (`0.2.0` local embedded UPM)
 - 샘플: `Samples~/AI NPC Prototypes`의 Mock, MultiCharacter, Backend, Memory, Speech, VoiceInput scene
-- Git 기준선: `071fbc3` (Phase 10 구현 시작점; Phase 9 package 체크포인트 `cd5825b`)
+- Git 기준선: `4dc478f` (Phase 10 완료; Phase 9 package 체크포인트 `cd5825b`)
 - Backend: Node.js 24 + TypeScript + Fastify + OpenAI SDK, 대화 V1/V2와 선택형 Speech/Transcription V1, loopback 전용
 - 제외 범위: 영구·장기·Vector 기억, Realtime, VAD, 자동 전송, 원격 배포, client auth, streaming
 
@@ -199,6 +199,14 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - profile 작성, Mock 미리보기와 기존 Scene/Prefab·presentation·선택형 View/TTS 연결을 Editor UI로 제공한다.
 - 모델·UI·presentation 구현을 생성하지 않고 Runtime API와 캐릭터 스키마를 변경하지 않는다.
 
+### Package 0.2.0 — 공개 Git 릴리즈
+
+- **상태: 릴리즈 후보 준비 및 검증 중 — 공개 승인 전**
+- 상세 checklist와 release notes 초안: [`RELEASE_0.2.0.md`](RELEASE_0.2.0.md)
+- 저장소와 package를 MIT로 배포하고 `v0.2.0` tag의 Git subfolder URL로 설치한다.
+- Backend는 같은 tag의 reference source로만 유지하며 UPM/npm package로 만들지 않는다.
+- Registry publishing과 remote Backend deployment는 후속 milestone로 분리한다.
+
 ## 주요 위험과 통제
 
 - `Personality`와 `SpeechStyle`은 요청에 포함되지만 Mock이 자연어 설명을 해석하지는 않는다. Phase 2에서는 필수 데이터로 검증하고 전달하되, 결정적 차이는 `DisplayName`, `ExampleDialogue`, `DefaultEmotion`으로 만들며 실제 의미 해석은 Phase 4에 둔다.
@@ -212,4 +220,4 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 ## 바로 다음 행동
 
-**Package `0.2.0`의 Git tag·배포 방식을 결정하고 다음 마일스톤을 별도로 계획한다.** 후속 구현은 명시적인 범위와 승인을 거쳐 시작하며, Realtime 작업은 독립된 마일스톤으로 다룬다.
+**Package `0.2.0` release candidate를 검증하고 exact commit을 확정한 뒤 사용자의 최종 공개 승인을 받는다.** 승인 전에는 tag push와 GitHub Release 발행을 수행하지 않는다. Registry, Backend packaging과 Realtime은 각각 독립된 후속 milestone로 다룬다.

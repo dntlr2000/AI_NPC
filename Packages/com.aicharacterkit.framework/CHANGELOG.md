@@ -2,11 +2,12 @@
 
 All notable changes to this package are documented here.
 
-## [0.2.0] - 2026-09-01
+## [0.2.0] - 2026-09-02
 
 - Added an Editor-only Character Builder for consumer-owned profile authoring and deterministic Mock previews.
 - Added non-destructive Scene GameObject and regular/variant Prefab composition for existing presentation drivers.
 - Added optional existing uGUI view wiring and provider-neutral TTS profile/component setup.
+- Added MIT licensing, public Git URL installation guidance, and release metadata.
 - Preserved all Runtime APIs, transport contracts, dependencies, and existing sample content from `0.1.0`.
 
 ## [0.1.0] - 2026-09-01

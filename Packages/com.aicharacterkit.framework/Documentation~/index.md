@@ -12,4 +12,4 @@ AI Character Kit separates provider-neutral dialogue, speech, and transcription 
 - [Speech contract V1](SPEECH_CONTRACT_V1.md)
 - [Transcription contract V1](TRANSCRIPTION_CONTRACT_V1.md)
 
-The package supports local disk, embedded, and repository subfolder installation. Registry publishing and remote deployment are outside version `0.2.0`.
+The package supports tagged Git repository subfolder, local disk, and embedded installation. Registry publishing, Backend packaging, and remote deployment are outside version `0.2.0`.

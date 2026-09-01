@@ -4,6 +4,14 @@
   "displayName": "AI Character Kit",
   "description": "Reusable Unity runtime boundaries, adapters, character authoring tools, and samples for structured AI NPC dialogue, short-term sessions, speech, and transcription.",
   "unity": "6000.5",
+  "author": {
+    "name": "dntlr2000",
+    "url": "https://github.com/dntlr2000"
+  },
+  "license": "MIT",
+  "documentationUrl": "https://github.com/dntlr2000/AI_NPC/blob/main/Packages/com.aicharacterkit.framework/Documentation~/index.md",
+  "changelogUrl": "https://github.com/dntlr2000/AI_NPC/blob/main/Packages/com.aicharacterkit.framework/CHANGELOG.md",
+  "licensesUrl": "https://github.com/dntlr2000/AI_NPC/blob/main/Packages/com.aicharacterkit.framework/LICENSE.md",
   "dependencies": {
     "com.unity.ugui": "2.5.0",
     "com.unity.modules.audio": "1.0.0",

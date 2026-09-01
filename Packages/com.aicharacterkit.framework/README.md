@@ -4,7 +4,13 @@ AI Character Kit is a reusable Unity 6 framework for structured NPC dialogue. It
 
 ## Install
 
-For local development, choose **Window > Package Management > Package Manager**, click **+**, select **Install package from disk**, and choose this package's `package.json`. The supported baseline is Unity `6000.5`; uGUI is installed as the only feature package dependency. URP and the Input System are optional.
+For a tagged release, choose **Window > Package Management > Package Manager**, click **+**, select **Install package from git URL**, and enter:
+
+```text
+https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.2.0
+```
+
+For local development, select **Install package from disk** and choose this package's `package.json`. The supported baseline is Unity `6000.5`; uGUI is installed as the only feature package dependency. URP and the Input System are optional.
 
 Import **AI NPC Prototypes** from the package's Samples tab. Then run **Tools > AI Character Kit > Repair All Sample Scenes** so the imported assets match the active Legacy or Input System backend. **Import or Repair AI NPC Prototypes** combines those steps for local UPM installations.
 
@@ -29,6 +35,10 @@ Add `com.aicharacterkit.framework` to the consumer manifest's `testables` array 
 
 ## Backend boundary
 
-The UPM package never contains credentials or calls OpenAI directly. Backend, memory, TTS, and STT modes require a compatible loopback service. The repository's `server/` directory is the reference implementation and remains outside the Unity package.
+The UPM package never contains credentials or calls OpenAI directly. Backend, memory, TTS, and STT modes require a compatible loopback service. The repository's `server/` directory is reference source at the matching repository tag; it remains outside the Unity package and is not published as an npm package in `0.2.0`.
 
 See [Documentation](Documentation~/index.md) for architecture, lifecycle, migration, and contract references.
+
+## License
+
+AI Character Kit is available under the [MIT License](LICENSE.md).

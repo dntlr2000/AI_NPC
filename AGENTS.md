@@ -34,7 +34,9 @@ The Unity project root is the repository root. Do not assume a separate `unity/`
 
 ## Current milestone
 
-Phase 9 is complete on `main` at checkpoint `cd5825b`. Phase 10 Character Builder is complete from baseline `071fbc3`; automatic validation and consumer manual Builder/Mock/Prefab/TTS validation have passed. The local UPM package is `com.aicharacterkit.framework` version `0.2.0`, with unchanged public runtime contracts.
+Phase 9 is complete on `main` at checkpoint `cd5825b`. Phase 10 Character Builder is complete at `4dc478f`; automatic validation and consumer manual Builder/Mock/Prefab/TTS validation have passed. The local UPM package is `com.aicharacterkit.framework` version `0.2.0`, with unchanged public runtime contracts.
+
+Public GitHub release preparation for `v0.2.0` is approved under the MIT License with `dntlr2000` as author and copyright holder. Distribution uses the package subfolder Git URL; `server/` remains unpackaged reference source. Do not create or push the tag, publish a GitHub Release, change repository visibility, or publish to a registry without a separate explicit final approval.
 
 The Phase 10 implementation scope is:
 

@@ -2,6 +2,10 @@
 
 This local server exposes stateless V1, session-aware V2, optional Speech V1, and optional Transcription V1 contracts on loopback. It keeps the OpenAI API key and provider settings outside Unity and Git, and stores Phase 5 history only in process memory.
 
+## Distribution boundary
+
+Release `0.2.0` distributes the Unity framework as the Git-subfolder UPM package at `Packages/com.aicharacterkit.framework`. The `server/` directory is a reference implementation checked in at the same repository tag; it is not published as a UPM or npm package. Consumers that need Backend modes must check out the matching repository tag and run this service separately. Mock mode does not require it.
+
 ## Requirements
 
 - Node.js 24 or newer
