@@ -1,8 +1,8 @@
 {
   "name": "com.aicharacterkit.framework",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "displayName": "AI Character Kit",
-  "description": "Reusable Unity runtime boundaries, adapters, editor automation, and samples for structured AI NPC dialogue, short-term sessions, speech, and transcription.",
+  "description": "Reusable Unity runtime boundaries, adapters, character authoring tools, and samples for structured AI NPC dialogue, short-term sessions, speech, and transcription.",
   "unity": "6000.5",
   "dependencies": {
     "com.unity.ugui": "2.5.0",

@@ -70,7 +70,7 @@ namespace AiCharacterKit.Core.Tests
             Assert.That(
                 contents,
                 Does.Contain("\"name\": \"com.aicharacterkit.framework\""));
-            Assert.That(contents, Does.Contain("\"version\": \"0.1.0\""));
+            Assert.That(contents, Does.Contain("\"version\": \"0.2.0\""));
             Assert.That(
                 contents,
                 Does.Contain("\"path\": \"Samples~/AI NPC Prototypes\""));

@@ -8,6 +8,12 @@ For local development, choose **Window > Package Management > Package Manager**,
 
 Import **AI NPC Prototypes** from the package's Samples tab. Then run **Tools > AI Character Kit > Repair All Sample Scenes** so the imported assets match the active Legacy or Input System backend. **Import or Repair AI NPC Prototypes** combines those steps for local UPM installations.
 
+## Build a character
+
+Open **Tools > AI Character Kit > Character Builder** to create or edit a consumer-owned `CharacterProfile`, preview deterministic Mock output, and connect an existing Scene GameObject or writable Prefab to a consumer `INpcPresentationDriver`. The tool can also connect existing package uGUI views and configure optional TTS with an opaque `NpcVoiceProfile` preset ID.
+
+The builder never generates a game model, UI, presentation implementation, or Prefab. Reapplying updates only the displayed Kit references and settings; it does not remove consumer components or assets. All created profiles remain under a user-selected `Assets/` folder.
+
 ## Start with Mock
 
 1. Create a profile through **Assets > Create > AI Character Kit > Character Profile**.

@@ -20,7 +20,7 @@ Do not keep a raw `Assets/AiCharacterKit` copy and the UPM package installed tog
 
 ## Samples
 
-Import **AI NPC Prototypes** from the Package Manager Samples tab. Imported samples are writable under `Assets/Samples/AI Character Kit/0.1.0/AI NPC Prototypes`. Run **Tools > AI Character Kit > Repair All Sample Scenes** after import or after changing the active input backend.
+Import **AI NPC Prototypes** from the Package Manager Samples tab. Imported samples are writable under `Assets/Samples/AI Character Kit/0.2.0/AI NPC Prototypes`. Run **Tools > AI Character Kit > Repair All Sample Scenes** after import or after changing the active input backend.
 
 ## Upgrade and removal
 

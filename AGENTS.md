@@ -34,15 +34,16 @@ The Unity project root is the repository root. Do not assume a separate `unity/`
 
 ## Current milestone
 
-Phase 9 is complete on `main` at checkpoint `cd5825b` after embedded-package, Built-in/Legacy consumer, sample, lifecycle, Play Mode, and player-build validation. The resulting local UPM package is `com.aicharacterkit.framework` version `0.1.0`, with unchanged public runtime contracts. Phase 10 has not yet been planned or approved.
+Phase 9 is complete on `main` at checkpoint `cd5825b`. Phase 10 Character Builder is complete from baseline `071fbc3`; automatic validation and consumer manual Builder/Mock/Prefab/TTS validation have passed. The local UPM package is `com.aicharacterkit.framework` version `0.2.0`, with unchanged public runtime contracts.
 
-The Phase 9 implementation scope is:
+The Phase 10 implementation scope is:
 
-- Runtime, Editor, package tests, one consolidated `Samples~` entry, documentation, and semantic package metadata
-- Package-aware installation paths and writable imported/generated sample paths under `Assets`
-- Local disk/embedded install, removal, reinstall, upgrade, raw-to-UPM migration, and sample import checks
-- A separate Built-in Render Pipeline/Legacy Input consumer under `E:\CodexValidation`
-- Regression checks for existing Mock, dialogue, memory, TTS, and STT boundaries
+- Editor-only CharacterProfile and opaque NpcVoiceProfile authoring
+- Deterministic network-free Mock preview
+- Non-destructive loaded Scene and regular/variant Prefab composition
+- Existing consumer presentation driver and optional package uGUI View wiring
+- Optional TTS composition with a dedicated AudioSource
+- `0.1.0` to `0.2.0` package upgrade and Built-in/Legacy consumer validation
 
 Until the next milestone is approved, do not add:
 
@@ -53,7 +54,7 @@ Until the next milestone is approved, do not add:
 - Vector databases
 - Remote deployment, client authentication, automatic retries, or streaming
 - Changes that replace the existing Mock Play Mode path
-- Character Builder or package registry publishing until Phase 10 is explicitly planned and approved
+- Package registry publishing until a separate release milestone is explicitly planned and approved
 
 ## Architecture rules
 
