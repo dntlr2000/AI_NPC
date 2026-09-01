@@ -11,18 +11,18 @@ using UnityEngine.SceneManagement;
 namespace AiCharacterKit.Core.Tests
 {
     /// <summary>
-    /// Guards the movable install root and optional package boundaries proven in Phase 8.
+    /// Guards the movable install root and UPM boundaries proven in Phases 8 and 9.
     /// </summary>
     public sealed class PortabilityBoundaryTests
     {
         private static readonly string[] SampleScenePaths =
         {
-            "Samples/MockNpc/Scenes/MockNpcPrototype.unity",
-            "Samples/MockNpc/Scenes/MultiCharacterMock.unity",
-            "Samples/BackendNpc/Scenes/BackendNpcPrototype.unity",
-            "Samples/MemoryNpc/Scenes/MemoryNpcPrototype.unity",
-            "Samples/SpeechNpc/Scenes/SpeechNpcPrototype.unity",
-            "Samples/VoiceInputNpc/Scenes/VoiceInputNpcPrototype.unity"
+            "MockNpc/Scenes/MockNpcPrototype.unity",
+            "MockNpc/Scenes/MultiCharacterMock.unity",
+            "BackendNpc/Scenes/BackendNpcPrototype.unity",
+            "MemoryNpc/Scenes/MemoryNpcPrototype.unity",
+            "SpeechNpc/Scenes/SpeechNpcPrototype.unity",
+            "VoiceInputNpc/Scenes/VoiceInputNpcPrototype.unity"
         };
 
         /// <summary>
@@ -34,7 +34,14 @@ namespace AiCharacterKit.Core.Tests
             var markerPath = AiCharacterKitAssetPaths.Resolve(
                 "Runtime/Core/AiCharacterKit.Core.asmdef");
 
-            Assert.That(AiCharacterKitAssetPaths.RootFolder, Does.StartWith("Assets/"));
+            Assert.That(
+                AiCharacterKitAssetPaths.RootFolder.StartsWith(
+                    "Assets/",
+                    StringComparison.Ordinal)
+                || AiCharacterKitAssetPaths.RootFolder.StartsWith(
+                    "Packages/",
+                    StringComparison.Ordinal),
+                Is.True);
             Assert.That(AssetDatabase.LoadMainAssetAtPath(markerPath), Is.Not.Null);
         }
 
@@ -49,6 +56,40 @@ namespace AiCharacterKit.Core.Tests
         }
 
         /// <summary>
+        /// Confirms the resolved installation exposes the expected package identity and version.
+        /// </summary>
+        [Test]
+        public void PackageMetadata_AtResolvedRoot_DeclaresVersionedSample()
+        {
+            var manifestPath = AiCharacterKitAssetPaths.Resolve("package.json");
+            var contents = File.ReadAllText(manifestPath);
+
+            Assert.That(
+                AiCharacterKitAssetPaths.RootFolder,
+                Does.StartWith("Packages/"));
+            Assert.That(
+                contents,
+                Does.Contain("\"name\": \"com.aicharacterkit.framework\""));
+            Assert.That(contents, Does.Contain("\"version\": \"0.1.0\""));
+            Assert.That(
+                contents,
+                Does.Contain("\"path\": \"Samples~/AI NPC Prototypes\""));
+        }
+
+        /// <summary>
+        /// Confirms sample output always resolves to a writable Assets location.
+        /// </summary>
+        [Test]
+        public void SamplePaths_ResolveWritableAssetsLocation()
+        {
+            Assert.That(
+                AiCharacterKitSamplePaths.RootFolder,
+                Does.StartWith("Assets/"));
+            Assert.Throws<ArgumentException>(
+                () => AiCharacterKitSamplePaths.Resolve("../Outside.asset"));
+        }
+
+        /// <summary>
         /// Confirms editor and test assemblies do not make the optional Input System mandatory.
         /// </summary>
         [Test]
@@ -57,7 +98,7 @@ namespace AiCharacterKit.Core.Tests
             AssertAssemblyDoesNotReferenceInputSystem(
                 "Editor/AiCharacterKit.Editor.asmdef");
             AssertAssemblyDoesNotReferenceInputSystem(
-                "Tests/EditMode/AiCharacterKit.Core.Tests.EditMode.asmdef");
+                "Tests/Editor/AiCharacterKit.Core.Tests.EditMode.asmdef");
         }
 
         /// <summary>
@@ -102,7 +143,7 @@ namespace AiCharacterKit.Core.Tests
         {
             foreach (var relativePath in SampleScenePaths)
             {
-                var scenePath = AiCharacterKitAssetPaths.Resolve(relativePath);
+                var scenePath = AiCharacterKitSamplePaths.Resolve(relativePath);
                 EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
                 var eventSystem = UnityEngine.Object.FindAnyObjectByType<EventSystem>();
 

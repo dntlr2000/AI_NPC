@@ -13,11 +13,11 @@ namespace AiCharacterKit.Core.Tests
     /// </summary>
     public sealed class PrototypeSceneConfigurationTests
     {
-        private static string ProfilePath => AiCharacterKitTestPaths.Resolve(
-            "Samples/MockNpc/Profiles/PrototypeCharacter.asset");
+        private static string ProfilePath => AiCharacterKitTestPaths.ResolveSample(
+            "MockNpc/Profiles/PrototypeCharacter.asset");
 
-        private static string ScenePath => AiCharacterKitTestPaths.Resolve(
-            "Samples/MockNpc/Scenes/MockNpcPrototype.unity");
+        private static string ScenePath => AiCharacterKitTestPaths.ResolveSample(
+            "MockNpc/Scenes/MockNpcPrototype.unity");
 
         /// <summary>
         /// Reloads the generated scene and checks its NPC, UI, profile, and active input backend.

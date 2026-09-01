@@ -8,7 +8,7 @@ import {
 } from "../src/contracts/v1.js";
 
 const fixturesRoot = new URL(
-  "../../Assets/AiCharacterKit/Tests/EditMode/Fixtures/Transport/V1/",
+  "../../Packages/com.aicharacterkit.framework/Tests/Editor/Fixtures/Transport/V1/",
   import.meta.url,
 );
 

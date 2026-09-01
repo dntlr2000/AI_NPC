@@ -17,10 +17,11 @@ The framework will eventually support:
 
 ## Repository layout
 
-- `Assets/`: Unity source code, scenes, prefabs, ScriptableObjects, and other game assets
-- `Packages/`: Unity package manifest and dependency lock file
+- `Assets/`: consumer-owned Unity assets and imported/generated package samples; framework source does not live here after Phase 9
+- `Packages/com.aicharacterkit.framework/`: AI Character Kit UPM Runtime, Editor, Tests, Samples~, Documentation~, and package metadata
+- `Packages/`: Unity project manifest and dependency lock file in addition to the embedded kit package
 - `ProjectSettings/`: project-wide Unity editor and runtime settings
-- `docs/`: requirements, architecture, plans, and decisions; see `docs/ROADMAP.md`, `docs/PHASE8_PLAN.md`, `docs/REUSE_GUIDE.md`, `docs/CONTRACT_V2.md`, `docs/SPEECH_CONTRACT_V1.md`, and `docs/TRANSCRIPTION_CONTRACT_V1.md`
+- `docs/`: requirements, architecture, plans, and decisions; see `docs/ROADMAP.md`, `docs/PHASE9_PLAN.md`, `docs/REUSE_GUIDE.md`, and the versioned contract documents
 - `server/`: Node.js 24, TypeScript, Fastify, and OpenAI SDK local backend for conversation and optional speech paths
 
 The Unity project root is the repository root. Do not assume a separate `unity/` directory.
@@ -33,15 +34,15 @@ The Unity project root is the repository root. Do not assume a separate `unity/`
 
 ## Current milestone
 
-Phase 7 is complete on `main` at `ea4187b`. Phase 8 is complete in the current worktree after automated validation and a separate Built-in/Legacy consumer Play Mode check. Its checkpoint commit is pending. Phase 8 proves that the kit compiles and runs from a different Assets path without requiring URP or the Input System package.
+Phase 8 is complete on `main` at `707123b`. Phase 9 is complete in the current worktree after embedded-package, Built-in/Legacy consumer, sample, lifecycle, Play Mode, and player-build validation; its checkpoint commit is pending. The resulting local UPM package is `com.aicharacterkit.framework` version `0.1.0`, with unchanged public runtime contracts.
 
-The Phase 8 implementation scope is:
+The Phase 9 implementation scope is:
 
-- Movable Editor and test asset paths instead of a fixed `Assets/AiCharacterKit` root
-- Optional Input System editor integration with a Legacy Input Manager fallback
-- A separate Built-in Render Pipeline consumer project under `E:\CodexValidation`
-- A consumer-owned `INpcPresentationDriver` and Mock sample proving extension without Core changes
-- Regression checks for existing dialogue, memory, TTS, and STT boundaries
+- Runtime, Editor, package tests, one consolidated `Samples~` entry, documentation, and semantic package metadata
+- Package-aware installation paths and writable imported/generated sample paths under `Assets`
+- Local disk/embedded install, removal, reinstall, upgrade, raw-to-UPM migration, and sample import checks
+- A separate Built-in Render Pipeline/Legacy Input consumer under `E:\CodexValidation`
+- Regression checks for existing Mock, dialogue, memory, TTS, and STT boundaries
 
 Until the next milestone is approved, do not add:
 
@@ -52,7 +53,7 @@ Until the next milestone is approved, do not add:
 - Vector databases
 - Remote deployment, client authentication, automatic retries, or streaming
 - Changes that replace the existing Mock Play Mode path
-- UPM package restructuring until Phase 9 is explicitly planned and approved
+- Character Builder or package registry publishing until Phase 10 is explicitly planned and approved
 
 ## Architecture rules
 

@@ -15,12 +15,12 @@ namespace AiCharacterKit.Core.Tests
     /// </summary>
     public sealed class VoiceInputSceneConfigurationTests
     {
-        private static string ScenePath => AiCharacterKitTestPaths.Resolve(
-            "Samples/VoiceInputNpc/Scenes/VoiceInputNpcPrototype.unity");
-        private static string CharacterProfilePath => AiCharacterKitTestPaths.Resolve(
-            "Samples/MockNpc/Profiles/Luna.asset");
-        private static string VoiceProfilePath => AiCharacterKitTestPaths.Resolve(
-            "Samples/SpeechNpc/Profiles/WarmFriendlyVoice.asset");
+        private static string ScenePath => AiCharacterKitTestPaths.ResolveSample(
+            "VoiceInputNpc/Scenes/VoiceInputNpcPrototype.unity");
+        private static string CharacterProfilePath => AiCharacterKitTestPaths.ResolveSample(
+            "MockNpc/Profiles/Luna.asset");
+        private static string VoiceProfilePath => AiCharacterKitTestPaths.ResolveSample(
+            "SpeechNpc/Profiles/WarmFriendlyVoice.asset");
 
         /// <summary>
         /// Reloads the scene and checks its V2, TTS, microphone, UI, and event wiring.

@@ -13,7 +13,7 @@ namespace AiCharacterKit.Core.Tests
     public sealed class AiNpcJsonCodecTests
     {
         private static string FixtureRoot => AiCharacterKitTestPaths.Resolve(
-            "Tests/EditMode/Fixtures/Transport/V1") + "/";
+            "Tests/Editor/Fixtures/Transport/V1") + "/";
 
         /// <summary>
         /// Confirms that the golden request decodes and maps every character value.

@@ -1,13 +1,13 @@
 # AI NPC Framework 진행 점검 및 로드맵
 
 > 기준일: 2026-09-01
-> 비교 기준: ChatGPT 대화 **“Unity Ai NPC 만들기”**의 초기 구상과 이후 합의된 Phase 1~8 범위
+> 비교 기준: ChatGPT 대화 **“Unity Ai NPC 만들기”**의 초기 구상과 이후 합의된 Phase 1~9 범위
 
 ## 결론
 
-저장소는 수정된 로드맵의 순서와 제약을 따르고 있다. **Phase 1~8의 구현과 검증이 완료됐으며, Phase 8은 별도 Built-in/Legacy 프로젝트에서 실제 입력·Mock 응답·consumer-owned presentation까지 확인했다.** Mock 재사용성, stateless V1, session V2와 선택형 TTS/STT 계약은 그대로 유지된다.
+저장소는 수정된 로드맵의 순서와 제약을 따르고 있다. **Phase 1~9의 구현과 검증이 완료됐다.** Phase 8은 별도 Built-in/Legacy 프로젝트에서 실제 입력·Mock 응답·consumer-owned presentation을 확인했고, Phase 9는 검증된 동일 소스를 설치·제거·업그레이드할 수 있는 UPM package로 옮겼다. Mock 재사용성, stateless V1, session V2와 선택형 TTS/STT 계약은 그대로 유지된다.
 
-Phase 7 체크포인트는 `ea4187b`다. Phase 8 범위와 검증 환경은 [`PHASE8_PLAN.md`](PHASE8_PLAN.md), raw Assets 재사용 절차는 [`REUSE_GUIDE.md`](REUSE_GUIDE.md)를 따른다. 기존 대화·Speech·Transcription wire 계약은 변경 없이 유효하다.
+Phase 8 체크포인트는 `707123b`이며 Phase 9 체크포인트 커밋은 현재 검토 대기 중이다. Phase 9 범위와 검증 결과는 [`PHASE9_PLAN.md`](PHASE9_PLAN.md), UPM 설치·sample·migration 절차는 [`REUSE_GUIDE.md`](REUSE_GUIDE.md)를 따른다. 기존 대화·Speech·Transcription wire 계약은 변경 없이 유효하다.
 
 ## 우리가 만드는 것
 
@@ -60,9 +60,9 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 - Unity: `6000.5.3f1`
 - 주요 설치 패키지: URP `17.5.0`, Input System `1.19.0`, uGUI `2.5.0`, Test Framework `1.7.0`
-- 구현 위치: `Assets/AiCharacterKit/`
-- 샘플: `MockNpcPrototype.unity`, `MultiCharacterMock.unity`, `BackendNpcPrototype.unity`, `MemoryNpcPrototype.unity`, `SpeechNpcPrototype.unity`, `VoiceInputNpcPrototype.unity`
-- Git 기준선: `ea4187b` (Phase 7 체크포인트)
+- 구현 위치: `Packages/com.aicharacterkit.framework/` (`0.1.0` local embedded UPM)
+- 샘플: `Samples~/AI NPC Prototypes`의 Mock, MultiCharacter, Backend, Memory, Speech, VoiceInput scene
+- Git 기준선: `707123b` (Phase 8 체크포인트)
 - Backend: Node.js 24 + TypeScript + Fastify + OpenAI SDK, 대화 V1/V2와 선택형 Speech/Transcription V1, loopback 전용
 - 제외 범위: 영구·장기·Vector 기억, Realtime, VAD, 자동 전송, 원격 배포, client auth, streaming
 
@@ -80,7 +80,8 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 | 제한된 단기 기억 | V2 session/reset, bounded process memory, 두 NPC 샘플 구현 | Phase 5 완료; 실제 모델 수동 검증 완료 |
 | 선택형 TTS | pure speech 경계, preset 기반 Backend, PCM Unity playback 구현 | Phase 6 자동·수동 검증 완료 |
 | Push-to-Talk STT | pure input 경계, bounded WAV, Backend transcription, reviewed text 입력 | Phase 7 자동·수동 검증 완료 |
-| 장기 기억·Realtime·패키지화 | 구현하지 않음 | 선행 구현을 피한 올바른 상태 |
+| UPM 패키지화 | Runtime/Editor/Tests/Samples~/Documentation~ 이전과 install/remove/upgrade/migration 검증 | Phase 9 완료 |
+| 장기 기억·Realtime | 구현하지 않음 | 선행 구현을 피한 올바른 상태 |
 
 초기 대화에서는 실제 GPT/JSON 응답이 비교적 앞에 있었으나, 이후 계획은 Mock → 프로필 재사용 → 전송 계약 → 백엔드 순서로 정리됐다. 현재 저장소는 이 수정된 순서를 따른다.
 
@@ -95,8 +96,10 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - Transcription: provider-neutral controller/interface, canonical WAV encoder, 별도 V1 계약, Backend file transcription과 Unity microphone/input adapter 구현
 - 자동 설정: `PrototypeSceneBuilder`가 Editor API로 프로필과 Mock/Backend/Memory/Speech/VoiceInput 샘플 씬을 생성·복구
 - 의존성: Core asmdef는 `noEngineReferences: true`; Runtime에는 `UnityEditor` 참조가 없음
-- 자동 검증: Server build 및 Vitest **75/75**, Unity 6000.5.3f1 컴파일, Voice Input scene 생성·복구와 전체 EditMode **105/105** 통과, 실패·건너뜀 0
-- 수동 검증: Phase 1·2 Play Mode, Phase 3 계약, Phase 4 실제 모델 smoke test, Phase 5 live memory/reset, Phase 6 live TTS·교체·중지·fallback, Phase 7 live microphone/STT·검토·취소 검증 완료
+- 자동 검증: Server build와 Vitest **75/75**, Unity 6000.5.3f1 embedded package compile, sample import/repair와 EditMode **112/112** 통과
+- 재사용 검증: Built-in/Legacy consumer file install, EditMode **112/112**, consumer-owned presentation PlayMode **1/1**, Windows player build 통과
+- lifecycle 검증: remove/reinstall, validation `0.0.0`→`0.1.0`, raw Assets→UPM migration, duplicate-install guard와 consumer-owned Assets hash 보존 통과
+- 수동 검증: Phase 1·2 Play Mode, Phase 3 계약, Phase 4 실제 모델 smoke test, Phase 5 live memory/reset, Phase 6 live TTS·교체·중지·fallback, Phase 7 live microphone/STT·검토·취소, Phase 8 consumer Play Mode 완료
 
 ## Phase 1 완료 기록
 
@@ -170,7 +173,7 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 ### Phase 8 — 두 번째 Unity 프로젝트 재사용 검증
 
-- **상태: 완료 — 자동 검증 및 Built-in/Legacy consumer 수동 Play Mode 통과, 기준 `ea4187b`**
+- **상태: 완료 — 자동 검증 및 Built-in/Legacy consumer 수동 Play Mode 통과, 체크포인트 `707123b`**
 - 상세 구현 계획: [`PHASE8_PLAN.md`](PHASE8_PLAN.md)
 - 재사용 절차: [`REUSE_GUIDE.md`](REUSE_GUIDE.md)
 - Built-in Render Pipeline과 Legacy Input Manager를 사용하는 별도 Unity 프로젝트의 alternate Assets 경로로 옮긴다.
@@ -179,8 +182,11 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 ### Phase 9 — UPM 패키지화
 
-- 두 프로젝트에서 검증된 최소 의존성을 기준으로 Runtime, Editor, Tests, Samples를 패키지 구조로 이동한다.
-- 설치·제거·업그레이드와 샘플 import를 검증한다.
+- **상태: 완료 — 자동 검증 완료, 체크포인트 커밋 대기**
+- 상세 구현 계획: [`PHASE9_PLAN.md`](PHASE9_PLAN.md)
+- 두 프로젝트에서 검증된 최소 의존성을 기준으로 Runtime, Editor, Tests, Samples와 Documentation을 `com.aicharacterkit.framework` `0.1.0` 구조로 이동한다.
+- package root는 읽기 전용으로 두고 imported/generated sample만 `Assets`에 쓴다.
+- local install·제거·재설치·업그레이드·raw migration과 sample import를 별도 consumer에서 검증한다.
 
 ### Phase 10 — Character Builder 도구
 
@@ -196,8 +202,8 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - 실제 OpenAI smoke test는 비용과 계정 quota를 사용하므로 자동 테스트에서는 SDK를 주입형 fake로 대체한다. Phase 4에서는 사용자가 승인한 수동 1회만 실행해 end-to-end 경로를 확인했다.
 - Phase 7은 현재 Windows 장치에서 실제 microphone과 live transcription을 확인했다. 다른 OS의 권한·device 동작은 두 번째 프로젝트 또는 platform 검증에서 다시 확인한다.
 - Phase 5 session은 서버 재시작·TTL·LRU eviction 시 의도적으로 사라진다. UTF-8 byte 예산은 token 예산이 아니며, 기억 품질은 수동 시나리오로 별도 확인한다.
-- 패키지화를 먼저 하면 잘못된 경계를 고정할 수 있다. 반드시 두 번째 프로젝트 검증 뒤 진행한다.
+- UPM package와 raw Assets 복사본을 동시에 두면 assembly/GUID 충돌이 생긴다. resolver가 이중 설치를 거부하고 migration 문서가 consumer asset 분리를 요구한다.
 
 ## 바로 다음 행동
 
-**현재 변경을 검토하고 Phase 8 체크포인트로 커밋한다.** Phase 9 UPM 패키지화나 Realtime 작업은 별도 계획과 승인 후 시작한다.
+**현재 변경을 검토하고 Phase 9 체크포인트로 커밋한다.** Phase 10 Character Builder나 Realtime 작업은 별도 계획과 승인 후 시작한다.

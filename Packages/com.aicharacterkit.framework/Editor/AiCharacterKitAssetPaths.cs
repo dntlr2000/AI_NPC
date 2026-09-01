@@ -1,13 +1,17 @@
 using System;
+using System.Collections.Generic;
 using UnityEditor;
+using PackageManagerPackageInfo = UnityEditor.PackageManager.PackageInfo;
 
 namespace AiCharacterKit.Editor
 {
     /// <summary>
-    /// Resolves the movable Assets-relative installation root used by editor tools and tests.
+    /// Resolves the movable raw Assets or UPM package root used by editor tools and tests.
     /// </summary>
     public static class AiCharacterKitAssetPaths
     {
+        public const string PackageName = "com.aicharacterkit.framework";
+
         private const string CoreAssemblyMarker =
             "/Runtime/Core/AiCharacterKit.Core.asmdef";
 
@@ -33,6 +37,17 @@ namespace AiCharacterKit.Editor
         {
             rootFolder = string.Empty;
             error = string.Empty;
+            var candidates = new List<string>();
+
+            var packageInfo = PackageManagerPackageInfo.FindForAssembly(
+                typeof(AiCharacterKitAssetPaths).Assembly);
+            if (packageInfo != null
+                && !string.IsNullOrWhiteSpace(packageInfo.assetPath))
+            {
+                AddUniqueCandidate(
+                    candidates,
+                    packageInfo.assetPath.Replace('\\', '/').TrimEnd('/'));
+            }
 
             var matches = AssetDatabase.FindAssets("AiCharacterKit.Core");
             foreach (var guid in matches)
@@ -49,40 +64,31 @@ namespace AiCharacterKit.Editor
                 var candidateRoot = assetPath.Substring(
                     0,
                     assetPath.Length - CoreAssemblyMarker.Length);
-                if (!candidateRoot.StartsWith(
-                        "Assets/",
-                        StringComparison.Ordinal)
-                    && !string.Equals(
-                        candidateRoot,
-                        "Assets",
-                        StringComparison.Ordinal))
+                if (!candidateRoot.StartsWith("Assets/", StringComparison.Ordinal)
+                    && !string.Equals(candidateRoot, "Assets", StringComparison.Ordinal))
                 {
                     continue;
                 }
 
-                if (rootFolder.Length > 0
-                    && !string.Equals(
-                        rootFolder,
-                        candidateRoot,
-                        StringComparison.Ordinal))
-                {
-                    rootFolder = string.Empty;
-                    error =
-                        "Multiple AI Character Kit installations were found under Assets. "
-                        + "Remove the duplicate before using editor automation.";
-                    return false;
-                }
-
-                rootFolder = candidateRoot;
+                AddUniqueCandidate(candidates, candidateRoot);
             }
 
-            if (rootFolder.Length > 0)
+            if (candidates.Count == 1)
             {
+                rootFolder = candidates[0];
                 return true;
             }
 
+            if (candidates.Count > 1)
+            {
+                error =
+                    "Multiple AI Character Kit installations were found. "
+                    + "Remove the duplicate raw Assets or UPM package installation before using editor automation.";
+                return false;
+            }
+
             error =
-                "AI Character Kit could not locate Runtime/Core/AiCharacterKit.Core.asmdef under Assets.";
+                "AI Character Kit could not locate Runtime/Core/AiCharacterKit.Core.asmdef in Assets or an installed package.";
             return false;
         }
 
@@ -112,6 +118,24 @@ namespace AiCharacterKit.Editor
             }
 
             return RootFolder + "/" + normalized;
+        }
+
+        /// <summary>
+        /// Adds one normalized installation candidate without duplicating the same asset path.
+        /// </summary>
+        private static void AddUniqueCandidate(
+            ICollection<string> candidates,
+            string candidate)
+        {
+            foreach (var existing in candidates)
+            {
+                if (string.Equals(existing, candidate, StringComparison.Ordinal))
+                {
+                    return;
+                }
+            }
+
+            candidates.Add(candidate);
         }
     }
 }

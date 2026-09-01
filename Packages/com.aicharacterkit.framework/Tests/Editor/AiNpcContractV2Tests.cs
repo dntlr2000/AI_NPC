@@ -14,7 +14,7 @@ namespace AiCharacterKit.Core.Tests
     public sealed class AiNpcContractV2Tests
     {
         private static string FixtureRoot => AiCharacterKitTestPaths.Resolve(
-            "Tests/EditMode/Fixtures/Transport/V2") + "/";
+            "Tests/Editor/Fixtures/Transport/V2") + "/";
 
         /// <summary>
         /// Maps every golden request value and preserves its caller-owned session ID.

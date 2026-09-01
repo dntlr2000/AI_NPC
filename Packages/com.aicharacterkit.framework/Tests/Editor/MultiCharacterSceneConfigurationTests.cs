@@ -13,14 +13,14 @@ namespace AiCharacterKit.Core.Tests
     /// </summary>
     public sealed class MultiCharacterSceneConfigurationTests
     {
-        private static string LunaProfilePath => AiCharacterKitTestPaths.Resolve(
-            "Samples/MockNpc/Profiles/Luna.asset");
+        private static string LunaProfilePath => AiCharacterKitTestPaths.ResolveSample(
+            "MockNpc/Profiles/Luna.asset");
 
-        private static string GuardProfilePath => AiCharacterKitTestPaths.Resolve(
-            "Samples/MockNpc/Profiles/Guard.asset");
+        private static string GuardProfilePath => AiCharacterKitTestPaths.ResolveSample(
+            "MockNpc/Profiles/Guard.asset");
 
-        private static string ScenePath => AiCharacterKitTestPaths.Resolve(
-            "Samples/MockNpc/Scenes/MultiCharacterMock.unity");
+        private static string ScenePath => AiCharacterKitTestPaths.ResolveSample(
+            "MockNpc/Scenes/MultiCharacterMock.unity");
 
         /// <summary>
         /// Reloads the generated scene and checks both independent NPC compositions.

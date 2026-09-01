@@ -12,7 +12,7 @@ import {
 } from "../src/contracts/v2.js";
 
 const fixturesRoot = new URL(
-  "../../Assets/AiCharacterKit/Tests/EditMode/Fixtures/Transport/V2/",
+  "../../Packages/com.aicharacterkit.framework/Tests/Editor/Fixtures/Transport/V2/",
   import.meta.url,
 );
 

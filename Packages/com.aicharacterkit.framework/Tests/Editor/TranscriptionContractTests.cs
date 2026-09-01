@@ -13,7 +13,7 @@ namespace AiCharacterKit.Core.Tests
     public sealed class TranscriptionContractTests
     {
         private static string FixtureRoot => AiCharacterKitTestPaths.Resolve(
-            "Tests/EditMode/Fixtures/Transport/Transcription/V1") + "/";
+            "Tests/Editor/Fixtures/Transport/Transcription/V1") + "/";
 
         /// <summary>
         /// Reads and maps a golden success while preserving exact transcript text.

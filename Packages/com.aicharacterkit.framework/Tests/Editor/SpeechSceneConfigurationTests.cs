@@ -14,12 +14,12 @@ namespace AiCharacterKit.Core.Tests
     /// </summary>
     public sealed class SpeechSceneConfigurationTests
     {
-        private static string ScenePath => AiCharacterKitTestPaths.Resolve(
-            "Samples/SpeechNpc/Scenes/SpeechNpcPrototype.unity");
+        private static string ScenePath => AiCharacterKitTestPaths.ResolveSample(
+            "SpeechNpc/Scenes/SpeechNpcPrototype.unity");
         private static string CharacterProfileRoot =>
-            AiCharacterKitTestPaths.Resolve("Samples/MockNpc/Profiles") + "/";
+            AiCharacterKitTestPaths.ResolveSample("MockNpc/Profiles") + "/";
         private static string VoiceProfileRoot =>
-            AiCharacterKitTestPaths.Resolve("Samples/SpeechNpc/Profiles") + "/";
+            AiCharacterKitTestPaths.ResolveSample("SpeechNpc/Profiles") + "/";
 
         /// <summary>
         /// Reloads the scene and checks independent V2, voice, PCM, and UI composition.

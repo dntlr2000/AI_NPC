@@ -13,11 +13,11 @@ namespace AiCharacterKit.Core.Tests
     /// </summary>
     public sealed class BackendSceneConfigurationTests
     {
-        private static string ProfilePath => AiCharacterKitTestPaths.Resolve(
-            "Samples/MockNpc/Profiles/Luna.asset");
+        private static string ProfilePath => AiCharacterKitTestPaths.ResolveSample(
+            "MockNpc/Profiles/Luna.asset");
 
-        private static string ScenePath => AiCharacterKitTestPaths.Resolve(
-            "Samples/BackendNpc/Scenes/BackendNpcPrototype.unity");
+        private static string ScenePath => AiCharacterKitTestPaths.ResolveSample(
+            "BackendNpc/Scenes/BackendNpcPrototype.unity");
 
         /// <summary>
         /// Reloads the backend scene and checks its mode, endpoint, profile, UI, and input wiring.

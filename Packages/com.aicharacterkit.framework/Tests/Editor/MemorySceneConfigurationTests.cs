@@ -13,10 +13,10 @@ namespace AiCharacterKit.Core.Tests
     /// </summary>
     public sealed class MemorySceneConfigurationTests
     {
-        private static string ScenePath => AiCharacterKitTestPaths.Resolve(
-            "Samples/MemoryNpc/Scenes/MemoryNpcPrototype.unity");
-        private static string ProfileRoot => AiCharacterKitTestPaths.Resolve(
-            "Samples/MockNpc/Profiles") + "/";
+        private static string ScenePath => AiCharacterKitTestPaths.ResolveSample(
+            "MemoryNpc/Scenes/MemoryNpcPrototype.unity");
+        private static string ProfileRoot => AiCharacterKitTestPaths.ResolveSample(
+            "MockNpc/Profiles") + "/";
 
         /// <summary>
         /// Reloads the scene and checks both NPCs, endpoints, reset controls, and input wiring.

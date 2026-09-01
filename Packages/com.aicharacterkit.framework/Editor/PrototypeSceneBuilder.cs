@@ -17,19 +17,18 @@ namespace AiCharacterKit.Editor
     /// </summary>
     public static class PrototypeSceneBuilder
     {
-        private static string RootFolder => AiCharacterKitAssetPaths.RootFolder;
-        private static string SamplesFolder => RootFolder + "/Samples";
-        private static string MockNpcFolder => SamplesFolder + "/MockNpc";
+        private static string SampleRootFolder => AiCharacterKitSamplePaths.RootFolder;
+        private static string MockNpcFolder => SampleRootFolder + "/MockNpc";
         private static string ProfilesFolder => MockNpcFolder + "/Profiles";
         private static string ScenesFolder => MockNpcFolder + "/Scenes";
-        private static string BackendNpcFolder => SamplesFolder + "/BackendNpc";
+        private static string BackendNpcFolder => SampleRootFolder + "/BackendNpc";
         private static string BackendScenesFolder => BackendNpcFolder + "/Scenes";
-        private static string MemoryNpcFolder => SamplesFolder + "/MemoryNpc";
+        private static string MemoryNpcFolder => SampleRootFolder + "/MemoryNpc";
         private static string MemoryScenesFolder => MemoryNpcFolder + "/Scenes";
-        private static string SpeechNpcFolder => SamplesFolder + "/SpeechNpc";
+        private static string SpeechNpcFolder => SampleRootFolder + "/SpeechNpc";
         private static string SpeechProfilesFolder => SpeechNpcFolder + "/Profiles";
         private static string SpeechScenesFolder => SpeechNpcFolder + "/Scenes";
-        private static string VoiceInputNpcFolder => SamplesFolder + "/VoiceInputNpc";
+        private static string VoiceInputNpcFolder => SampleRootFolder + "/VoiceInputNpc";
         private static string VoiceInputScenesFolder =>
             VoiceInputNpcFolder + "/Scenes";
         private static string ProfilePath =>
@@ -77,6 +76,25 @@ namespace AiCharacterKit.Editor
             CreateMemorySceneBatch();
             CreateSpeechSceneBatch();
             CreateVoiceInputSceneBatch();
+        }
+
+        /// <summary>
+        /// Repairs every imported or generated sample after protecting unsaved user scenes.
+        /// </summary>
+        [MenuItem("Tools/AI Character Kit/Repair All Sample Scenes")]
+        public static void RepairAllSampleScenes()
+        {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                return;
+            }
+
+            RepairAllSampleScenesBatch();
+            EditorUtility.DisplayDialog(
+                "AI Character Kit Samples",
+                "All AI Character Kit sample profiles and scenes were created or repaired under:\n"
+                + SampleRootFolder,
+                "OK");
         }
 
         /// <summary>
@@ -2434,8 +2452,7 @@ namespace AiCharacterKit.Editor
         /// </summary>
         private static void EnsureSampleFolders()
         {
-            EnsureFolder(RootFolder);
-            EnsureFolder(SamplesFolder);
+            EnsureFolder(SampleRootFolder);
             EnsureFolder(MockNpcFolder);
             EnsureFolder(ProfilesFolder);
             EnsureFolder(ScenesFolder);
