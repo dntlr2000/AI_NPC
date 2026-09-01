@@ -1,5 +1,7 @@
 # Phase 9 — UPM 패키지화
 
+**상태: 완료 — 자동 검증과 별도 Built-in/Legacy consumer 검증을 통과하고 `main` 체크포인트 `cd5825b`로 종료했다.**
+
 ## 목표와 기준선
 
 Phase 8 체크포인트 `707123b`에서 검증한 동일 소스를 Unity Package Manager가 설치·제거·업그레이드할 수 있는 재사용 단위로 만든다. 패키지 ID는 `com.aicharacterkit.framework`, 첫 버전은 `0.1.0`, 지원 기준은 Unity `6000.5`다. 공개 C# API, asmdef 이름, namespace, wire contract와 기존 `.meta` GUID는 변경하지 않는다.

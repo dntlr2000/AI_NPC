@@ -34,7 +34,7 @@ The Unity project root is the repository root. Do not assume a separate `unity/`
 
 ## Current milestone
 
-Phase 8 is complete on `main` at `707123b`. Phase 9 is complete in the current worktree after embedded-package, Built-in/Legacy consumer, sample, lifecycle, Play Mode, and player-build validation; its checkpoint commit is pending. The resulting local UPM package is `com.aicharacterkit.framework` version `0.1.0`, with unchanged public runtime contracts.
+Phase 9 is complete on `main` at checkpoint `cd5825b` after embedded-package, Built-in/Legacy consumer, sample, lifecycle, Play Mode, and player-build validation. The resulting local UPM package is `com.aicharacterkit.framework` version `0.1.0`, with unchanged public runtime contracts. Phase 10 has not yet been planned or approved.
 
 The Phase 9 implementation scope is:
 

@@ -7,7 +7,7 @@
 
 저장소는 수정된 로드맵의 순서와 제약을 따르고 있다. **Phase 1~9의 구현과 검증이 완료됐다.** Phase 8은 별도 Built-in/Legacy 프로젝트에서 실제 입력·Mock 응답·consumer-owned presentation을 확인했고, Phase 9는 검증된 동일 소스를 설치·제거·업그레이드할 수 있는 UPM package로 옮겼다. Mock 재사용성, stateless V1, session V2와 선택형 TTS/STT 계약은 그대로 유지된다.
 
-Phase 8 체크포인트는 `707123b`이며 Phase 9 체크포인트 커밋은 현재 검토 대기 중이다. Phase 9 범위와 검증 결과는 [`PHASE9_PLAN.md`](PHASE9_PLAN.md), UPM 설치·sample·migration 절차는 [`REUSE_GUIDE.md`](REUSE_GUIDE.md)를 따른다. 기존 대화·Speech·Transcription wire 계약은 변경 없이 유효하다.
+Phase 8 체크포인트는 `707123b`, Phase 9 체크포인트는 `cd5825b`다. Phase 9 범위와 검증 결과는 [`PHASE9_PLAN.md`](PHASE9_PLAN.md), UPM 설치·sample·migration 절차는 [`REUSE_GUIDE.md`](REUSE_GUIDE.md)를 따른다. 기존 대화·Speech·Transcription wire 계약은 변경 없이 유효하다.
 
 ## 우리가 만드는 것
 
@@ -182,7 +182,7 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 ### Phase 9 — UPM 패키지화
 
-- **상태: 완료 — 자동 검증 완료, 체크포인트 커밋 대기**
+- **상태: 완료 — 자동 검증 및 Built-in/Legacy consumer 검증 통과, 체크포인트 `cd5825b`**
 - 상세 구현 계획: [`PHASE9_PLAN.md`](PHASE9_PLAN.md)
 - 두 프로젝트에서 검증된 최소 의존성을 기준으로 Runtime, Editor, Tests, Samples와 Documentation을 `com.aicharacterkit.framework` `0.1.0` 구조로 이동한다.
 - package root는 읽기 전용으로 두고 imported/generated sample만 `Assets`에 쓴다.
@@ -206,4 +206,4 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 ## 바로 다음 행동
 
-**현재 변경을 검토하고 Phase 9 체크포인트로 커밋한다.** Phase 10 Character Builder나 Realtime 작업은 별도 계획과 승인 후 시작한다.
+**Phase 10 Character Builder의 상세 범위와 완료 기준을 계획하고 승인받는다.** Editor 편의 기능이 기존 Runtime 계약이나 캐릭터 스키마를 역으로 결정하지 않게 하며, 구현은 계획 승인 후 시작한다. Realtime 작업은 Phase 10과 분리된 별도 마일스톤으로 다룬다.
