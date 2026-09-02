@@ -1,22 +1,22 @@
 # AI Character Kit 재사용 가이드
 
-Phase 9부터 정식 재사용 경계는 raw `Assets` 복사가 아니라 UPM package `com.aicharacterkit.framework`다. 공개 안정판은 `v0.2.0`, 현재 Phase 11 source package는 미공개 `0.3.0`이다. Unity `6000.5`, uGUI `2.5.0`을 기준으로 하며 URP와 Input System을 요구하지 않는다.
+Phase 9부터 정식 재사용 경계는 raw `Assets` 복사가 아니라 UPM package `com.aicharacterkit.framework`다. `v0.3.0`은 Phase 11의 선택형 대화 행동 기능을 포함하며 Unity `6000.5`, uGUI `2.5.0`을 기준으로 한다. URP와 Input System은 요구하지 않는다.
 
 ## 설치
 
 공개 version은 Unity Package Manager에서 **+ > Install package from git URL**을 선택하고 tag가 고정된 다음 URL을 입력한다.
 
 ```text
-https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.2.0
+https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.3.0
 ```
 
 또는 consumer의 `Packages/manifest.json`에 같은 Git dependency를 추가한다.
 
 ```json
-"com.aicharacterkit.framework": "https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.2.0"
+"com.aicharacterkit.framework": "https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.3.0"
 ```
 
-저장소의 package 하위 경로를 지정하는 `?path=`가 revision `#v0.2.0`보다 앞에 와야 한다. 기본 branch 대신 불변 release tag를 고정하고, upgrade할 때만 새 tag로 바꾼다.
+저장소의 package 하위 경로를 지정하는 `?path=`가 revision `#v0.3.0`보다 앞에 와야 한다. 기본 branch 대신 불변 release tag를 고정하고, upgrade할 때만 새 tag로 바꾼다.
 
 로컬 개발에서는 **Install package from disk**를 선택하고 다음 파일을 지정한다.
 
@@ -39,7 +39,7 @@ https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framew
 3. **Tools > AI Character Kit > Repair All Sample Scenes**를 실행한다.
 4. `Assets/Samples/AI Character Kit/<설치 버전>/AI NPC Prototypes` 아래의 원하는 scene을 연다.
 
-Source `0.3.0`에서는 import 뒤 **Tools > AI Character Kit > Samples > Create Conversation Action Prototype**을 실행하면 Editor API가 network-free action sample Scene을 생성한다. Package의 `.unity` YAML을 직접 수정하지 않는다.
+Version `0.3.0`에서는 import 뒤 **Tools > AI Character Kit > Samples > Create Conversation Action Prototype**을 실행하면 Editor API가 network-free action sample Scene을 생성한다. Package의 `.unity` YAML을 직접 수정하지 않는다.
 
 **Tools > AI Character Kit > Import or Repair AI NPC Prototypes** 메뉴를 사용하면 import와 repair를 한 번에 수행할 수 있다. Sample repair 도구는 imported sample이 없을 때 `Assets/AI Character Kit/Samples`에 새 sample을 생성한다. package의 `Samples~`나 package cache에는 쓰지 않는다. Input System이 설치돼 있으면 해당 uGUI module을 reflection으로 구성하고, 없으면 Legacy Input Manager module을 사용한다.
 

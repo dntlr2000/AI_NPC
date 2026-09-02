@@ -160,9 +160,11 @@ namespace AiCharacterKit.Core.Tests
                     Is.False);
                 Assert.That(
                     AiNpcJsonCodecV3.TryDeserializeResponse(
-                        LoadFixture("valid-success-response.json").Replace(
-                            ",\n    \"matchedTriggerIds\": [\"open_gate\"]",
-                            string.Empty),
+                        LoadFixture("valid-success-response.json")
+                            .Replace("\r\n", "\n")
+                            .Replace(
+                                ",\n    \"matchedTriggerIds\": [\"open_gate\"]",
+                                string.Empty),
                         out _,
                         out _),
                     Is.False);

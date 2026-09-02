@@ -35,11 +35,11 @@ The Unity project root is the repository root. Do not assume a separate `unity/`
 
 ## Current milestone
 
-Phase 9 is complete on `main` at checkpoint `cd5825b`. Phase 10 Character Builder is complete at `4dc478f`; automatic validation and consumer manual Builder/Mock/Prefab/TTS validation have passed. The current local UPM source is `com.aicharacterkit.framework` version `0.3.0`; the latest published package remains `v0.2.0`.
+Phase 9 is complete on `main` at checkpoint `cd5825b`. Phase 10 Character Builder is complete at `4dc478f`; automatic validation and consumer manual Builder/Mock/Prefab/TTS validation have passed. The current UPM release candidate is `com.aicharacterkit.framework` version `0.3.0`; `v0.2.0` remains the latest published tag until separate final approval creates and publishes `v0.3.0`.
 
 Public GitHub release `v0.2.0` was published from exact commit `dcad604a510b767b18154eb01408218a2e1e51f2` under the MIT License with `dntlr2000` as author and copyright holder. Distribution uses the package subfolder Git URL; `server/` remains unpackaged reference source. Never move or overwrite the published tag. Repository visibility, registry publishing and later releases still require separate explicit approval.
 
-Phase 11 is complete in the current working tree. Its implementation, automatic validation, separate consumer Builder/Mock action validation, guarded action checks, and live V3 semantic trigger verification have passed. Its source of truth is `docs/PHASE11_PLAN.md`. The local package is the unreleased `0.3.0`; no Phase 11 checkpoint commit or public `0.3.0` release has been created yet. The completed minimal conversation-trigger action pipeline:
+Phase 11 implementation is checkpointed at `c38b5a0`, with its completed user documentation based at `7cf0a63`. Automatic validation, separate consumer Builder/Mock action validation, guarded action checks, and live V3 semantic trigger verification have passed. Its source of truth is `docs/PHASE11_PLAN.md`. Package `0.3.0` is being prepared as a public release candidate; no `v0.3.0` tag or GitHub Release exists until the user approves an exact release-preparation commit. The completed minimal conversation-trigger action pipeline:
 
 - Author natural-language trigger-to-action bindings in Character Builder.
 - Let the Backend return only configured matched trigger IDs in one structured response.
@@ -62,7 +62,7 @@ The Phase 11 completion boundary excludes:
 - Package registry publishing until a separate release milestone is explicitly planned and approved
 - Generic variable/score editors, relationship systems or persistent action state
 - LLM tool calling, model-generated action parameters or Reflection-based method invocation
-- Package tag movement or changes to the published `v0.2.0` release
+- Moving any published package tag, or creating/pushing `v0.3.0` without exact-commit approval
 
 ## Architecture rules
 

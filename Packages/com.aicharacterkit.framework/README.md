@@ -4,13 +4,13 @@ AI Character Kit is a reusable Unity 6 framework for structured NPC dialogue and
 
 ## Install
 
-The latest published release remains `v0.2.0`. Choose **Window > Package Management > Package Manager**, click **+**, select **Install package from git URL**, and enter:
+For release `v0.3.0`, choose **Window > Package Management > Package Manager**, click **+**, select **Install package from git URL**, and enter:
 
 ```text
-https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.2.0
+https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.3.0
 ```
 
-To evaluate the completed but unreleased Phase 11 source, select **Install package from disk** and choose this `0.3.0` package's `package.json`. The supported baseline is Unity `6000.5`; uGUI is installed as the only feature package dependency. URP and the Input System are optional.
+The supported baseline is Unity `6000.5`; uGUI is installed as the only feature package dependency. URP and the Input System are optional. For local source development, select **Install package from disk** and choose this package's `package.json`.
 
 Import **AI NPC Prototypes** from the package's Samples tab. Then run **Tools > AI Character Kit > Repair All Sample Scenes** so the imported assets match the active Legacy or Input System backend. **Import or Repair AI NPC Prototypes** combines those steps for local UPM installations.
 

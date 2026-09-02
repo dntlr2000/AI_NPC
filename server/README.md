@@ -4,7 +4,7 @@ This local server exposes stateless V1, session-aware V2, action-aware V3, optio
 
 ## Distribution boundary
 
-Public release `0.2.0` distributes the Unity framework as the Git-subfolder UPM package at `Packages/com.aicharacterkit.framework`. The current source also contains the unreleased Phase 11 V3 implementation. The `server/` directory is reference source and is not published as a UPM or npm package. Consumers that need Backend modes must check out a revision matching their Unity package and run this service separately. Mock mode does not require it.
+Release `0.3.0` distributes the Unity framework as the Git-subfolder UPM package at `Packages/com.aicharacterkit.framework` and includes the Phase 11 V3 action contract. The `server/` directory is matching reference source and is not published as a UPM or npm package. Consumers that need Backend modes must check out the same repository tag and run this service separately. Mock mode does not require it.
 
 ## Requirements
 

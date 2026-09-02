@@ -5,9 +5,9 @@
 
 ## 결론
 
-저장소는 수정된 로드맵의 순서와 제약을 따르고 있다. **Phase 1~11의 구현과 자동·수동 검증 및 package `0.2.0` 공개가 완료됐다.** Phase 11의 최소 action pipeline은 local package `0.3.0` source로 구현됐고 Server, root Unity와 별도 Built-in/Legacy consumer 자동 검증, Character Builder/Mock과 live V3 trigger 수동 Play Mode를 통과했다. `0.3.0` 체크포인트 커밋과 공개 release는 아직 만들지 않았다. 변수·점수·복합 조건은 Phase 12 선택형 Advanced 후보로 기록하되 Phase 11 실사용 결과를 바탕으로 구현 전에 다시 계획한다.
+저장소는 수정된 로드맵의 순서와 제약을 따르고 있다. **Phase 1~11의 구현과 자동·수동 검증 및 package `0.2.0` 공개가 완료됐다.** Phase 11의 최소 action pipeline은 package `0.3.0`으로 구현됐고 Server, root Unity와 별도 Built-in/Legacy consumer 자동 검증, Character Builder/Mock과 live V3 trigger 수동 Play Mode를 통과했다. 구현은 `c38b5a0`, 사용자 문서는 `7cf0a63`에 체크포인트로 보존됐으며 `v0.3.0` 공개 후보는 별도 최종 승인을 기다린다. 변수·점수·복합 조건은 Phase 12 선택형 Advanced 후보로 기록하되 Phase 11 실사용 결과를 바탕으로 구현 전에 다시 계획한다.
 
-Phase 8 체크포인트는 `707123b`, Phase 9 체크포인트는 `cd5825b`, Phase 10 완료 커밋은 `4dc478f`다. Package `0.2.0`은 exact commit `dcad604a510b767b18154eb01408218a2e1e51f2`에 annotated tag `v0.2.0`과 Latest GitHub Release로 공개됐다. Phase 10 범위와 검증 결과는 [`PHASE10_PLAN.md`](PHASE10_PLAN.md), UPM 설치·sample·migration 절차는 [`REUSE_GUIDE.md`](REUSE_GUIDE.md), 공개 결과는 [`RELEASE_0.2.0.md`](RELEASE_0.2.0.md), 현재 목표는 [`PHASE11_PLAN.md`](PHASE11_PLAN.md)를 따른다. Phase 12~14는 각각 Advanced Behavior, Backend 배포, Realtime 후보로 번호와 책임 경계를 기록하되 구현 전 다시 계획한다. 기존 대화·Speech·Transcription wire 계약은 변경 없이 유효하다.
+Phase 8 체크포인트는 `707123b`, Phase 9 체크포인트는 `cd5825b`, Phase 10 완료 커밋은 `4dc478f`, Phase 11 구현 체크포인트는 `c38b5a0`이다. Package `0.2.0`은 exact commit `dcad604a510b767b18154eb01408218a2e1e51f2`에 annotated tag `v0.2.0`과 Latest GitHub Release로 공개됐다. Phase 10 범위와 검증 결과는 [`PHASE10_PLAN.md`](PHASE10_PLAN.md), UPM 설치·sample·migration 절차는 [`REUSE_GUIDE.md`](REUSE_GUIDE.md), Phase 11 결과는 [`PHASE11_PLAN.md`](PHASE11_PLAN.md), 현재 릴리즈 후보는 [`RELEASE_0.3.0.md`](RELEASE_0.3.0.md)를 따른다. Phase 12~14는 각각 Advanced Behavior, Backend 배포, Realtime 후보로 번호와 책임 경계를 기록하되 구현 전 다시 계획한다. 기존 대화·Speech·Transcription wire 계약은 변경 없이 유효하다.
 
 ## 우리가 만드는 것
 
@@ -66,9 +66,9 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 - Unity: `6000.5.3f1`
 - 주요 설치 패키지: URP `17.5.0`, Input System `1.19.0`, uGUI `2.5.0`, Test Framework `1.7.0`
-- 구현 위치: `Packages/com.aicharacterkit.framework/` (미공개 `0.3.0` local embedded UPM; 공개 안정판 `v0.2.0`)
+- 구현 위치: `Packages/com.aicharacterkit.framework/` (`0.3.0` local embedded UPM 및 `v0.3.0` 공개 후보)
 - 샘플: `Samples~/AI NPC Prototypes`의 Mock, MultiCharacter, Backend, Memory, Speech, VoiceInput 및 Editor API 기반 Action prototype
-- Git 공개 기준선: `dcad604a510b767b18154eb01408218a2e1e51f2` (`v0.2.0`; Phase 10 완료 커밋 `4dc478f`)
+- Git 공개 기준선: `dcad604a510b767b18154eb01408218a2e1e51f2` (`v0.2.0`); Phase 11 구현 `c38b5a0`, 문서 `7cf0a63`
 - Backend: Node.js 24 + TypeScript + Fastify + OpenAI SDK, 대화 V1/V2/V3와 선택형 Speech/Transcription V1, loopback 전용
 - 제외 범위: 영구·장기·Vector 기억, Realtime, VAD, 자동 전송, 원격 배포, client auth, streaming
 
@@ -221,10 +221,10 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - Unity가 알 수 없는 ID를 거부하고 높은 priority와 선언 순서로 한 행동만 선택한다.
 - consumer는 `INpcActionHandler` 또는 선택형 Unity 기반 클래스로 실제 게임 행동과 최종 `CanExecute` 검사를 구현한다.
 - 변수·점수·관계도·범용 조건 트리와 LLM tool calling은 실제 필요가 확인될 때까지 제외한다.
-- local package는 미공개 `0.3.0`이며 Server **85/85**, Unity root/consumer **167/167**, consumer action PlayMode **2/2**와 player build가 통과했다.
+- package `0.3.0`은 Server **85/85**, Unity root/consumer **167/167**, consumer action PlayMode **2/2**와 player build가 통과했다.
 - 수정된 sample에서 수동 Mock/Builder, `CanExecute` 거부·허용과 live V3 semantic trigger가 정상 동작했다.
 - `0.3.0` 릴리즈 전에 신규 사용자가 handler 작성부터 Mock/V3 검증까지 완주하는 package Action Quick Start와 troubleshooting을 추가하고 예제 compile·링크를 검증했다.
-- local `0.3.0` 완료 상태이며 체크포인트 커밋과 공개 release는 아직 만들지 않았다.
+- `0.3.0` 구현은 `c38b5a0`, 완료 문서는 `7cf0a63`에 보존됐으며 공개 후보는 별도 exact-commit 승인을 기다린다.
 
 ### Phase 12 후보 — 선택적 Advanced Behavior Rules
 
@@ -262,6 +262,14 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - Backend는 같은 tag의 reference source로만 유지하며 UPM/npm package로 만들지 않는다.
 - Registry publishing과 remote Backend deployment는 후속 milestone로 분리한다.
 
+### Package 0.3.0 — 대화 행동 공개 Git 릴리즈
+
+- **상태: 릴리즈 후보 준비·검증 완료 — 공개 승인 전**
+- 상세 checklist와 release notes 초안: [`RELEASE_0.3.0.md`](RELEASE_0.3.0.md)
+- `v0.3.0` tag의 Git subfolder URL로 Phase 11 대화 행동 기능을 기존 대화·음성 기능과 함께 배포한다.
+- Backend V3는 같은 tag의 reference source로만 유지하며 UPM/npm package로 만들지 않는다.
+- exact release-preparation commit을 검증하고 사용자가 승인하기 전에는 tag 생성·push와 GitHub Release 발행을 수행하지 않는다.
+
 ## 주요 위험과 통제
 
 - `Personality`와 `SpeechStyle`은 요청에 포함되지만 Mock이 자연어 설명을 해석하지는 않는다. Phase 2에서는 필수 데이터로 검증하고 전달하되, 결정적 차이는 `DisplayName`, `ExampleDialogue`, `DefaultEmotion`으로 만들며 실제 의미 해석은 Phase 4에 둔다.
@@ -277,4 +285,4 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 ## 바로 다음 행동
 
-**Phase 11 완료 내용을 체크포인트 커밋으로 보존한 뒤 Phase 12를 구현할지 재검토한다.** 변수·점수·복합 rule, Backend packaging, Realtime은 각각 [`PHASE12_PLAN.md`](PHASE12_PLAN.md), [`PHASE13_PLAN.md`](PHASE13_PLAN.md), [`PHASE14_PLAN.md`](PHASE14_PLAN.md)에 후속 가안으로 보존한다. 번호와 책임 경계는 유지하되 각 구현 직전의 consumer evidence와 운영 환경을 바탕으로 세부 계획을 수정한다.
+**Package `0.3.0` 릴리즈 후보의 최종 검증과 준비 커밋을 완료한 뒤 exact commit의 공개 승인을 받는다.** 승인 전에는 `v0.3.0` tag나 GitHub Release를 만들지 않는다. 이후 변수·점수·복합 rule, Backend packaging, Realtime은 각각 [`PHASE12_PLAN.md`](PHASE12_PLAN.md), [`PHASE13_PLAN.md`](PHASE13_PLAN.md), [`PHASE14_PLAN.md`](PHASE14_PLAN.md)에 후속 가안으로 보존하고 구현 직전에 다시 계획한다.

@@ -14,4 +14,4 @@ AI Character Kit separates provider-neutral dialogue, conversation actions, spee
 - [Speech contract V1](SPEECH_CONTRACT_V1.md)
 - [Transcription contract V1](TRANSCRIPTION_CONTRACT_V1.md)
 
-The package supports tagged Git repository subfolder, local disk, and embedded installation. Public `v0.2.0` does not include the local `0.3.0` Phase 11 source changes. Registry publishing, Backend packaging, and remote deployment remain separate future milestones.
+Release `v0.3.0` supports tagged Git repository subfolder, local disk, and embedded installation and includes the Phase 11 conversation-action pipeline. Registry publishing, Backend packaging, and remote deployment remain separate future milestones.

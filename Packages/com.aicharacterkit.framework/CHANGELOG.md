@@ -2,7 +2,7 @@
 
 All notable changes to this package are documented here.
 
-## [0.3.0] - Unreleased
+## [0.3.0] - 2026-09-02
 
 - Added consumer-owned `NpcActionProfile` data and `INpcActionHandler` extension boundaries.
 - Added deterministic Mock trigger matching and one-action routing with final consumer authorization.
@@ -11,7 +11,8 @@ All notable changes to this package are documented here.
 - Added an importable network-free conversation-action sample and regression coverage.
 - Split sample action handlers into persistent Unity `MonoScript` files so generated Scene references survive an Editor restart.
 - Added an end-to-end Conversation Actions Quick Start with a compile-ready handler, Builder field mapping, Mock/V3 verification, limits, and troubleshooting.
-- Preserved existing Mock, V1, V2, TTS, STT, and published `v0.2.0` paths.
+- Made V3 contract fixture checks deterministic across LF and CRLF Git checkouts.
+- Preserved compatibility with existing action-free Mock, V1, V2, TTS, STT, and `v0.2.0` usage paths.
 
 ## [0.2.0] - 2026-09-02
 

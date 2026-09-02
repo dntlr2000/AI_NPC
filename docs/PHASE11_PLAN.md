@@ -92,7 +92,7 @@ Character Builder에는 선택형 **Conversation Actions** 영역을 추가한�
 
 ## 구현 및 자동 검증 기록
 
-- local UPM package를 미공개 `0.3.0`으로 갱신하고 Core action 경계, `NpcActionProfile`, V3 Transport/Unity networking, Backend V3와 Character Builder action 영역을 구현했다.
+- local UPM package를 `0.3.0`으로 갱신하고 Core action 경계, `NpcActionProfile`, V3 Transport/Unity networking, Backend V3와 Character Builder action 영역을 구현했다.
 - importable `ActionNpc` sample은 package에 script와 Editor builder만 포함하며, Scene과 profile asset은 import 후 Editor API가 생성한다.
 - Server TypeScript build와 Vitest **85/85**가 통과했다.
 - Unity `6000.5.3f1` root compile, sample import/repair, Action Scene 생성과 EditMode **167/167**이 통과했다.
@@ -104,7 +104,7 @@ Character Builder에는 선택형 **Conversation Actions** 영역을 추가한�
 - package dependency, root `Packages/manifest.json`, `Packages/packages-lock.json`과 `ProjectSettings`는 변경하지 않았다.
 - 검증 log/result는 `E:\CodexValidation`, TEMP/TMP는 `E:\CodexTemp`에만 만들었다. Root에 임시 import한 `Assets/Samples`는 검증 후 제거했으며 별도 consumer의 검증 asset은 `E:\CodexValidation`에 남겼다.
 
-자동·수동 완료 gate를 모두 통과했으므로 Phase 11은 local package `0.3.0` 체크포인트로 완료 처리한다. 체크포인트 커밋과 `0.3.0` 공개 릴리즈는 아직 만들지 않았으며 각각 별도 작업과 승인이 필요하다.
+자동·수동 완료 gate를 모두 통과했으므로 Phase 11은 package `0.3.0` 체크포인트로 완료 처리했다. 구현 체크포인트는 `c38b5a0`, 완료 문서 기준선은 `7cf0a63`이며, 공개 릴리즈는 별도 준비·검증과 exact-commit 승인을 거친다.
 
 ## 완료 조건
 
@@ -113,7 +113,7 @@ Character Builder에는 선택형 **Conversation Actions** 영역을 추가한�
 - AI가 임의 action, 메서드, 타입 또는 Scene object를 지정할 수 없다.
 - 한 turn에서 최대 한 행동이 결정적으로 선택되며 실패·취소가 안전하게 격리된다.
 - Mock은 network 없이 동일 입력에 동일 trigger/action 결과를 낸다.
-- V1/V2, 기존 Mock, 대화·기억·TTS·STT와 공개 `v0.2.0` 사용 경로가 유지된다.
+- V1/V2, 기존 Mock, 대화·기억·TTS·STT와 `v0.2.0` 사용 경로의 호환성이 유지된다.
 - 자동 검증과 별도 consumer 수동 Play Mode가 끝난 뒤에만 package를 `0.3.0` 체크포인트로 완료 처리한다.
 
 ## 명시적 제외 범위

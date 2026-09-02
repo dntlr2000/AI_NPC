@@ -10,23 +10,23 @@ URP and the Input System are not required. Audio, JSON serialization, and UnityW
 
 ## Tagged Git installation
 
-The latest published tag is `v0.2.0`; it predates Phase 11 actions. In Package Manager, select **Install package from git URL** and enter:
+For release `v0.3.0`, select **Install package from git URL** in Package Manager and enter:
 
 ```text
-https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.2.0
+https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.3.0
 ```
 
 The equivalent consumer manifest entry is:
 
 ```json
-"com.aicharacterkit.framework": "https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.2.0"
+"com.aicharacterkit.framework": "https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.3.0"
 ```
 
-Keep the `path` query before the `#v0.2.0` revision. Pin a release tag instead of the default branch so the consumer lock file resolves an immutable source revision.
+Keep the `path` query before the `#v0.3.0` revision. Pin a release tag instead of the default branch so the consumer lock file resolves an immutable source revision.
 
 ## Local installation
 
-Use Package Manager's **Install package from disk** action and select `Packages/com.aicharacterkit.framework/package.json`, or add a file dependency to the consumer's `Packages/manifest.json`. The current source package is `0.3.0`; it is not a published tag until a later release is explicitly approved.
+Use Package Manager's **Install package from disk** action and select `Packages/com.aicharacterkit.framework/package.json`, or add a file dependency to the consumer's `Packages/manifest.json`. Use this mode for local source development; tagged Git installation is the reproducible release path.
 
 ```json
 "com.aicharacterkit.framework": "file:E:/path/to/repository/Packages/com.aicharacterkit.framework"
@@ -36,7 +36,7 @@ Do not keep a raw `Assets/AiCharacterKit` copy and the UPM package installed tog
 
 ## Samples
 
-Import **AI NPC Prototypes** from the Package Manager Samples tab. Imported samples are writable under `Assets/Samples/AI Character Kit/<installed-version>/AI NPC Prototypes`. Run **Tools > AI Character Kit > Repair All Sample Scenes** after import or after changing the active input backend. For source `0.3.0`, run **Tools > AI Character Kit > Samples > Create Conversation Action Prototype** once after import to generate the action Scene through Editor APIs.
+Import **AI NPC Prototypes** from the Package Manager Samples tab. Imported samples are writable under `Assets/Samples/AI Character Kit/<installed-version>/AI NPC Prototypes`. Run **Tools > AI Character Kit > Repair All Sample Scenes** after import or after changing the active input backend. In `0.3.0`, run **Tools > AI Character Kit > Samples > Create Conversation Action Prototype** once after import to generate the action Scene through Editor APIs.
 
 After verifying the generated Action Scene, follow the [Conversation Actions Quick Start](ACTIONS_QUICKSTART.md) to implement and connect a consumer-owned action handler.
 

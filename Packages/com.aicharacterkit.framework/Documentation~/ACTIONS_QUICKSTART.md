@@ -2,12 +2,12 @@
 
 This guide creates one NPC that talks and opens a consumer-owned gate when the conversation matches an authored condition. It starts with the network-free Mock path and then shows the optional semantic V3 Backend path.
 
-> Conversation actions require the completed but unreleased `0.3.0` source package or a later release. Public `v0.2.0` does not contain Phase 11 action APIs or Builder controls.
+> Conversation actions require AI Character Kit `0.3.0` or later. Release `v0.2.0` does not contain the action APIs or Builder controls described here.
 
 ## Requirements
 
 - Unity `6000.5` or a compatible later Unity 6 editor
-- AI Character Kit `0.3.0` source installed from disk
+- AI Character Kit `0.3.0` or later installed from a release tag or local disk
 - A loaded Scene GameObject or writable regular/variant Prefab
 - A MonoBehaviour implementing `INpcPresentationDriver`
 - Optional existing `NpcTextInputView` and uGUI controls for Play Mode input
@@ -175,7 +175,7 @@ Phase 11 deliberately does not support model-generated parameters, Reflection me
 
 | Symptom | Check |
 | --- | --- |
-| No Conversation Actions controls | Confirm the installed package is `0.3.0` source or later; public `v0.2.0` predates actions. |
+| No Conversation Actions controls | Confirm the installed package is `0.3.0` or later; `v0.2.0` predates actions. |
 | `NPC 대화 구성이 준비되지 않았습니다.` | Exit Play Mode, wait for compilation, confirm the profile and visual presentation, ensure every action ID has exactly one compatible handler, validate, and apply again. |
 | A generated sample has a missing script | Reimport the current-version sample, wait for compilation, and rerun **Create Conversation Action Prototype**. Do not reuse an older generated Scene. |
 | Mock preview shows no trigger | Enter the configured Mock example; semantic paraphrases require `BackendActions`. |
