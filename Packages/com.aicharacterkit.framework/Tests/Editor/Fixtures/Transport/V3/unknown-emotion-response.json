@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 3,
+  "requestId": "req-v3-invalid-emotion",
+  "status": "success",
+  "result": {
+    "dialogue": "Invalid emotion.",
+    "emotion": "joyful",
+    "gesture": "none",
+    "matchedTriggerIds": []
+  }
+}

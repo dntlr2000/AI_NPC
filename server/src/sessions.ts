@@ -1,11 +1,24 @@
 import { Buffer } from "node:buffer";
-import type { AiNpcRequest, AiNpcSessionResetRequest } from "./contracts/v2.js";
 import { NpcServiceError } from "./errors.js";
 import type {
   ConversationMessage,
   NpcGenerationResult,
   NpcResponseGenerator,
 } from "./generator.js";
+import type { NpcCharacterSnapshot } from "./generator.js";
+import type { SemanticTrigger } from "./contracts/v3.js";
+
+export interface SessionConversationRequest {
+  readonly sessionId: string;
+  readonly character: NpcCharacterSnapshot;
+  readonly userText: string;
+  readonly triggers?: readonly SemanticTrigger[];
+}
+
+export interface SessionResetRequest {
+  readonly sessionId: string;
+  readonly characterId: string;
+}
 
 export interface ConversationTurn {
   readonly userText: string;
@@ -182,7 +195,7 @@ export class SessionConversationService {
 
   /** Generates one response from committed history and stores only its success. */
   public async respond(
-    request: AiNpcRequest,
+    request: SessionConversationRequest,
     cancellationSignal: AbortSignal,
   ): Promise<NpcGenerationResult> {
     cancellationSignal.throwIfAborted();
@@ -197,9 +210,11 @@ export class SessionConversationService {
           character: request.character,
           history: toConversationMessages(lease.history),
           userText: request.userText,
+          triggers: request.triggers,
         },
         cancellationSignal,
       );
+      validateMatchedTriggerSubset(request.triggers, generated);
       cancellationSignal.throwIfAborted();
       this.store.commit(lease, {
         userText: request.userText,
@@ -213,8 +228,32 @@ export class SessionConversationService {
   }
 
   /** Clears the addressed session without creating a record for an unknown ID. */
-  public reset(request: AiNpcSessionResetRequest): void {
+  public reset(request: SessionResetRequest): void {
     this.store.reset(request.sessionId, request.characterId);
+  }
+}
+
+/** Rejects missing, duplicate, or unknown V3 trigger IDs before committing memory. */
+function validateMatchedTriggerSubset(
+  triggers: readonly SemanticTrigger[] | undefined,
+  generated: NpcGenerationResult,
+): void {
+  if (triggers === undefined) {
+    return;
+  }
+
+  const matchedIds = generated.result.matchedTriggerIds;
+  const knownIds = new Set(triggers.map((trigger) => trigger.triggerId));
+  if (matchedIds === undefined
+    || new Set(matchedIds).size !== matchedIds.length
+    || matchedIds.some((triggerId) => !knownIds.has(triggerId))) {
+    throw new NpcServiceError(
+      "upstream_invalid_response",
+      "The model returned an invalid structured response.",
+      502,
+      true,
+      "openai_unknown_trigger_id",
+    );
   }
 }
 

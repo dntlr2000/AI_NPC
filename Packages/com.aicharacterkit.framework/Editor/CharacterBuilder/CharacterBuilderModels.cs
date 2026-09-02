@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using AiCharacterKit.Core;
 using AiCharacterKit.Unity;
+using AiCharacterKit.Unity.Actions;
 using AiCharacterKit.Unity.Speech;
 using UnityEngine;
 
@@ -76,6 +77,68 @@ namespace AiCharacterKit.Editor
     }
 
     /// <summary>
+    /// Stores one detached trigger-to-action binding edited by Character Builder.
+    /// </summary>
+    internal sealed class ActionBindingDraft
+    {
+        public string TriggerId { get; set; } = "greet_player";
+        public string ConditionDescription { get; set; } =
+            "The player greets the character.";
+        public string ExampleUserText { get; set; } = "hello";
+        public string ActionId { get; set; } = "wave_to_player";
+        public int Priority { get; set; }
+
+        /// <summary>
+        /// Copies one serialized action binding into detached editor values.
+        /// </summary>
+        public static ActionBindingDraft FromBinding(NpcActionBinding binding)
+        {
+            return binding == null
+                ? new ActionBindingDraft()
+                : new ActionBindingDraft
+                {
+                    TriggerId = binding.triggerId,
+                    ConditionDescription = binding.conditionDescription,
+                    ExampleUserText = binding.exampleUserText,
+                    ActionId = binding.actionId,
+                    Priority = binding.priority
+                };
+        }
+    }
+
+    /// <summary>
+    /// Stores unsaved NpcActionProfile values without mutating consumer assets.
+    /// </summary>
+    internal sealed class ActionProfileDraft
+    {
+        public string AssetName { get; set; } = "NpcActionProfile";
+
+        public List<ActionBindingDraft> Bindings { get; } =
+            new List<ActionBindingDraft> { new ActionBindingDraft() };
+
+        /// <summary>
+        /// Copies one persisted action profile into an independent editor draft.
+        /// </summary>
+        public static ActionProfileDraft FromProfile(NpcActionProfile profile)
+        {
+            var draft = new ActionProfileDraft();
+            if (profile == null)
+            {
+                return draft;
+            }
+
+            draft.AssetName = profile.name;
+            draft.Bindings.Clear();
+            foreach (var binding in profile.Bindings)
+            {
+                draft.Bindings.Add(ActionBindingDraft.FromBinding(binding));
+            }
+
+            return draft;
+        }
+    }
+
+    /// <summary>
     /// Describes the explicit non-destructive settings applied to one Scene or Prefab NPC.
     /// </summary>
     internal sealed class CharacterBuilderConfiguration
@@ -94,6 +157,12 @@ namespace AiCharacterKit.Editor
 
         public const string DefaultSpeechEndpoint =
             "http://127.0.0.1:8787/v1/speech/synthesize";
+
+        public const string DefaultActionBackendEndpoint =
+            "http://127.0.0.1:8787/v3/npc/respond";
+
+        public const string DefaultActionResetEndpoint =
+            "http://127.0.0.1:8787/v3/npc/sessions/reset";
 
         public const int DefaultTimeoutSeconds = 35;
 
@@ -119,6 +188,19 @@ namespace AiCharacterKit.Editor
         public NpcTextInputView TextInputView { get; set; }
 
         public NpcSessionControlView SessionControlView { get; set; }
+
+        public bool ConfigureActions { get; set; }
+
+        public NpcActionProfile ActionProfile { get; set; }
+
+        public MonoBehaviour[] ActionHandlerSources { get; set; } =
+            System.Array.Empty<MonoBehaviour>();
+
+        public string ActionBackendEndpoint { get; set; } =
+            DefaultActionBackendEndpoint;
+
+        public string ActionResetEndpoint { get; set; } =
+            DefaultActionResetEndpoint;
 
         public bool ConfigureSpeech { get; set; }
 

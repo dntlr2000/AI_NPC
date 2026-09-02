@@ -1,24 +1,26 @@
 # AI Character Kit
 
-AI Character Kit is a reusable Unity 6 framework for structured NPC dialogue. It includes a deterministic offline Mock path, versioned transport contracts, optional loopback-backend adapters, bounded sessions, TTS, STT, and replaceable presentation boundaries.
+AI Character Kit is a reusable Unity 6 framework for structured NPC dialogue and consumer-owned game actions. It includes a deterministic offline Mock path, versioned transport contracts, optional loopback-backend adapters, bounded sessions, TTS, STT, and replaceable presentation and action boundaries.
 
 ## Install
 
-For a tagged release, choose **Window > Package Management > Package Manager**, click **+**, select **Install package from git URL**, and enter:
+The latest published release remains `v0.2.0`. Choose **Window > Package Management > Package Manager**, click **+**, select **Install package from git URL**, and enter:
 
 ```text
 https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.2.0
 ```
 
-For local development, select **Install package from disk** and choose this package's `package.json`. The supported baseline is Unity `6000.5`; uGUI is installed as the only feature package dependency. URP and the Input System are optional.
+To evaluate the completed but unreleased Phase 11 source, select **Install package from disk** and choose this `0.3.0` package's `package.json`. The supported baseline is Unity `6000.5`; uGUI is installed as the only feature package dependency. URP and the Input System are optional.
 
 Import **AI NPC Prototypes** from the package's Samples tab. Then run **Tools > AI Character Kit > Repair All Sample Scenes** so the imported assets match the active Legacy or Input System backend. **Import or Repair AI NPC Prototypes** combines those steps for local UPM installations.
 
 ## Build a character
 
-Open **Tools > AI Character Kit > Character Builder** to create or edit a consumer-owned `CharacterProfile`, preview deterministic Mock output, and connect an existing Scene GameObject or writable Prefab to a consumer `INpcPresentationDriver`. The tool can also connect existing package uGUI views and configure optional TTS with an opaque `NpcVoiceProfile` preset ID.
+Open **Tools > AI Character Kit > Character Builder** to create or edit a consumer-owned `CharacterProfile`, preview deterministic Mock output, and connect an existing Scene GameObject or writable Prefab to a consumer `INpcPresentationDriver`. The tool can also connect existing package uGUI views, configure optional TTS with an opaque `NpcVoiceProfile` preset ID, and author optional natural-language trigger-to-action bindings.
 
-The builder never generates a game model, UI, presentation implementation, or Prefab. Reapplying updates only the displayed Kit references and settings; it does not remove consumer components or assets. All created profiles remain under a user-selected `Assets/` folder.
+For actions, create an `NpcActionProfile`, assign one consumer MonoBehaviour implementing `INpcActionHandler` for every configured `actionId`, and use Mock mode to verify the exact example input without a network. Backend Actions mode uses V3 to return only matched configured trigger IDs; Unity still selects at most one action and the handler's `CanExecute` makes the final game-state decision.
+
+The builder never generates a game model, UI, presentation implementation, action implementation, or Prefab. Reapplying updates only the displayed Kit references and settings; it does not remove consumer components or assets. All created profiles remain under a user-selected `Assets/` folder.
 
 ## Start with Mock
 
@@ -35,7 +37,7 @@ Add `com.aicharacterkit.framework` to the consumer manifest's `testables` array 
 
 ## Backend boundary
 
-The UPM package never contains credentials or calls OpenAI directly. Backend, memory, TTS, and STT modes require a compatible loopback service. The repository's `server/` directory is reference source at the matching repository tag; it remains outside the Unity package and is not published as an npm package in `0.2.0`.
+The UPM package never contains credentials or calls OpenAI directly. Backend, memory, action-aware V3, TTS, and STT modes require a compatible loopback service. The repository's `server/` directory is reference source at the matching repository revision; it remains outside the Unity package and is not published as an npm package.
 
 See [Documentation](Documentation~/index.md) for architecture, lifecycle, migration, and contract references.
 

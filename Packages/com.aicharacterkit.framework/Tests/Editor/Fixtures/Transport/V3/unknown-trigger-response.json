@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 3,
+  "requestId": "req-v3-001",
+  "status": "success",
+  "result": {
+    "dialogue": "Guide: 알겠습니다.",
+    "emotion": "neutral",
+    "gesture": "none",
+    "matchedTriggerIds": ["invented_trigger"]
+  }
+}

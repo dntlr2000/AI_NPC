@@ -1,8 +1,8 @@
-# AI Character Kit 0.2.0 릴리즈 준비
+# AI Character Kit 0.2.0 공개 릴리즈
 
-> 상태: 공개 릴리즈 후보 준비 중 — tag push와 GitHub Release 발행 전
+> 상태: 공개 완료 — annotated tag와 GitHub Release 발행 완료
 > 대상: `com.aicharacterkit.framework` `0.2.0`
-> 기준선: `4dc478f` (Phase 10 완료)
+> 릴리즈 커밋: `dcad604a510b767b18154eb01408218a2e1e51f2`
 
 ## 배포 결정
 
@@ -13,13 +13,15 @@
 - Registry, Asset Store, npm과 별도 package-only 저장소 배포는 제외
 - `server/`는 같은 tag의 loopback reference source이며 package artifact로 배포하지 않음
 
-예정 설치 URL:
+공개 릴리즈: <https://github.com/dntlr2000/AI_NPC/releases/tag/v0.2.0>
+
+설치 URL:
 
 ```text
 https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.2.0
 ```
 
-## 후보 검증
+## 공개 전 검증
 
 - [x] package manifest version, author, license와 URL 검증
 - [x] MIT license가 저장소와 UPM package에 포함되는지 검증
@@ -34,7 +36,7 @@ https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framew
 
 검증 consumer는 Unity `6000.5.3f1`, Built-in Render Pipeline과 Legacy Input Manager 환경에서 package를 `source: git`으로 해석했다. 전체 commit hash는 consumer `packages-lock.json`의 `hash`와 일치했고, resolved package cache에 version `0.2.0`, author `dntlr2000`, MIT license file이 모두 포함됐다.
 
-## GitHub Release 노트 초안
+## GitHub Release 노트
 
 AI Character Kit `0.2.0` is the first public Git-based UPM release of the reusable Unity 6 AI NPC framework.
 
@@ -55,6 +57,8 @@ https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framew
 
 The optional `server/` reference implementation is not installed or published as a package. It remains loopback-only and must be run separately for Backend, memory, TTS, or STT modes. Remote deployment, persistent memory, Realtime voice, streaming, and client authentication are not included.
 
-## 공개 승인 게이트
+## 공개 결과
 
-검증된 release preparation commit을 만든 뒤 exact commit SHA, 테스트 결과와 이 초안을 검토한다. 사용자의 별도 최종 승인 전에는 `v0.2.0` tag를 만들거나 push하지 않고 GitHub Release를 발행하지 않는다. 공개 후 tag는 이동하지 않으며 수정은 `0.2.1` 이상의 새 version으로 배포한다.
+사용자가 커밋 `dcad604a510b767b18154eb01408218a2e1e51f2`의 공개를 최종 승인한 뒤 `main`을 push하고 annotated tag `v0.2.0`을 생성·push했다. GitHub Release `AI Character Kit 0.2.0`은 draft와 prerelease가 아닌 Latest 공개 릴리즈로 발행됐으며 로그아웃 상태에서도 저장소, tag, 커밋과 설치 URL을 확인했다.
+
+공개된 tag는 이동하거나 덮어쓰지 않는다. `v0.2.0` 수정은 `0.2.1` 이상의 새 patch release로, 새 공개 기능은 별도 package version으로 배포한다.

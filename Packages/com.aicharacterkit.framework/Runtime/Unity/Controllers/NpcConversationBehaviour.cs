@@ -1,6 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using AiCharacterKit.Core;
+using AiCharacterKit.Unity.Actions;
 using AiCharacterKit.Unity.Networking;
 using UnityEngine;
 
@@ -31,6 +32,17 @@ namespace AiCharacterKit.Unity
         [SerializeField]
         private string sessionResetEndpoint =
             "http://127.0.0.1:8787/v2/npc/sessions/reset";
+
+        [SerializeField]
+        private string actionBackendEndpoint =
+            "http://127.0.0.1:8787/v3/npc/respond";
+
+        [SerializeField]
+        private string actionResetEndpoint =
+            "http://127.0.0.1:8787/v3/npc/sessions/reset";
+
+        [SerializeField]
+        private NpcActionCoordinator actionCoordinator;
 
         [SerializeField]
         [Min(1)]
@@ -178,12 +190,24 @@ namespace AiCharacterKit.Unity
                 return false;
             }
 
+            if (actionCoordinator != null
+                && !actionCoordinator.TryInitialize(out var actionError))
+            {
+                Debug.LogError(
+                    $"Invalid NPC action configuration: {actionError}",
+                    this);
+                return false;
+            }
+
             if (!TryCreateConversationClient(out var conversationClient))
             {
                 return false;
             }
 
-            controller = new NpcAIController(conversationClient, presentationDriver);
+            controller = new NpcAIController(
+                conversationClient,
+                presentationDriver,
+                actionCoordinator);
             return true;
         }
 
@@ -194,9 +218,14 @@ namespace AiCharacterKit.Unity
             out IAiConversationClient conversationClient)
         {
             conversationClient = null;
+            var triggerDefinitions = actionCoordinator == null
+                ? System.Array.Empty<NpcTriggerDefinition>()
+                : actionCoordinator.CreateTriggerDefinitions();
             if (conversationMode == NpcConversationMode.Mock)
             {
-                conversationClient = new MockConversationClient();
+                conversationClient = new MockConversationClient(
+                    System.TimeSpan.FromMilliseconds(350),
+                    triggerDefinitions);
                 return true;
             }
 
@@ -236,6 +265,37 @@ namespace AiCharacterKit.Unity
                 {
                     Debug.LogError(
                         $"Invalid NPC session backend configuration: {exception.Message}",
+                        this);
+                    return false;
+                }
+            }
+
+            if (conversationMode == NpcConversationMode.BackendActions)
+            {
+                if (actionCoordinator == null || triggerDefinitions.Count == 0)
+                {
+                    Debug.LogError(
+                        "BackendActions mode requires a configured NpcActionCoordinator.",
+                        this);
+                    return false;
+                }
+
+                try
+                {
+                    var gateway = new UnityWebRequestAiNpcActionBackendGateway(
+                        actionBackendEndpoint,
+                        actionResetEndpoint,
+                        backendTimeoutSeconds);
+                    conversationClient = new ActionBackendConversationClient(
+                        gateway,
+                        characterProfile.CharacterId,
+                        triggerDefinitions);
+                    return true;
+                }
+                catch (System.ArgumentException exception)
+                {
+                    Debug.LogError(
+                        $"Invalid NPC action backend configuration: {exception.Message}",
                         this);
                     return false;
                 }

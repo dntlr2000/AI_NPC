@@ -2,6 +2,16 @@
 
 All notable changes to this package are documented here.
 
+## [0.3.0] - Unreleased
+
+- Added consumer-owned `NpcActionProfile` data and `INpcActionHandler` extension boundaries.
+- Added deterministic Mock trigger matching and one-action routing with final consumer authorization.
+- Added action-aware V3 session transport, loopback Unity adapter, and reference Backend endpoints.
+- Extended Character Builder with action profile authoring, handler wiring, validation, and preview.
+- Added an importable network-free conversation-action sample and regression coverage.
+- Split sample action handlers into persistent Unity `MonoScript` files so generated Scene references survive an Editor restart.
+- Preserved existing Mock, V1, V2, TTS, STT, and published `v0.2.0` paths.
+
 ## [0.2.0] - 2026-09-02
 
 - Added an Editor-only Character Builder for consumer-owned profile authoring and deterministic Mock previews.

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 3,
+  "requestId": "req-v3-001",
+  "status": "success",
+  "result": {
+    "dialogue": "Guide: 문을 확인해 볼게요.",
+    "emotion": "happy",
+    "gesture": "nod",
+    "matchedTriggerIds": ["open_gate"]
+  }
+}

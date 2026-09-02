@@ -11,6 +11,7 @@ namespace AiCharacterKit.Core
     {
         private readonly IAiConversationClient conversationClient;
         private readonly INpcPresentationDriver presentationDriver;
+        private readonly INpcTurnObserver turnObserver;
         private readonly object requestLock = new object();
 
         private CancellationTokenSource activeRequestCancellation;
@@ -37,11 +38,23 @@ namespace AiCharacterKit.Core
         public NpcAIController(
             IAiConversationClient conversationClient,
             INpcPresentationDriver presentationDriver)
+            : this(conversationClient, presentationDriver, null)
+        {
+        }
+
+        /// <summary>
+        /// Creates a controller with an optional observer for successful presented turns.
+        /// </summary>
+        public NpcAIController(
+            IAiConversationClient conversationClient,
+            INpcPresentationDriver presentationDriver,
+            INpcTurnObserver turnObserver)
         {
             this.conversationClient = conversationClient
                 ?? throw new ArgumentNullException(nameof(conversationClient));
             this.presentationDriver = presentationDriver
                 ?? throw new ArgumentNullException(nameof(presentationDriver));
+            this.turnObserver = turnObserver;
         }
 
         /// <summary>
@@ -86,6 +99,9 @@ namespace AiCharacterKit.Core
                 presentationDriver.PresentDialogue(response.Dialogue);
                 presentationDriver.PresentEmotion(response.Emotion);
                 presentationDriver.PresentGesture(response.Gesture);
+                await ObserveSuccessfulTurnAsync(
+                    new NpcTurnContext(request, response),
+                    requestCancellation.Token);
                 return true;
             }
             catch (OperationCanceledException)
@@ -102,6 +118,28 @@ namespace AiCharacterKit.Core
             {
                 CompleteRequest(requestCancellation);
                 presentationDriver.SetBusy(false);
+            }
+        }
+
+        /// <summary>
+        /// Isolates optional post-presentation behavior from the successful dialogue result.
+        /// </summary>
+        private async Task ObserveSuccessfulTurnAsync(
+            NpcTurnContext context,
+            CancellationToken cancellationToken)
+        {
+            if (turnObserver == null)
+            {
+                return;
+            }
+
+            try
+            {
+                await turnObserver.ObserveAsync(context, cancellationToken);
+            }
+            catch
+            {
+                // Optional consumer behavior cannot turn a presented dialogue into an error.
             }
         }
 

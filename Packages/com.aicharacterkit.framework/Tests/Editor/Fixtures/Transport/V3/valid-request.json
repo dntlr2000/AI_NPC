@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 3,
+  "requestId": "req-v3-001",
+  "sessionId": "session-v3-001",
+  "character": {
+    "characterId": "sample-guide",
+    "displayName": "Guide",
+    "personality": "Helpful and observant.",
+    "speechStyle": "Warm and brief.",
+    "exampleDialogue": "How can I help?",
+    "defaultEmotion": "neutral"
+  },
+  "userText": "문을 열어 줘",
+  "triggers": [
+    {
+      "triggerId": "open_gate",
+      "conditionDescription": "The player asks the guide to open the gate."
+    }
+  ]
+}

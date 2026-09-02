@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading;
 using AiCharacterKit.Core;
 using AiCharacterKit.Unity;
+using AiCharacterKit.Unity.Actions;
 using AiCharacterKit.Unity.Speech;
 using UnityEditor;
 using UnityEngine;
@@ -248,6 +249,105 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
+        /// Creates one validated consumer-owned NpcActionProfile at a unique Assets path.
+        /// </summary>
+        public static bool TryCreateActionProfile(
+            ActionProfileDraft draft,
+            string folderPath,
+            out NpcActionProfile profile,
+            out string error)
+        {
+            profile = null;
+            error = string.Empty;
+            if (!TryNormalizeWritableFolder(folderPath, out var folder, out error)
+                || !TryCreateTransientActionProfile(draft, out var transient, out error))
+            {
+                return false;
+            }
+
+            var assetPath = string.Empty;
+            try
+            {
+                EnsureFolder(folder);
+                var assetName = GetSafeAssetName(
+                    draft.AssetName,
+                    null,
+                    "NpcActionProfile");
+                assetPath = AssetDatabase.GenerateUniqueAssetPath(
+                    folder + "/" + assetName + ".asset");
+                transient.name = assetName;
+                AssetDatabase.CreateAsset(transient, assetPath);
+                Undo.RegisterCreatedObjectUndo(transient, "Create AI NPC Action Profile");
+                AssetDatabase.SaveAssets();
+                AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceSynchronousImport);
+                profile = AssetDatabase.LoadAssetAtPath<NpcActionProfile>(assetPath);
+                if (profile == null || !profile.TryValidate(out error))
+                {
+                    throw new InvalidOperationException(
+                        string.IsNullOrWhiteSpace(error)
+                            ? "Unity could not reload the created NpcActionProfile."
+                            : error);
+                }
+
+                return true;
+            }
+            catch (Exception exception)
+            {
+                if (!string.IsNullOrEmpty(assetPath)
+                    && AssetDatabase.LoadMainAssetAtPath(assetPath) != null)
+                {
+                    AssetDatabase.DeleteAsset(assetPath);
+                }
+
+                if (transient != null && !EditorUtility.IsPersistent(transient))
+                {
+                    Object.DestroyImmediate(transient);
+                }
+
+                profile = null;
+                error = "NpcActionProfile creation failed: " + exception.Message;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Updates one consumer-owned NpcActionProfile after validating a detached copy.
+        /// </summary>
+        public static bool TryUpdateActionProfile(
+            NpcActionProfile profile,
+            ActionProfileDraft draft,
+            out string error)
+        {
+            error = string.Empty;
+            if (!TryValidateWritableAsset(profile, "NpcActionProfile", out error)
+                || !TryCreateTransientActionProfile(draft, out var copy, out error))
+            {
+                return false;
+            }
+
+            Object.DestroyImmediate(copy);
+            Undo.IncrementCurrentGroup();
+            var group = Undo.GetCurrentGroup();
+            Undo.SetCurrentGroupName("Update AI NPC Action Profile");
+            try
+            {
+                Undo.RecordObject(profile, "Update AI NPC Action Profile");
+                ApplyActionProfileDraft(profile, draft);
+                profile.name = GetSafeAssetName(draft.AssetName, null, profile.name);
+                EditorUtility.SetDirty(profile);
+                AssetDatabase.SaveAssets();
+                Undo.CollapseUndoOperations(group);
+                return true;
+            }
+            catch (Exception exception)
+            {
+                Undo.RevertAllDownToGroup(group);
+                error = "NpcActionProfile update failed: " + exception.Message;
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Produces one deterministic network-free response from unsaved profile values.
         /// </summary>
         public static bool TryPreviewMock(
@@ -287,6 +387,85 @@ namespace AiCharacterKit.Editor
             finally
             {
                 Object.DestroyImmediate(profile);
+            }
+        }
+
+        /// <summary>
+        /// Previews deterministic Mock dialogue, matched IDs, and stable action selection.
+        /// </summary>
+        public static bool TryPreviewMockAction(
+            CharacterProfileDraft characterDraft,
+            ActionProfileDraft actionDraft,
+            string userText,
+            out AiNpcResponse response,
+            out NpcTriggerDefinition selectedDefinition,
+            out string error)
+        {
+            response = null;
+            selectedDefinition = null;
+            error = string.Empty;
+            if (!TryCreateTransientProfile(characterDraft, out var character, out error)
+                || !TryCreateTransientActionProfile(actionDraft, out var actions, out error))
+            {
+                if (character != null)
+                {
+                    Object.DestroyImmediate(character);
+                }
+
+                return false;
+            }
+
+            try
+            {
+                var definitions = actions.CreateDefinitions();
+                var request = new AiNpcRequest(
+                    character.CharacterId,
+                    character.DisplayName,
+                    character.Personality,
+                    character.SpeechStyle,
+                    character.ExampleDialogue,
+                    character.DefaultEmotion,
+                    userText);
+                response = new MockConversationClient(TimeSpan.Zero, definitions)
+                    .SendAsync(request, CancellationToken.None)
+                    .GetAwaiter()
+                    .GetResult();
+                foreach (var definition in definitions)
+                {
+                    var matched = false;
+                    foreach (var triggerId in response.MatchedTriggerIds)
+                    {
+                        if (string.Equals(
+                            definition.TriggerId,
+                            triggerId,
+                            StringComparison.Ordinal))
+                        {
+                            matched = true;
+                            break;
+                        }
+                    }
+
+                    if (matched
+                        && (selectedDefinition == null
+                            || definition.Priority > selectedDefinition.Priority))
+                    {
+                        selectedDefinition = definition;
+                    }
+                }
+
+                return true;
+            }
+            catch (Exception exception)
+            {
+                response = null;
+                selectedDefinition = null;
+                error = "Mock action preview failed: " + exception.Message;
+                return false;
+            }
+            finally
+            {
+                Object.DestroyImmediate(character);
+                Object.DestroyImmediate(actions);
             }
         }
 
@@ -432,6 +611,70 @@ namespace AiCharacterKit.Editor
                 error = "Voice profile values are invalid: " + exception.Message;
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Builds and validates one temporary NpcActionProfile from detached values.
+        /// </summary>
+        private static bool TryCreateTransientActionProfile(
+            ActionProfileDraft draft,
+            out NpcActionProfile profile,
+            out string error)
+        {
+            profile = null;
+            error = string.Empty;
+            if (draft == null)
+            {
+                error = "Action profile values are required.";
+                return false;
+            }
+
+            profile = ScriptableObject.CreateInstance<NpcActionProfile>();
+            try
+            {
+                ApplyActionProfileDraft(profile, draft);
+                if (profile.TryValidate(out error))
+                {
+                    return true;
+                }
+
+                Object.DestroyImmediate(profile);
+                profile = null;
+                return false;
+            }
+            catch (Exception exception)
+            {
+                Object.DestroyImmediate(profile);
+                profile = null;
+                error = "Action profile values are invalid: " + exception.Message;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Copies detached binding values into serialized NpcActionProfile fields.
+        /// </summary>
+        private static void ApplyActionProfileDraft(
+            NpcActionProfile profile,
+            ActionProfileDraft draft)
+        {
+            var serializedProfile = new SerializedObject(profile);
+            var bindings = serializedProfile.FindProperty("bindings");
+            bindings.arraySize = draft.Bindings.Count;
+            for (var index = 0; index < draft.Bindings.Count; index++)
+            {
+                var source = draft.Bindings[index] ?? new ActionBindingDraft();
+                var target = bindings.GetArrayElementAtIndex(index);
+                target.FindPropertyRelative("triggerId").stringValue = source.TriggerId;
+                target.FindPropertyRelative("conditionDescription").stringValue =
+                    source.ConditionDescription;
+                target.FindPropertyRelative("exampleUserText").stringValue =
+                    source.ExampleUserText;
+                target.FindPropertyRelative("actionId").stringValue = source.ActionId;
+                target.FindPropertyRelative("priority").intValue = source.Priority;
+            }
+
+            serializedProfile.ApplyModifiedPropertiesWithoutUndo();
         }
 
         /// <summary>

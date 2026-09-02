@@ -20,6 +20,16 @@ import {
   SCHEMA_VERSION as SCHEMA_VERSION_V2,
 } from "./contracts/v2.js";
 import {
+  aiNpcRequestSchema as aiNpcRequestSchemaV3,
+  aiNpcSessionResetRequestSchema as aiNpcSessionResetRequestSchemaV3,
+  createErrorResponse as createErrorResponseV3,
+  createResetErrorResponse as createResetErrorResponseV3,
+  createResetSuccessResponse as createResetSuccessResponseV3,
+  createSuccessResponse as createSuccessResponseV3,
+  readRequestId as readRequestIdV3,
+  SCHEMA_VERSION as SCHEMA_VERSION_V3,
+} from "./contracts/v3.js";
+import {
   createSpeechErrorResponse,
   readSpeechRequestId,
   SPEECH_AUDIO_FORMAT,
@@ -118,7 +128,10 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
       );
       logGenerationSuccess(request.log, parsedRequest.data.requestId, generated);
       return reply.status(200).send(
-        createSuccessResponseV1(parsedRequest.data.requestId, generated.result),
+        createSuccessResponseV1(
+          parsedRequest.data.requestId,
+          toPresentationResult(generated.result),
+        ),
       );
     } catch (error: unknown) {
       const serviceError = normalizeServiceError(error);
@@ -170,7 +183,10 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
       );
       logGenerationSuccess(request.log, parsedRequest.data.requestId, generated);
       return reply.status(200).send(
-        createSuccessResponseV2(parsedRequest.data.requestId, generated.result),
+        createSuccessResponseV2(
+          parsedRequest.data.requestId,
+          toPresentationResult(generated.result),
+        ),
       );
     } catch (error: unknown) {
       const serviceError = normalizeServiceError(error);
@@ -185,6 +201,128 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
       );
     } finally {
       cancellation.dispose();
+    }
+  });
+
+  app.post("/v3/npc/respond", async (request, reply) => {
+    const requestId = readRequestIdV3(request.body, request.id);
+    const version = readSchemaVersion(request.body);
+    if (version !== undefined && version !== SCHEMA_VERSION_V3) {
+      return reply.status(400).send(
+        createErrorResponseV3(
+          requestId,
+          "unsupported_schema_version",
+          "Only AI NPC contract version 3 is supported on this endpoint.",
+          false,
+        ),
+      );
+    }
+
+    const parsedRequest = aiNpcRequestSchemaV3.safeParse(request.body);
+    if (!parsedRequest.success) {
+      return reply.status(400).send(
+        createErrorResponseV3(
+          requestId,
+          "invalid_request",
+          "The action-aware AI NPC request is invalid.",
+          false,
+        ),
+      );
+    }
+
+    const cancellation = createRequestCancellation(request.raw, reply.raw);
+    try {
+      const generated = await dependencies.sessionService.respond(
+        parsedRequest.data,
+        cancellation.signal,
+      );
+      const matchedTriggerIds = generated.result.matchedTriggerIds ?? [];
+      const configuredTriggerIds = parsedRequest.data.triggers.map(
+        (trigger) => trigger.triggerId,
+      );
+      if (matchedTriggerIds.some((id) => !configuredTriggerIds.includes(id))) {
+        throw new NpcServiceError(
+          "upstream_invalid_response",
+          "The model returned an invalid structured response.",
+          502,
+          true,
+          "openai_unknown_trigger_id",
+        );
+      }
+
+      logGenerationSuccess(request.log, parsedRequest.data.requestId, generated);
+      return reply.status(200).send(
+        createSuccessResponseV3(
+          parsedRequest.data.requestId,
+          {
+            ...toPresentationResult(generated.result),
+            matchedTriggerIds: [...matchedTriggerIds],
+          },
+          configuredTriggerIds,
+        ),
+      );
+    } catch (error: unknown) {
+      const serviceError = normalizeServiceError(error);
+      logServiceFailure(request.log, parsedRequest.data.requestId, serviceError);
+      return reply.status(serviceError.statusCode).send(
+        createErrorResponseV3(
+          parsedRequest.data.requestId,
+          serviceError.code,
+          serviceError.message,
+          serviceError.retryable,
+        ),
+      );
+    } finally {
+      cancellation.dispose();
+    }
+  });
+
+  app.post("/v3/npc/sessions/reset", async (request, reply) => {
+    const requestId = readRequestIdV3(request.body, request.id);
+    const version = readSchemaVersion(request.body);
+    if (version !== undefined && version !== SCHEMA_VERSION_V3) {
+      return reply.status(400).send(
+        createResetErrorResponseV3(
+          requestId,
+          "unsupported_schema_version",
+          "Only AI NPC contract version 3 is supported on this endpoint.",
+          false,
+        ),
+      );
+    }
+
+    const parsedRequest = aiNpcSessionResetRequestSchemaV3.safeParse(request.body);
+    if (!parsedRequest.success) {
+      return reply.status(400).send(
+        createResetErrorResponseV3(
+          requestId,
+          "invalid_request",
+          "The action session reset request is invalid.",
+          false,
+        ),
+      );
+    }
+
+    try {
+      dependencies.sessionService.reset(parsedRequest.data);
+      request.log.info(
+        { contractRequestId: parsedRequest.data.requestId },
+        "AI NPC action session reset",
+      );
+      return reply.status(200).send(
+        createResetSuccessResponseV3(parsedRequest.data.requestId),
+      );
+    } catch (error: unknown) {
+      const serviceError = normalizeServiceError(error);
+      logServiceFailure(request.log, parsedRequest.data.requestId, serviceError);
+      return reply.status(serviceError.statusCode).send(
+        createResetErrorResponseV3(
+          parsedRequest.data.requestId,
+          serviceError.code,
+          serviceError.message,
+          serviceError.retryable,
+        ),
+      );
     }
   });
 
@@ -422,6 +560,18 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
       );
     }
 
+    if (request.url.startsWith("/v3/npc/sessions/reset")) {
+      return reply.status(statusCode).send(
+        createResetErrorResponseV3(request.id, code, message, false),
+      );
+    }
+
+    if (request.url.startsWith("/v3/")) {
+      return reply.status(statusCode).send(
+        createErrorResponseV3(request.id, code, message, false),
+      );
+    }
+
     if (request.url.startsWith("/v2/npc/sessions/reset")) {
       return reply.status(statusCode).send(
         createResetErrorResponse(request.id, code, message, false),
@@ -440,6 +590,17 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
   });
 
   return app;
+}
+
+/** Removes action-only fields before returning an older V1 or V2 response. */
+function toPresentationResult(
+  result: Awaited<ReturnType<NpcResponseGenerator["generate"]>>["result"],
+): { dialogue: string; emotion: "neutral" | "happy" | "sad" | "angry" | "concerned"; gesture: "none" | "nod" | "wave" } {
+  return {
+    dialogue: result.dialogue,
+    emotion: result.emotion,
+    gesture: result.gesture,
+  };
 }
 
 /** Produces body-safe structured logging with common secret headers redacted. */

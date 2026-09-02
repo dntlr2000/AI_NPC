@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 3,
+  "requestId": "req-v3-001",
+  "status": "error",
+  "error": {
+    "code": "session_busy",
+    "message": "The session is busy.",
+    "retryable": true
+  }
+}

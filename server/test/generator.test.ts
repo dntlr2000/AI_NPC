@@ -143,6 +143,57 @@ describe("OpenAiNpcResponseGenerator", () => {
     });
   });
 
+  it("uses one V3 structured response for dialogue and only configured trigger IDs", async () => {
+    const capturedRequests: unknown[] = [];
+    const generator = createGeneratorWithParseResult(
+      {
+        id: "resp-action-test",
+        status: "completed",
+        output: [
+          {
+            type: "message",
+            content: [
+              {
+                type: "output_text",
+                parsed: {
+                  dialogue: "문을 확인할게.",
+                  emotion: "neutral",
+                  gesture: "nod",
+                  matchedTriggerIds: ["open_gate"],
+                },
+              },
+            ],
+          },
+        ],
+        usage: null,
+      },
+      capturedRequests,
+    );
+
+    const generated = await generator.generate(
+      {
+        ...request,
+        triggers: [
+          {
+            triggerId: "open_gate",
+            conditionDescription: "The player asks to open the gate.",
+          },
+        ],
+      },
+      new AbortController().signal,
+    );
+
+    expect(generated.result.matchedTriggerIds).toEqual(["open_gate"]);
+    expect(capturedRequests[0]).toMatchObject({ store: false });
+    expect(buildNpcInstructions({
+      ...request,
+      triggers: [{
+        triggerId: "open_gate",
+        conditionDescription: "The player asks to open the gate.",
+      }],
+    })).toContain("Never invent an ID");
+  });
+
   it("maps a structured refusal without returning its text", async () => {
     const generator = createGeneratorWithParseResult({
       id: "resp-refusal",

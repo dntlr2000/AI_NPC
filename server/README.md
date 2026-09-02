@@ -1,10 +1,10 @@
 # AI Character Kit Local Backend
 
-This local server exposes stateless V1, session-aware V2, optional Speech V1, and optional Transcription V1 contracts on loopback. It keeps the OpenAI API key and provider settings outside Unity and Git, and stores Phase 5 history only in process memory.
+This local server exposes stateless V1, session-aware V2, action-aware V3, optional Speech V1, and optional Transcription V1 contracts on loopback. It keeps the OpenAI API key and provider settings outside Unity and Git, and stores conversation history only in process memory.
 
 ## Distribution boundary
 
-Release `0.2.0` distributes the Unity framework as the Git-subfolder UPM package at `Packages/com.aicharacterkit.framework`. The `server/` directory is a reference implementation checked in at the same repository tag; it is not published as a UPM or npm package. Consumers that need Backend modes must check out the matching repository tag and run this service separately. Mock mode does not require it.
+Public release `0.2.0` distributes the Unity framework as the Git-subfolder UPM package at `Packages/com.aicharacterkit.framework`. The current source also contains the unreleased Phase 11 V3 implementation. The `server/` directory is reference source and is not published as a UPM or npm package. Consumers that need Backend modes must check out a revision matching their Unity package and run this service separately. Mock mode does not require it.
 
 ## Requirements
 
@@ -75,7 +75,9 @@ Invalid values stop startup. Limits remove the oldest complete turn or least-rec
 - `POST /v1/npc/respond`
 - `POST /v2/npc/respond`
 - `POST /v2/npc/sessions/reset`
+- `POST /v3/npc/respond`
+- `POST /v3/npc/sessions/reset`
 - `POST /v1/speech/synthesize`
 - `POST /v1/speech/transcribe`
 
-Conversation V1 follows `docs/CONTRACT_V1.md` and remains stateless. V2 follows `docs/CONTRACT_V2.md`; it stores only successful user/assistant turns, uses `store: false` for OpenAI requests, and loses all history when the process stops. Speech follows `docs/SPEECH_CONTRACT_V1.md` and returns complete PCM16LE 24 kHz mono buffers. Transcription follows `docs/TRANSCRIPTION_CONTRACT_V1.md` and returns reviewed text input. This local vertical slice has no client authentication, remote deployment, persistent memory, streaming, Realtime, VAD, or custom voice features.
+Conversation V1 follows `docs/CONTRACT_V1.md` and remains stateless. V2 follows `docs/CONTRACT_V2.md`; it stores only successful user/assistant turns, uses `store: false` for OpenAI requests, and loses all history when the process stops. V3 follows `docs/CONTRACT_V3.md`; it reuses V2 session behavior and asks the same structured response to return only IDs from a bounded request trigger snapshot. It never receives Unity action IDs, methods, parameters, or object references. Speech follows `docs/SPEECH_CONTRACT_V1.md` and returns complete PCM16LE 24 kHz mono buffers. Transcription follows `docs/TRANSCRIPTION_CONTRACT_V1.md` and returns reviewed text input. This local vertical slice has no client authentication, remote deployment, persistent memory, streaming, Realtime, VAD, or custom voice features.

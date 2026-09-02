@@ -10,7 +10,7 @@ URP and the Input System are not required. Audio, JSON serialization, and UnityW
 
 ## Tagged Git installation
 
-In Package Manager, select **Install package from git URL** and enter:
+The latest published tag is `v0.2.0`; it predates Phase 11 actions. In Package Manager, select **Install package from git URL** and enter:
 
 ```text
 https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.2.0
@@ -26,7 +26,7 @@ Keep the `path` query before the `#v0.2.0` revision. Pin a release tag instead o
 
 ## Local installation
 
-Use Package Manager's **Install package from disk** action and select `Packages/com.aicharacterkit.framework/package.json`, or add a file dependency to the consumer's `Packages/manifest.json`:
+Use Package Manager's **Install package from disk** action and select `Packages/com.aicharacterkit.framework/package.json`, or add a file dependency to the consumer's `Packages/manifest.json`. The current source package is `0.3.0`; it is not a published tag until a later release is explicitly approved.
 
 ```json
 "com.aicharacterkit.framework": "file:E:/path/to/repository/Packages/com.aicharacterkit.framework"
@@ -36,7 +36,7 @@ Do not keep a raw `Assets/AiCharacterKit` copy and the UPM package installed tog
 
 ## Samples
 
-Import **AI NPC Prototypes** from the Package Manager Samples tab. Imported samples are writable under `Assets/Samples/AI Character Kit/0.2.0/AI NPC Prototypes`. Run **Tools > AI Character Kit > Repair All Sample Scenes** after import or after changing the active input backend.
+Import **AI NPC Prototypes** from the Package Manager Samples tab. Imported samples are writable under `Assets/Samples/AI Character Kit/<installed-version>/AI NPC Prototypes`. Run **Tools > AI Character Kit > Repair All Sample Scenes** after import or after changing the active input backend. For source `0.3.0`, run **Tools > AI Character Kit > Samples > Create Conversation Action Prototype** once after import to generate the action Scene through Editor APIs.
 
 ## Upgrade and removal
 

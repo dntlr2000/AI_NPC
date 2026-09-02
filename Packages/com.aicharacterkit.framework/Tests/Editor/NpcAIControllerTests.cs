@@ -114,6 +114,31 @@ namespace AiCharacterKit.Core.Tests
         }
 
         /// <summary>
+        /// Confirms optional behavior failures cannot replace an already presented dialogue success.
+        /// </summary>
+        [Test]
+        public async Task SubmitAsync_TurnObserverFailure_KeepsDialogueSuccessful()
+        {
+            var presentation = new RecordingPresentationDriver();
+            var observer = new ThrowingTurnObserver();
+            var controller = new NpcAIController(
+                new MockConversationClient(TimeSpan.Zero),
+                presentation,
+                observer);
+
+            var succeeded = await controller.SubmitAsync(
+                CreateRequest("안녕"),
+                CancellationToken.None);
+
+            Assert.That(succeeded, Is.True);
+            Assert.That(observer.CallCount, Is.EqualTo(1));
+            Assert.That(presentation.Dialogue, Is.Not.Empty);
+            Assert.That(presentation.Error, Is.Null);
+            Assert.That(presentation.WasCancelled, Is.False);
+            controller.Dispose();
+        }
+
+        /// <summary>
         /// Confirms that a supported reset shares busy presentation and completes successfully.
         /// </summary>
         [Test]
@@ -331,6 +356,26 @@ namespace AiCharacterKit.Core.Tests
             {
                 return Task.FromException<AiNpcResponse>(
                     new InvalidOperationException("mock failure"));
+            }
+        }
+
+        /// <summary>
+        /// Throws after a successful presentation to verify behavior isolation.
+        /// </summary>
+        private sealed class ThrowingTurnObserver : INpcTurnObserver
+        {
+            public int CallCount { get; private set; }
+
+            /// <summary>
+            /// Records one observation and returns a controlled failure.
+            /// </summary>
+            public Task ObserveAsync(
+                NpcTurnContext context,
+                CancellationToken cancellationToken)
+            {
+                CallCount++;
+                return Task.FromException(
+                    new InvalidOperationException("consumer observer failure"));
             }
         }
 

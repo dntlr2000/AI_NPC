@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,6 +11,7 @@ namespace AiCharacterKit.Core
     public sealed class MockConversationClient : IAiConversationClient
     {
         private readonly TimeSpan simulatedLatency;
+        private readonly IReadOnlyList<NpcTriggerDefinition> triggerDefinitions;
 
         /// <summary>
         /// Creates a mock with a short visible delay for Play Mode status feedback.
@@ -23,6 +25,16 @@ namespace AiCharacterKit.Core
         /// Creates a mock with a caller-selected deterministic delay, including zero for tests.
         /// </summary>
         public MockConversationClient(TimeSpan simulatedLatency)
+            : this(simulatedLatency, null)
+        {
+        }
+
+        /// <summary>
+        /// Creates a mock that also performs exact normalized example trigger matching.
+        /// </summary>
+        public MockConversationClient(
+            TimeSpan simulatedLatency,
+            IReadOnlyList<NpcTriggerDefinition> triggerDefinitions)
         {
             if (simulatedLatency < TimeSpan.Zero)
             {
@@ -30,6 +42,7 @@ namespace AiCharacterKit.Core
             }
 
             this.simulatedLatency = simulatedLatency;
+            this.triggerDefinitions = triggerDefinitions;
         }
 
         /// <summary>
@@ -58,7 +71,15 @@ namespace AiCharacterKit.Core
             }
 
             var normalizedText = userText.ToLowerInvariant();
-            return CreateResponse(request, userText, normalizedText);
+            var response = CreateResponse(request, userText, normalizedText);
+            var matchedTriggerIds = NpcTriggerMatcher.MatchExampleTriggerIds(
+                userText,
+                triggerDefinitions);
+            return new AiNpcResponse(
+                response.Dialogue,
+                response.Emotion,
+                response.Gesture,
+                matchedTriggerIds);
         }
 
         /// <summary>

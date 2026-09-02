@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using AiCharacterKit.Core;
 using AiCharacterKit.Unity;
+using AiCharacterKit.Unity.Actions;
 using AiCharacterKit.Unity.Speech;
 using UnityEditor;
 using UnityEngine;
@@ -16,6 +18,8 @@ namespace AiCharacterKit.Editor
         private CharacterProfileDraft profileDraft = new CharacterProfileDraft();
         private NpcVoiceProfile selectedVoiceProfile;
         private VoiceProfileDraft voiceDraft = new VoiceProfileDraft();
+        private NpcActionProfile selectedActionProfile;
+        private ActionProfileDraft actionDraft = new ActionProfileDraft();
         private CharacterBuilderConfiguration configuration =
             new CharacterBuilderConfiguration();
         private CharacterBuilderValidationReport validationReport;
@@ -24,6 +28,7 @@ namespace AiCharacterKit.Editor
             CharacterBuilderConfiguration.DefaultCharacterFolder;
         private string previewInput = "hello";
         private AiNpcResponse previewResponse;
+        private NpcTriggerDefinition previewAction;
         private string statusMessage = string.Empty;
         private MessageType statusType = MessageType.Info;
 
@@ -49,6 +54,7 @@ namespace AiCharacterKit.Editor
             DrawProfileSection();
             DrawPreviewSection();
             DrawTargetSection();
+            DrawActionSection();
             DrawSpeechSection();
             DrawValidationSection();
             EditorGUILayout.EndScrollView();
@@ -137,18 +143,28 @@ namespace AiCharacterKit.Editor
             previewInput = EditorGUILayout.TextField("User Text", previewInput);
             if (GUILayout.Button("Preview Mock Response"))
             {
-                if (CharacterBuilderAssetService.TryPreviewMock(
+                var succeeded = configuration.ConfigureActions
+                    ? CharacterBuilderAssetService.TryPreviewMockAction(
+                        profileDraft,
+                        actionDraft,
+                        previewInput,
+                        out previewResponse,
+                        out previewAction,
+                        out var actionError)
+                    : CharacterBuilderAssetService.TryPreviewMock(
                         profileDraft,
                         previewInput,
                         out previewResponse,
-                        out var error))
+                        out actionError);
+                if (succeeded)
                 {
                     SetStatus("Mock preview completed without networking.", MessageType.Info);
                 }
                 else
                 {
                     previewResponse = null;
-                    SetStatus(error, MessageType.Error);
+                    previewAction = null;
+                    SetStatus(actionError, MessageType.Error);
                 }
             }
 
@@ -157,11 +173,175 @@ namespace AiCharacterKit.Editor
                 EditorGUILayout.HelpBox(
                     "Dialogue: " + previewResponse.Dialogue
                     + "\nEmotion: " + previewResponse.Emotion
-                    + "\nGesture: " + previewResponse.Gesture,
+                    + "\nGesture: " + previewResponse.Gesture
+                    + "\nMatched Triggers: "
+                    + (previewResponse.MatchedTriggerIds.Count == 0
+                        ? "(none)"
+                        : string.Join(", ", previewResponse.MatchedTriggerIds))
+                    + "\nSelected Action: "
+                    + (previewAction == null ? "(none)" : previewAction.ActionId),
                     MessageType.None);
             }
 
             EditorGUILayout.Space();
+        }
+
+        /// <summary>
+        /// Draws optional action profile authoring and explicit consumer handler selection.
+        /// </summary>
+        private void DrawActionSection()
+        {
+            EditorGUILayout.LabelField("4. Optional Conversation Actions", EditorStyles.boldLabel);
+            configuration.ConfigureActions = EditorGUILayout.Toggle(
+                "Configure Actions",
+                configuration.ConfigureActions);
+            if (!configuration.ConfigureActions)
+            {
+                configuration.ActionHandlerSources = Array.Empty<MonoBehaviour>();
+                EditorGUILayout.HelpBox(
+                    "No action component is added. Existing action components and assets are left untouched.",
+                    MessageType.Info);
+                EditorGUILayout.Space();
+                return;
+            }
+
+            EditorGUI.BeginChangeCheck();
+            var nextProfile = (NpcActionProfile)EditorGUILayout.ObjectField(
+                "Existing Action Profile",
+                selectedActionProfile,
+                typeof(NpcActionProfile),
+                false);
+            if (EditorGUI.EndChangeCheck())
+            {
+                LoadActionProfile(nextProfile);
+            }
+
+            actionDraft.AssetName = EditorGUILayout.TextField(
+                "Action Asset Name",
+                actionDraft.AssetName);
+            var removeIndex = -1;
+            for (var index = 0; index < actionDraft.Bindings.Count; index++)
+            {
+                var binding = actionDraft.Bindings[index];
+                EditorGUILayout.BeginVertical("box");
+                EditorGUILayout.LabelField("Binding " + (index + 1), EditorStyles.miniBoldLabel);
+                binding.TriggerId = EditorGUILayout.TextField("Trigger ID", binding.TriggerId);
+                binding.ConditionDescription = DrawTextArea(
+                    "Natural-language Condition",
+                    binding.ConditionDescription,
+                    44f);
+                binding.ExampleUserText = EditorGUILayout.TextField(
+                    "Mock Example User Text",
+                    binding.ExampleUserText);
+                binding.ActionId = EditorGUILayout.TextField("Action ID", binding.ActionId);
+                binding.Priority = EditorGUILayout.IntField("Priority", binding.Priority);
+                if (GUILayout.Button("Remove Binding"))
+                {
+                    removeIndex = index;
+                }
+
+                EditorGUILayout.EndVertical();
+            }
+
+            if (removeIndex >= 0)
+            {
+                actionDraft.Bindings.RemoveAt(removeIndex);
+            }
+
+            using (new EditorGUI.DisabledScope(
+                       actionDraft.Bindings.Count >= NpcTriggerDefinition.MaxTriggerCount))
+            {
+                if (GUILayout.Button("Add Binding"))
+                {
+                    actionDraft.Bindings.Add(new ActionBindingDraft());
+                }
+            }
+
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button(selectedActionProfile == null
+                    ? "Create Action Profile"
+                    : "Save Action Profile"))
+            {
+                SaveActionProfile();
+            }
+
+            if (GUILayout.Button("New Action Draft"))
+            {
+                LoadActionProfile(null);
+                SetStatus("Started a new unsaved action profile draft.", MessageType.Info);
+            }
+
+            EditorGUILayout.EndHorizontal();
+            configuration.ActionProfile = selectedActionProfile;
+            DrawActionHandlerSelections();
+            EditorGUILayout.Space();
+        }
+
+        /// <summary>
+        /// Selects one target-owned handler for every unique authored action ID.
+        /// </summary>
+        private void DrawActionHandlerSelections()
+        {
+            var available = CharacterBuilderService.FindActionHandlers(configuration.Target);
+            var previous = new Dictionary<string, MonoBehaviour>(StringComparer.Ordinal);
+            foreach (var source in configuration.ActionHandlerSources
+                         ?? Array.Empty<MonoBehaviour>())
+            {
+                if (source is INpcActionHandler handler)
+                {
+                    previous[handler.ActionId] = source;
+                }
+            }
+
+            var selected = new List<MonoBehaviour>();
+            var drawnIds = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var binding in actionDraft.Bindings)
+            {
+                var actionId = binding?.ActionId?.Trim() ?? string.Empty;
+                if (actionId.Length == 0 || !drawnIds.Add(actionId))
+                {
+                    continue;
+                }
+
+                var matches = new List<MonoBehaviour>();
+                foreach (var candidate in available)
+                {
+                    if (candidate is INpcActionHandler handler
+                        && string.Equals(handler.ActionId, actionId, StringComparison.Ordinal))
+                    {
+                        matches.Add(candidate);
+                    }
+                }
+
+                var labels = new string[matches.Count + 1];
+                labels[0] = "(None)";
+                var selectedIndex = 0;
+                for (var index = 0; index < matches.Count; index++)
+                {
+                    labels[index + 1] = GetComponentLabel(configuration.Target, matches[index]);
+                    if (previous.TryGetValue(actionId, out var previousSource)
+                        && previousSource == matches[index])
+                    {
+                        selectedIndex = index + 1;
+                    }
+                }
+
+                if (selectedIndex == 0 && matches.Count == 1)
+                {
+                    selectedIndex = 1;
+                }
+
+                selectedIndex = EditorGUILayout.Popup(
+                    "Handler: " + actionId,
+                    selectedIndex,
+                    labels);
+                if (selectedIndex > 0)
+                {
+                    selected.Add(matches[selectedIndex - 1]);
+                }
+            }
+
+            configuration.ActionHandlerSources = selected.ToArray();
         }
 
         /// <summary>
@@ -212,7 +392,7 @@ namespace AiCharacterKit.Editor
         /// </summary>
         private void DrawSpeechSection()
         {
-            EditorGUILayout.LabelField("4. Optional TTS", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("5. Optional TTS", EditorStyles.boldLabel);
             configuration.ConfigureSpeech = EditorGUILayout.Toggle(
                 "Configure TTS",
                 configuration.ConfigureSpeech);
@@ -279,9 +459,10 @@ namespace AiCharacterKit.Editor
         /// </summary>
         private void DrawValidationSection()
         {
-            EditorGUILayout.LabelField("5. Validate and Apply", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("6. Validate and Apply", EditorStyles.boldLabel);
             configuration.CharacterProfile = selectedProfile;
             configuration.VoiceProfile = selectedVoiceProfile;
+            configuration.ActionProfile = selectedActionProfile;
 
             EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button("Validate Configuration"))
@@ -410,6 +591,15 @@ namespace AiCharacterKit.Editor
                     "V2 Reset Endpoint",
                     configuration.SessionResetEndpoint);
             }
+            else if (configuration.ConversationMode == NpcConversationMode.BackendActions)
+            {
+                configuration.ActionBackendEndpoint = EditorGUILayout.TextField(
+                    "V3 Respond Endpoint",
+                    configuration.ActionBackendEndpoint);
+                configuration.ActionResetEndpoint = EditorGUILayout.TextField(
+                    "V3 Reset Endpoint",
+                    configuration.ActionResetEndpoint);
+            }
         }
 
         /// <summary>
@@ -497,6 +687,8 @@ namespace AiCharacterKit.Editor
             configuration.SessionControlView = null;
             configuration.SpeechControlView = null;
             configuration.ConfigureSpeech = false;
+            configuration.ConfigureActions = false;
+            configuration.ActionHandlerSources = Array.Empty<MonoBehaviour>();
             validationReport = null;
             if (target == null)
             {
@@ -546,6 +738,10 @@ namespace AiCharacterKit.Editor
                 .FindProperty("sessionBackendEndpoint").stringValue;
             configuration.SessionResetEndpoint = serializedConversation
                 .FindProperty("sessionResetEndpoint").stringValue;
+            configuration.ActionBackendEndpoint = serializedConversation
+                .FindProperty("actionBackendEndpoint").stringValue;
+            configuration.ActionResetEndpoint = serializedConversation
+                .FindProperty("actionResetEndpoint").stringValue;
             configuration.BackendTimeoutSeconds = serializedConversation
                 .FindProperty("backendTimeoutSeconds").intValue;
 
@@ -567,6 +763,99 @@ namespace AiCharacterKit.Editor
             {
                 configuration.VisualPresentationDriver = presentation;
             }
+
+            LoadExistingActions(
+                serializedConversation.FindProperty("actionCoordinator")
+                    .objectReferenceValue as NpcActionCoordinator);
+        }
+
+        /// <summary>
+        /// Reads an existing optional action coordinator into profile and handler selections.
+        /// </summary>
+        private void LoadExistingActions(NpcActionCoordinator coordinator)
+        {
+            if (coordinator == null)
+            {
+                return;
+            }
+
+            configuration.ConfigureActions = true;
+            var serializedCoordinator = new SerializedObject(coordinator);
+            LoadActionProfile(
+                serializedCoordinator.FindProperty("actionProfile")
+                    .objectReferenceValue as NpcActionProfile);
+            var handlerProperty = serializedCoordinator.FindProperty("actionHandlerSources");
+            var handlers = new List<MonoBehaviour>();
+            for (var index = 0; index < handlerProperty.arraySize; index++)
+            {
+                var source = handlerProperty.GetArrayElementAtIndex(index)
+                    .objectReferenceValue as MonoBehaviour;
+                if (source != null)
+                {
+                    handlers.Add(source);
+                }
+            }
+
+            configuration.ActionHandlerSources = handlers.ToArray();
+        }
+
+        /// <summary>
+        /// Loads one persistent action profile into a detached builder draft.
+        /// </summary>
+        private void LoadActionProfile(NpcActionProfile profile)
+        {
+            selectedActionProfile = profile;
+            actionDraft = ActionProfileDraft.FromProfile(profile);
+            configuration.ActionProfile = profile;
+            validationReport = null;
+            previewResponse = null;
+            previewAction = null;
+        }
+
+        /// <summary>
+        /// Creates or updates one validated consumer-owned action profile.
+        /// </summary>
+        private void SaveActionProfile()
+        {
+            NpcActionProfile created = null;
+            string error;
+            bool succeeded;
+            if (selectedActionProfile == null)
+            {
+                succeeded = CharacterBuilderAssetService.TryCreateActionProfile(
+                    actionDraft,
+                    assetFolder,
+                    out created,
+                    out error);
+            }
+            else
+            {
+                succeeded = CharacterBuilderAssetService.TryUpdateActionProfile(
+                    selectedActionProfile,
+                    actionDraft,
+                    out error);
+            }
+
+            if (!succeeded)
+            {
+                SetStatus(error, MessageType.Error);
+                return;
+            }
+
+            if (selectedActionProfile == null)
+            {
+                LoadActionProfile(created);
+            }
+            else
+            {
+                actionDraft = ActionProfileDraft.FromProfile(selectedActionProfile);
+            }
+
+            Selection.activeObject = selectedActionProfile;
+            SetStatus(
+                "NpcActionProfile saved at "
+                + AssetDatabase.GetAssetPath(selectedActionProfile),
+                MessageType.Info);
         }
 
         /// <summary>
@@ -651,6 +940,7 @@ namespace AiCharacterKit.Editor
         {
             configuration.CharacterProfile = selectedProfile;
             configuration.VoiceProfile = selectedVoiceProfile;
+            configuration.ActionProfile = selectedActionProfile;
             validationReport = CharacterBuilderService.Validate(configuration);
             if (!CharacterBuilderService.TryApply(
                     configuration,

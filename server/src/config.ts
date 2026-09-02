@@ -13,7 +13,7 @@ export const DEFAULT_SESSION_MAX_CONTEXT_BYTES = 16 * 1024;
 export const DEFAULT_SESSION_IDLE_TTL_SECONDS = 1_800;
 export const DEFAULT_SESSION_MAX_COUNT = 128;
 export const SERVER_HOST = "127.0.0.1";
-export const REQUEST_BODY_LIMIT_BYTES = 16 * 1024;
+export const REQUEST_BODY_LIMIT_BYTES = 32 * 1024;
 
 export interface ServerConfig {
   readonly apiKey: string;

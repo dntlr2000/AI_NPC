@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 3,
+  "requestId": "req-v3-001",
+  "sessionId": "session-v3-001",
+  "character": {
+    "characterId": "sample-guide",
+    "displayName": "Guide",
+    "personality": "Helpful.",
+    "speechStyle": "Brief.",
+    "exampleDialogue": "Hello.",
+    "defaultEmotion": "neutral"
+  },
+  "userText": "hello"
+}

@@ -1,13 +1,13 @@
 # AI NPC Framework 진행 점검 및 로드맵
 
 > 기준일: 2026-09-02
-> 비교 기준: ChatGPT 대화 **“Unity Ai NPC 만들기”**의 초기 구상과 이후 합의된 Phase 1~10 범위
+> 비교 기준: ChatGPT 대화 **“Unity Ai NPC 만들기”**의 초기 구상과 이후 합의된 Phase 1~11 범위
 
 ## 결론
 
-저장소는 수정된 로드맵의 순서와 제약을 따르고 있다. **Phase 1~10의 구현과 검증이 완료됐다.** Phase 8은 별도 Built-in/Legacy 프로젝트에서 실제 재사용을 확인했고, Phase 9는 동일 소스를 UPM package로 옮겼다. Phase 10은 기존 Runtime 계약 위에서 consumer profile과 Scene/Prefab 연결을 단순화했으며 자동 회귀와 consumer 수동 Builder/Mock/Prefab/TTS 검증을 모두 통과했다.
+저장소는 수정된 로드맵의 순서와 제약을 따르고 있다. **Phase 1~11의 구현과 자동·수동 검증 및 package `0.2.0` 공개가 완료됐다.** Phase 11의 최소 action pipeline은 local package `0.3.0` source로 구현됐고 Server, root Unity와 별도 Built-in/Legacy consumer 자동 검증, Character Builder/Mock과 live V3 trigger 수동 Play Mode를 통과했다. `0.3.0` 체크포인트 커밋과 공개 release는 아직 만들지 않았다. 변수·점수·복합 조건은 Phase 12 선택형 Advanced 후보로 기록하되 Phase 11 실사용 결과를 바탕으로 구현 전에 다시 계획한다.
 
-Phase 8 체크포인트는 `707123b`, Phase 9 체크포인트는 `cd5825b`, Phase 10 완료 커밋은 `4dc478f`다. Package `0.2.0`은 MIT 공개 GitHub release 후보로 준비 중이며, tag push와 GitHub Release 발행은 별도 최종 승인 전까지 수행하지 않는다. Phase 10 범위와 검증 결과는 [`PHASE10_PLAN.md`](PHASE10_PLAN.md), UPM 설치·sample·migration 절차는 [`REUSE_GUIDE.md`](REUSE_GUIDE.md), release 결정과 검증은 [`RELEASE_0.2.0.md`](RELEASE_0.2.0.md)를 따른다. 기존 대화·Speech·Transcription wire 계약은 변경 없이 유효하다.
+Phase 8 체크포인트는 `707123b`, Phase 9 체크포인트는 `cd5825b`, Phase 10 완료 커밋은 `4dc478f`다. Package `0.2.0`은 exact commit `dcad604a510b767b18154eb01408218a2e1e51f2`에 annotated tag `v0.2.0`과 Latest GitHub Release로 공개됐다. Phase 10 범위와 검증 결과는 [`PHASE10_PLAN.md`](PHASE10_PLAN.md), UPM 설치·sample·migration 절차는 [`REUSE_GUIDE.md`](REUSE_GUIDE.md), 공개 결과는 [`RELEASE_0.2.0.md`](RELEASE_0.2.0.md), 현재 목표는 [`PHASE11_PLAN.md`](PHASE11_PLAN.md)를 따른다. Phase 12~14는 각각 Advanced Behavior, Backend 배포, Realtime 후보로 번호와 책임 경계를 기록하되 구현 전 다시 계획한다. 기존 대화·Speech·Transcription wire 계약은 변경 없이 유효하다.
 
 ## 우리가 만드는 것
 
@@ -24,17 +24,22 @@ Phase 8 체크포인트는 `707123b`, Phase 9 체크포인트는 `cd5825b`, Phas
                          ├─ MockConversationClient
                          ├─ BackendConversationClient
                          │            ↕ JSON Contract V1 (stateless)
-                         └─ [Phase 5] SessionBackendConversationClient
-                                      ↕ JSON Contract V2 + sessionId/reset
+                         ├─ SessionBackendConversationClient
+                         │            ↕ JSON Contract V2 + sessionId/reset
+                         └─ ActionBackendConversationClient
+                                      ↕ JSON Contract V3 + trigger snapshot
                                   Backend bounded memory → OpenAI
         ↓
     AiNpcResponse
-        ↓
- INpcPresentationDriver
-        ├─ 대사 UI + 감정 표현 + 제스처/애니메이션
-        └─ [Phase 6] Speech decorator
-                    → ISpeechSynthesisClient → Speech Backend
-                    → fixed PCM → ISpeechPlaybackDriver
+        ├─ INpcPresentationDriver
+        │      ├─ 대사 UI + 감정 표현 + 제스처/애니메이션
+        │      └─ [Phase 6] Speech decorator
+        │                  → ISpeechSynthesisClient → Speech Backend
+        │                  → fixed PCM → ISpeechPlaybackDriver
+        └─ [Phase 11] matched trigger IDs
+                    → deterministic action selection
+                    → INpcActionHandler.CanExecute
+                    → consumer-owned game action
 
 [Phase 7 optional input adapter]
 Push-to-Talk → IAudioCaptureDriver → bounded WAV
@@ -53,17 +58,18 @@ Push-to-Talk → IAudioCaptureDriver → bounded WAV
 - 캐릭터별 provider 설정을 숨기는 opaque voice preset과 선택형 TTS 경계
 - 캐릭터와 무관하게 재사용하고 자동 전송하지 않는 선택형 Push-to-Talk STT 입력 경계
 - 샘플, 자동 테스트, 두 번째 프로젝트 검증을 거친 최종 UPM 패키지
+- Character Builder에서 자연어 대화 조건을 action ID에 연결하고 프로젝트별 handler만 구현하는 선택형 행동 경계
 
-API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유한다. TTS와 STT는 대화 Core를 변경하지 않는 선택형 adapter이며 전사 결과는 기존 텍스트 입력에서 검토한다. Realtime은 지연·끼어들기 요구가 실제로 확인된 뒤에만 검토한다. 퀘스트, 관계도, 범용 자율 에이전트와 게임별 행동 트리는 현재 목표가 아니다.
+API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유한다. TTS와 STT는 대화 Core를 변경하지 않는 선택형 adapter이며 전사 결과는 기존 텍스트 입력에서 검토한다. Realtime은 지연·끼어들기 요구가 실제로 확인된 뒤에만 검토한다. Phase 11은 대화 trigger와 consumer action 사이의 재사용 가능한 연결만 제공한다. 퀘스트·인벤토리·전투·NavMesh·Behavior Tree 자체와 관계도·범용 자율 에이전트는 프레임워크가 구현하지 않는다.
 
 ## 현재 기준선
 
 - Unity: `6000.5.3f1`
 - 주요 설치 패키지: URP `17.5.0`, Input System `1.19.0`, uGUI `2.5.0`, Test Framework `1.7.0`
-- 구현 위치: `Packages/com.aicharacterkit.framework/` (`0.2.0` local embedded UPM)
-- 샘플: `Samples~/AI NPC Prototypes`의 Mock, MultiCharacter, Backend, Memory, Speech, VoiceInput scene
-- Git 기준선: `4dc478f` (Phase 10 완료; Phase 9 package 체크포인트 `cd5825b`)
-- Backend: Node.js 24 + TypeScript + Fastify + OpenAI SDK, 대화 V1/V2와 선택형 Speech/Transcription V1, loopback 전용
+- 구현 위치: `Packages/com.aicharacterkit.framework/` (미공개 `0.3.0` local embedded UPM; 공개 안정판 `v0.2.0`)
+- 샘플: `Samples~/AI NPC Prototypes`의 Mock, MultiCharacter, Backend, Memory, Speech, VoiceInput 및 Editor API 기반 Action prototype
+- Git 공개 기준선: `dcad604a510b767b18154eb01408218a2e1e51f2` (`v0.2.0`; Phase 10 완료 커밋 `4dc478f`)
+- Backend: Node.js 24 + TypeScript + Fastify + OpenAI SDK, 대화 V1/V2/V3와 선택형 Speech/Transcription V1, loopback 전용
 - 제외 범위: 영구·장기·Vector 기억, Realtime, VAD, 자동 전송, 원격 배포, client auth, streaming
 
 ## 초기 로드맵과의 비교
@@ -82,7 +88,11 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 | Push-to-Talk STT | pure input 경계, bounded WAV, Backend transcription, reviewed text 입력 | Phase 7 자동·수동 검증 완료 |
 | UPM 패키지화 | Runtime/Editor/Tests/Samples~/Documentation~ 이전과 install/remove/upgrade/migration 검증 | Phase 9 완료 |
 | Character Builder | profile 작성, Mock preview, 기존 Scene/Prefab·presentation·선택형 UI/TTS 연결 | Phase 10 구현·자동·수동 검증 완료 |
-| 장기 기억·Realtime | 구현하지 않음 | 선행 구현을 피한 올바른 상태 |
+| 대화 기반 행동 | 자연어 trigger를 action ID에 연결하고 consumer handler가 실제 행동 수행 | Phase 11 구현·자동·수동 검증 완료 |
+| Advanced Behavior | 선택형 변수·점수·복합 gate를 기존 action handler 앞에 추가 | Phase 12 후속 가안; Phase 11 검증 후 재계획 |
+| Backend 배포 | reference server를 독립 설치·검증 가능한 artifact로 정리 | Phase 13 후속 가안; 배포 방식 재계획 필요 |
+| Realtime 음성 | Push-to-Talk로 해결되지 않는 저지연·barge-in 요구 대응 | Phase 14 후속 가안; 요구 증거 후 재계획 |
+| 장기 기억 | 구현하지 않음 | 실제 persistence 요구와 privacy 설계 전까지 보류 |
 
 초기 대화에서는 실제 GPT/JSON 응답이 비교적 앞에 있었으나, 이후 계획은 Mock → 프로필 재사용 → 전송 계약 → 백엔드 순서로 정리됐다. 현재 저장소는 이 수정된 순서를 따른다.
 
@@ -97,11 +107,14 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - Transcription: provider-neutral controller/interface, canonical WAV encoder, 별도 V1 계약, Backend file transcription과 Unity microphone/input adapter 구현
 - 자동 설정: `PrototypeSceneBuilder`가 Editor API로 프로필과 Mock/Backend/Memory/Speech/VoiceInput 샘플 씬을 생성·복구
 - Character Builder: consumer-owned profile 작성, network-free Mock preview와 기존 Scene/Prefab의 비파괴 구성
+- Conversation actions: Core router/handler, consumer-owned profile, deterministic Mock, V3 Transport/Backend와 Character Builder wiring 구현
 - 의존성: Core asmdef는 `noEngineReferences: true`; Runtime에는 `UnityEditor` 참조가 없음
 - 자동 검증: Server build와 Vitest **75/75**, Unity 6000.5.3f1 embedded package compile, sample import/repair와 EditMode **112/112** 통과
 - 재사용 검증: Built-in/Legacy consumer file install, EditMode **112/112**, consumer-owned presentation PlayMode **1/1**, Windows player build 통과
 - Phase 10 자동 검증: root와 Built-in/Legacy consumer의 Character Builder 포함 EditMode 각각 **131/131**, consumer PlayMode **1/1**, `0.1.0 → 0.2.0` upgrade와 Windows player build 통과
 - Phase 10 수동 검증: Built-in/Legacy consumer의 Builder profile 작성, Scene/Prefab 재적용, Mock Play Mode와 선택형 TTS 정상 동작 확인
+- Phase 11 자동 검증: Server build 및 **85/85**, root와 Built-in/Legacy consumer EditMode 각각 **167/167**, consumer-owned action handler PlayMode **2/2**, Windows Development Player build 통과
+- Phase 11 수동 검증: Character Builder 재적용, Mock action·`CanExecute` 거부/허용 및 live Backend V3 semantic trigger 정상 동작 확인
 - lifecycle 검증: remove/reinstall, validation `0.0.0`→`0.1.0`, raw Assets→UPM migration, duplicate-install guard와 consumer-owned Assets hash 보존 통과
 - 수동 검증: Phase 1·2 Play Mode, Phase 3 계약, Phase 4 실제 모델 smoke test, Phase 5 live memory/reset, Phase 6 live TTS·교체·중지·fallback, Phase 7 live microphone/STT·검토·취소, Phase 8 consumer Play Mode 완료
 
@@ -199,10 +212,51 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - profile 작성, Mock 미리보기와 기존 Scene/Prefab·presentation·선택형 View/TTS 연결을 Editor UI로 제공한다.
 - 모델·UI·presentation 구현을 생성하지 않고 Runtime API와 캐릭터 스키마를 변경하지 않는다.
 
+### Phase 11 — 대화 트리거 기반 NPC 행동
+
+- **상태: 완료 — 구현·자동 검증·consumer 수동 Play Mode 검증 통과**
+- 상세 구현 계획: [`PHASE11_PLAN.md`](PHASE11_PLAN.md)
+- Character Builder에서 자연어 조건, 결정적 Mock 예시, action ID와 priority를 연결한다.
+- Backend V3는 같은 대화 응답에서 요청에 등록된 matched trigger ID만 반환한다.
+- Unity가 알 수 없는 ID를 거부하고 높은 priority와 선언 순서로 한 행동만 선택한다.
+- consumer는 `INpcActionHandler` 또는 선택형 Unity 기반 클래스로 실제 게임 행동과 최종 `CanExecute` 검사를 구현한다.
+- 변수·점수·관계도·범용 조건 트리와 LLM tool calling은 실제 필요가 확인될 때까지 제외한다.
+- local package는 미공개 `0.3.0`이며 Server **85/85**, Unity root/consumer **167/167**, consumer action PlayMode **2/2**와 player build가 통과했다.
+- 수정된 sample에서 수동 Mock/Builder, `CanExecute` 거부·허용과 live V3 semantic trigger가 정상 동작했다.
+- local `0.3.0` 완료 상태이며 체크포인트 커밋과 공개 release는 아직 만들지 않았다.
+
+### Phase 12 후보 — 선택적 Advanced Behavior Rules
+
+- **상태: 후속 가안 — Phase 11 완료 결과를 바탕으로 구현 전 재계획**
+- 후보 범위와 재계획 게이트: [`PHASE12_PLAN.md`](PHASE12_PLAN.md)
+- Phase 11의 trigger와 `INpcActionHandler`를 그대로 재사용하고 선택형 변수·점수·복합 gate만 추가한다.
+- ScriptableObject에는 정의만, NPC별 변경 값은 runtime state에 둔다.
+- 시각적 구조화 rule을 source of truth로 두고 자연어 작성 도우미는 검토 가능한 draft만 만든다.
+- 변수 타입, reset·저장 수명, 공개 API와 package version은 실제 consumer 사례를 수집한 뒤 확정한다.
+- Phase 11과 분리된 선택형 계층으로 유지하며 별도 구현 승인 전에는 코드를 추가하지 않는다.
+
+### Phase 13 후보 — Backend 배포 단위와 운영 도구
+
+- **상태: 후속 가안 — 구현 승인 전 재계획**
+- 후보 범위와 재계획 게이트: [`PHASE13_PLAN.md`](PHASE13_PLAN.md)
+- matching Backend를 전체 repository checkout 없이 설치·검증할 배포 단위를 정한다.
+- contract compatibility, startup check, upgrade·rollback과 artifact 검증을 다룬다.
+- npm/archive/container 선택과 local-only 또는 remote 지원 범위는 실제 사용자 환경을 확인한 뒤 결정한다.
+- publish와 remote exposure는 각각 별도 명시적 승인이 필요하다.
+
+### Phase 14 후보 — Realtime 음성 대화
+
+- **상태: 후속 가안 — 구현 승인 전 재계획**
+- 후보 범위와 재계획 게이트: [`PHASE14_PLAN.md`](PHASE14_PLAN.md)
+- Push-to-Talk의 실제 latency와 interruption 한계가 확인될 때만 realtime session adapter를 추가한다.
+- VAD, barge-in, reconnect, partial/final transcript와 turn/action commit 경계를 검토한다.
+- 기존 text, Mock, TTS와 Push-to-Talk 경로는 대체하지 않는다.
+- provider key, remote relay 보안과 지원 플랫폼을 구현 승인 전에 확정한다.
+
 ### Package 0.2.0 — 공개 Git 릴리즈
 
-- **상태: 릴리즈 후보 준비 및 검증 중 — 공개 승인 전**
-- 상세 checklist와 release notes 초안: [`RELEASE_0.2.0.md`](RELEASE_0.2.0.md)
+- **상태: 공개 완료 — `v0.2.0`, exact commit `dcad604a510b767b18154eb01408218a2e1e51f2`**
+- 검증 기록과 release notes: [`RELEASE_0.2.0.md`](RELEASE_0.2.0.md)
 - 저장소와 package를 MIT로 배포하고 `v0.2.0` tag의 Git subfolder URL로 설치한다.
 - Backend는 같은 tag의 reference source로만 유지하며 UPM/npm package로 만들지 않는다.
 - Registry publishing과 remote Backend deployment는 후속 milestone로 분리한다.
@@ -217,7 +271,9 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - Phase 7은 현재 Windows 장치에서 실제 microphone과 live transcription을 확인했다. 다른 OS의 권한·device 동작은 두 번째 프로젝트 또는 platform 검증에서 다시 확인한다.
 - Phase 5 session은 서버 재시작·TTL·LRU eviction 시 의도적으로 사라진다. UTF-8 byte 예산은 token 예산이 아니며, 기억 품질은 수동 시나리오로 별도 확인한다.
 - UPM package와 raw Assets 복사본을 동시에 두면 assembly/GUID 충돌이 생긴다. resolver가 이중 설치를 거부하고 migration 문서가 consumer asset 분리를 요구한다.
+- Phase 11의 모델 반환 trigger ID는 신뢰하지 않는다. 요청에 등록되지 않은 ID를 거부하고 action handler가 실제 게임 상태와 권한을 다시 검사하며, 모델이 action parameter·메서드·Scene target을 생성하지 못하게 한다.
+- 자연어 trigger 수가 늘면 prompt 비용과 판정 모호성이 증가한다. Phase 11은 bounded trigger 목록, 한 turn 최대 한 행동과 명시적 priority만 지원하고 변수·점수·복합 규칙은 추가하지 않는다.
 
 ## 바로 다음 행동
 
-**Package `0.2.0` release candidate를 검증하고 exact commit을 확정한 뒤 사용자의 최종 공개 승인을 받는다.** 승인 전에는 tag push와 GitHub Release 발행을 수행하지 않는다. Registry, Backend packaging과 Realtime은 각각 독립된 후속 milestone로 다룬다.
+**Phase 11 완료 내용을 체크포인트 커밋으로 보존한 뒤 Phase 12를 구현할지 재검토한다.** 변수·점수·복합 rule, Backend packaging, Realtime은 각각 [`PHASE12_PLAN.md`](PHASE12_PLAN.md), [`PHASE13_PLAN.md`](PHASE13_PLAN.md), [`PHASE14_PLAN.md`](PHASE14_PLAN.md)에 후속 가안으로 보존한다. 번호와 책임 경계는 유지하되 각 구현 직전의 consumer evidence와 운영 환경을 바탕으로 세부 계획을 수정한다.
