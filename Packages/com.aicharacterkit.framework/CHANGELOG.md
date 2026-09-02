@@ -10,6 +10,7 @@ All notable changes to this package are documented here.
 - Extended Character Builder with action profile authoring, handler wiring, validation, and preview.
 - Added an importable network-free conversation-action sample and regression coverage.
 - Split sample action handlers into persistent Unity `MonoScript` files so generated Scene references survive an Editor restart.
+- Added an end-to-end Conversation Actions Quick Start with a compile-ready handler, Builder field mapping, Mock/V3 verification, limits, and troubleshooting.
 - Preserved existing Mock, V1, V2, TTS, STT, and published `v0.2.0` paths.
 
 ## [0.2.0] - 2026-09-02

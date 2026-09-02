@@ -100,6 +100,7 @@ Character Builder에는 선택형 **Conversation Actions** 영역을 추가한�
 - 첫 수동 Play Mode에서 action sample handler 두 개가 단일 source file에 있어 Editor 재시작 후 Scene 참조가 유실되는 결함을 발견했다. handler를 클래스명별 `MonoScript` 파일로 분리하고 missing-script 회귀를 추가한 뒤 root compile, 집중 Scene 테스트 **1/1**과 전체 EditMode **167/167**을 다시 통과했다.
 - 수정된 별도 consumer에서 Character Builder 재적용과 Mock `hello`, 잠긴 `open_gate` 거부, unlock 뒤 실행이 모두 정상 동작했다.
 - matching local Backend/OpenAI 환경에서 Mock 예시와 다른 동의 표현의 V3 semantic trigger가 정상적으로 consumer action을 실행했다.
+- `0.3.0` 릴리즈 전 문서 보강으로 package `ACTIONS_QUICKSTART.md`를 추가하고 handler 작성부터 Builder binding, Mock/live V3, 제한과 troubleshooting까지 단일 경로로 연결했다. 문서의 `OpenGateActionHandler` 예제는 Unity `6000.5.3f1`에서 실제 compile했고 상대 링크 검사를 통과했다.
 - package dependency, root `Packages/manifest.json`, `Packages/packages-lock.json`과 `ProjectSettings`는 변경하지 않았다.
 - 검증 log/result는 `E:\CodexValidation`, TEMP/TMP는 `E:\CodexTemp`에만 만들었다. Root에 임시 import한 `Assets/Samples`는 검증 후 제거했으며 별도 consumer의 검증 asset은 `E:\CodexValidation`에 남겼다.
 

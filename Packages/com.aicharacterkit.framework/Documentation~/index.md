@@ -7,6 +7,7 @@ AI Character Kit separates provider-neutral dialogue, conversation actions, spee
 - [Installation and lifecycle](INSTALLATION.md)
 - [Architecture and extension boundaries](ARCHITECTURE.md)
 - [Character Builder](CHARACTER_BUILDER.md)
+- [Conversation actions quick start](ACTIONS_QUICKSTART.md)
 - [Conversation contract V1](CONTRACT_V1.md)
 - [Conversation contract V2](CONTRACT_V2.md)
 - [Conversation actions contract V3](CONTRACT_V3.md)

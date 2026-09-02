@@ -20,6 +20,8 @@ Open **Tools > AI Character Kit > Character Builder** to create or edit a consum
 
 For actions, create an `NpcActionProfile`, assign one consumer MonoBehaviour implementing `INpcActionHandler` for every configured `actionId`, and use Mock mode to verify the exact example input without a network. Backend Actions mode uses V3 to return only matched configured trigger IDs; Unity still selects at most one action and the handler's `CanExecute` makes the final game-state decision.
 
+Follow the [Conversation Actions Quick Start](Documentation~/ACTIONS_QUICKSTART.md) for a compile-ready handler, exact Character Builder fields, offline and live V3 verification, and troubleshooting.
+
 The builder never generates a game model, UI, presentation implementation, action implementation, or Prefab. Reapplying updates only the displayed Kit references and settings; it does not remove consumer components or assets. All created profiles remain under a user-selected `Assets/` folder.
 
 ## Start with Mock

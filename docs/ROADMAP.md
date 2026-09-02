@@ -223,6 +223,7 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - 변수·점수·관계도·범용 조건 트리와 LLM tool calling은 실제 필요가 확인될 때까지 제외한다.
 - local package는 미공개 `0.3.0`이며 Server **85/85**, Unity root/consumer **167/167**, consumer action PlayMode **2/2**와 player build가 통과했다.
 - 수정된 sample에서 수동 Mock/Builder, `CanExecute` 거부·허용과 live V3 semantic trigger가 정상 동작했다.
+- `0.3.0` 릴리즈 전에 신규 사용자가 handler 작성부터 Mock/V3 검증까지 완주하는 package Action Quick Start와 troubleshooting을 추가하고 예제 compile·링크를 검증했다.
 - local `0.3.0` 완료 상태이며 체크포인트 커밋과 공개 release는 아직 만들지 않았다.
 
 ### Phase 12 후보 — 선택적 Advanced Behavior Rules

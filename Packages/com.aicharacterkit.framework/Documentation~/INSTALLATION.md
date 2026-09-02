@@ -38,6 +38,8 @@ Do not keep a raw `Assets/AiCharacterKit` copy and the UPM package installed tog
 
 Import **AI NPC Prototypes** from the Package Manager Samples tab. Imported samples are writable under `Assets/Samples/AI Character Kit/<installed-version>/AI NPC Prototypes`. Run **Tools > AI Character Kit > Repair All Sample Scenes** after import or after changing the active input backend. For source `0.3.0`, run **Tools > AI Character Kit > Samples > Create Conversation Action Prototype** once after import to generate the action Scene through Editor APIs.
 
+After verifying the generated Action Scene, follow the [Conversation Actions Quick Start](ACTIONS_QUICKSTART.md) to implement and connect a consumer-owned action handler.
+
 ## Upgrade and removal
 
 For a Git installation, change only the URL revision to the desired immutable release tag. Close Unity before replacing a local package folder. Preserve user-owned profiles, presentation drivers, and imported samples under `Assets`; package removal does not own those assets. Import the new version's sample after an upgrade. If older versioned sample folders coexist, Editor automation selects the currently installed package version; archive or remove older consumer-owned copies only when they are no longer needed. Let Unity recompile, repair the sample scenes, and run project tests before committing the lock file.

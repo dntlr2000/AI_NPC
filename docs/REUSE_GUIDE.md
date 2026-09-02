@@ -57,6 +57,8 @@ Builder는 모델, UI, presentation 구현, action handler나 prefab을 생성�
 
 ## 선택형 대화 행동 구성
 
+처음 설치한 사용자를 위한 컴파일 가능한 handler 예제와 Character Builder 전체 절차는 package의 [Conversation Actions Quick Start](../Packages/com.aicharacterkit.framework/Documentation~/ACTIONS_QUICKSTART.md)를 따른다.
+
 1. `NpcActionHandlerBase`를 상속하거나 `INpcActionHandler`를 구현한 consumer MonoBehaviour를 작성한다.
 2. `ActionId`는 예를 들어 `open_gate` 같은 안정적인 lower `snake_case` 값으로 정의한다.
 3. Character Builder의 **Conversation Actions**에서 `NpcActionProfile`을 만들고 trigger ID, 자연어 조건, Mock 예시, action ID와 priority를 입력한다.

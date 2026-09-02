@@ -18,6 +18,8 @@ Existing `NpcTextInputView`, `NpcSessionControlView`, and `NpcSpeechControlView`
 
 Enable **Conversation Actions**, then create or select a consumer-owned `NpcActionProfile`. Each binding contains a lower `snake_case` trigger ID, a natural-language condition, one exact Mock example, an opaque action ID, and priority. Select one existing MonoBehaviour implementing `INpcActionHandler` for every action ID before applying.
 
+The [Conversation Actions Quick Start](ACTIONS_QUICKSTART.md) provides a compile-ready handler and the complete Scene/Prefab, Mock, and Backend Actions workflow.
+
 Mock matching normalizes case and whitespace but otherwise requires the example text to match exactly. Backend Actions sends only trigger IDs and condition descriptions through V3; action IDs and Unity object references never leave Unity. When multiple triggers match, the highest priority wins and declaration order breaks ties. The selected handler's `CanExecute` is always the final authorization check.
 
 Implement `INpcActionHandler` directly for pure adapters or derive a consumer MonoBehaviour from `NpcActionHandlerBase`. The builder wires handlers but never generates gameplay code, method names, parameters, or Scene targets. Reapplying the same configuration reuses the coordinator and does not duplicate or delete consumer components.
