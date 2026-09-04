@@ -2,7 +2,7 @@
 
 AI Character Kit is a reusable Unity 6 framework for structured AI-driven NPCs. It separates character data, conversation providers, presentation, speech, and transcription behind replaceable boundaries so game-specific models and UI remain consumer-owned.
 
-Published version `0.3.0` adds data-driven conversation triggers and consumer-owned game actions to the deterministic offline Mock path, versioned V1/V2/V3 transport contracts, bounded process-local sessions, optional TTS and push-to-talk STT adapters, samples, and the Character Builder Editor tool. The current `0.4.0` source candidate adds bounded request-time character canon, reusable lore/beliefs, live game-state providers, and conversation contract V4.
+Version `0.4.0` adds bounded request-time character canon, reusable lore/beliefs, live game-state providers, and conversation contract V4 to the existing deterministic Mock, V1/V2/V3, actions, bounded sessions, optional TTS/STT, samples, and Character Builder features. It remains a release candidate until the immutable `v0.4.0` tag and GitHub Release are published from an explicitly approved commit.
 
 ## Requirements
 
@@ -17,13 +17,13 @@ The package declares uGUI `2.5.0` and required Unity modules. URP and the Input 
 In **Window > Package Management > Package Manager**, choose **Install package from git URL** and enter:
 
 ```text
-https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.3.0
+https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.4.0
 ```
 
 Alternatively, add the same URL to the consumer project's `Packages/manifest.json`:
 
 ```json
-"com.aicharacterkit.framework": "https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.3.0"
+"com.aicharacterkit.framework": "https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.4.0"
 ```
 
 Import **AI NPC Prototypes** from the package Samples tab, then run **Tools > AI Character Kit > Repair All Sample Scenes**. Open **Tools > AI Character Kit > Character Builder** to create consumer-owned character, lore, and action profiles, preview deterministic Mock/grounding data, and connect an existing Scene object or writable Prefab.

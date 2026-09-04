@@ -10,19 +10,19 @@ URP and the Input System are not required. Audio, JSON serialization, and UnityW
 
 ## Tagged Git installation
 
-The latest published release is `v0.3.0`. Select **Install package from git URL** in Package Manager and enter:
+For release `v0.4.0`, select **Install package from git URL** in Package Manager and enter:
 
 ```text
-https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.3.0
+https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.4.0
 ```
 
 The equivalent consumer manifest entry is:
 
 ```json
-"com.aicharacterkit.framework": "https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.3.0"
+"com.aicharacterkit.framework": "https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.4.0"
 ```
 
-Keep the `path` query before the `#v0.3.0` revision. Pin a release tag instead of the default branch so the consumer lock file resolves an immutable source revision.
+Keep the `path` query before the `#v0.4.0` revision. Pin a release tag instead of the default branch so the consumer lock file resolves an immutable source revision.
 
 ## Local installation
 
@@ -36,7 +36,7 @@ Do not keep a raw `Assets/AiCharacterKit` copy and the UPM package installed tog
 
 ## Samples
 
-Import **AI NPC Prototypes** from the Package Manager Samples tab. Imported samples are writable under `Assets/Samples/AI Character Kit/<installed-version>/AI NPC Prototypes`. Run **Tools > AI Character Kit > Repair All Sample Scenes** after import or after changing the active input backend. In `0.3.0` and later, run **Tools > AI Character Kit > Samples > Create Conversation Action Prototype** once after import to generate the action Scene through Editor APIs. In the local `0.4.0` source candidate, run **Create Grounded Guard Prototype** to generate the V4 context/lore Scene as well.
+Import **AI NPC Prototypes** from the Package Manager Samples tab. Imported samples are writable under `Assets/Samples/AI Character Kit/<installed-version>/AI NPC Prototypes`. Run **Tools > AI Character Kit > Repair All Sample Scenes** after import or after changing the active input backend. In `0.3.0` and later, run **Tools > AI Character Kit > Samples > Create Conversation Action Prototype** once after import to generate the action Scene through Editor APIs. In `0.4.0` and later, run **Create Grounded Guard Prototype** to generate the V4 context/lore Scene as well.
 
 After verifying the generated Action Scene, follow the [Conversation Actions Quick Start](ACTIONS_QUICKSTART.md) to implement and connect a consumer-owned action handler. For V4 canon, lore, and live state setup, follow the [Runtime Context and Lore Quick Start](GROUNDING_QUICKSTART.md).
 

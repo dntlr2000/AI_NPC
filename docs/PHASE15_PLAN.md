@@ -1,6 +1,6 @@
 # Phase 15 — Runtime Context & Lore Grounding
 
-> 상태: 구현 및 자동 검증 완료 — live V4 수동 검증 전
+> 상태: 완료 — 자동 검증 및 live V4 수동 Play Mode 검증 통과
 > 기준선: `42f5c59` (`v0.3.0` 공개 릴리즈)
 > 목표 package: `com.aicharacterkit.framework` `0.4.0`
 
@@ -57,12 +57,12 @@ Grounding은 응답 품질을 위한 입력이지 권한 판정이 아니다. �
 - Unity 전체 EditMode **186/186** 통과
 - Core/Transport Unity 비의존, Runtime `UnityEditor` 비참조, loopback/security 경계를 정적 검사한다.
 
-수동 완료 조건:
+수동 검증 결과:
 
-1. Grounded Guard scene에서 gate/alarm 상태를 바꾸고 같은 질문의 근거가 달라지는지 확인한다.
-2. 화면의 captured context와 `LastContextRevision`이 snapshot 변경 시 갱신되는지 확인한다.
-3. reset 후 session 대화 기억은 사라지되 현재 provider 상태와 authored lore는 다시 제공되는지 확인한다.
-4. action을 함께 구성했다면 model 결과와 관계없이 handler의 `CanExecute`가 최종 권한을 유지하는지 확인한다.
+1. Grounded Guard scene에서 gate/alarm 상태를 바꿨을 때 같은 질문의 근거가 달라지는 것을 확인했다.
+2. 화면의 captured context와 `LastContextRevision`이 snapshot 변경 시 갱신되는 것을 확인했다.
+3. reset 후 session 대화 기억은 사라지되 현재 provider 상태와 authored lore가 다시 제공되는 것을 확인했다.
+4. gameplay action 권한은 기존과 같이 consumer handler의 `CanExecute`가 최종 소유함을 자동 회귀와 기존 수동 시나리오로 확인했다.
 
 ## 제외 범위
 
@@ -73,4 +73,4 @@ Grounding은 응답 품질을 위한 입력이지 권한 판정이 아니다. �
 - Realtime 음성
 - 로컬 모델 runtime, model file 다운로드와 native inference plugin
 
-자동 검증과 위 수동 시나리오가 모두 통과한 뒤에만 Phase 15를 완료 처리한다. `v0.4.0` tag와 GitHub Release는 exact-commit에 대한 별도 승인이 있어야 한다.
+자동 검증과 위 수동 시나리오가 모두 통과해 Phase 15를 완료 처리했다. `v0.4.0` tag와 GitHub Release는 검증된 exact release-preparation commit에 대한 별도 승인이 있어야 한다.

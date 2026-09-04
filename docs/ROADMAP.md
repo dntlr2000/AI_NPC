@@ -5,9 +5,9 @@
 
 ## 결론
 
-저장소는 수정된 로드맵의 순서와 제약을 따르고 있다. **Phase 1~11의 구현·검증과 package `0.2.0`, `0.3.0` 공개가 완료됐다.** `v0.3.0`은 exact commit `42f5c5916f5e8fb20cfcec742b91a7451e062a0e`에서 공개됐으며 최소 action pipeline을 제공한다. 현재 Phase 15는 특정 캐릭터가 아닌 재사용 가능한 character canon, world lore와 live game-state grounding pipeline을 package `0.4.0` 후보로 구현한다.
+저장소는 수정된 로드맵의 순서와 제약을 따르고 있다. **Phase 1~11과 Phase 15의 구현·검증 및 package `0.2.0`, `0.3.0` 공개가 완료됐다.** `v0.3.0`은 exact commit `42f5c5916f5e8fb20cfcec742b91a7451e062a0e`에서 공개됐으며 최소 action pipeline을 제공한다. 완료된 Phase 15의 재사용 가능한 character canon, world lore와 live game-state grounding pipeline은 package `0.4.0` 공개 후보로 준비한다.
 
-Phase 15 Core/Unity/Transport/Backend/Character Builder와 Grounded Guard sample 구현이 완료됐고 Server **95/95**, Unity compile과 전체 EditMode **186/186**이 통과했다. live V4 수동 검증 전이므로 아직 완료 또는 `v0.4.0` 공개 상태로 표시하지 않는다. 상세 범위는 [`PHASE15_PLAN.md`](PHASE15_PLAN.md), wire 규격은 [`CONTRACT_V4.md`](CONTRACT_V4.md)를 따른다. Phase 12~14는 Advanced Behavior, Backend 배포, Realtime의 기존 책임 경계를 유지하고, Phase 16은 선택형 offline local inference 후보를 기록한다. 번호는 우선순위가 아니며 각 기능은 구현 직전에 다시 계획한다.
+Phase 15 Core/Unity/Transport/Backend/Character Builder와 Grounded Guard sample 구현이 완료됐고 Server **95/95**, Unity compile, 전체 EditMode **186/186**과 live V4 수동 검증이 통과했다. `0.4.0`은 release-preparation commit의 exact SHA 승인 전이므로 아직 공개 상태가 아니다. 상세 범위는 [`PHASE15_PLAN.md`](PHASE15_PLAN.md), wire 규격은 [`CONTRACT_V4.md`](CONTRACT_V4.md), 릴리즈 후보 기록은 [`RELEASE_0.4.0.md`](RELEASE_0.4.0.md)를 따른다. Phase 12~14는 Advanced Behavior, Backend 배포, Realtime의 기존 책임 경계를 유지하고, Phase 16은 선택형 offline local inference 후보를 기록한다. 번호는 우선순위가 아니며 각 기능은 구현 직전에 다시 계획한다.
 
 ## 우리가 만드는 것
 
@@ -95,7 +95,7 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 | UPM 패키지화 | Runtime/Editor/Tests/Samples~/Documentation~ 이전과 install/remove/upgrade/migration 검증 | Phase 9 완료 |
 | Character Builder | profile 작성, Mock preview, 기존 Scene/Prefab·presentation·선택형 UI/TTS 연결 | Phase 10 구현·자동·수동 검증 완료 |
 | 대화 기반 행동 | 자연어 trigger를 action ID에 연결하고 consumer handler가 실제 행동 수행 | Phase 11 구현·자동·수동 검증 완료 |
-| Runtime context와 lore | character canon, reusable lore/belief, live observation을 turn별 bounded snapshot으로 전달 | Phase 15 구현·자동 검증 완료; live V4 수동 검증 전 |
+| Runtime context와 lore | character canon, reusable lore/belief, live observation을 turn별 bounded snapshot으로 전달 | Phase 15 구현·자동·수동 검증 완료 |
 | Advanced Behavior | 선택형 변수·점수·복합 gate를 기존 action handler 앞에 추가 | Phase 12 후속 가안; Phase 11 검증 후 재계획 |
 | Backend 배포 | reference server를 독립 설치·검증 가능한 artifact로 정리 | Phase 13 후속 가안; 배포 방식 재계획 필요 |
 | Realtime 음성 | Push-to-Talk로 해결되지 않는 저지연·barge-in 요구 대응 | Phase 14 후속 가안; 요구 증거 후 재계획 |
@@ -125,6 +125,7 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - Phase 11 자동 검증: Server build 및 **85/85**, root와 Built-in/Legacy consumer EditMode 각각 **167/167**, consumer-owned action handler PlayMode **2/2**, Windows Development Player build 통과
 - Phase 11 수동 검증: Character Builder 재적용, Mock action·`CanExecute` 거부/허용 및 live Backend V3 semantic trigger 정상 동작 확인
 - Phase 15 자동 검증: Server build 및 **95/95**, Unity 6000.5.3f1 compile, sample import/repair/build와 EditMode **186/186** 통과
+- Phase 15 수동 검증: Grounded Guard의 gate/alarm 상태 반영, context revision 갱신과 reset 이후 grounding 유지 정상 동작 확인
 - lifecycle 검증: remove/reinstall, validation `0.0.0`→`0.1.0`, raw Assets→UPM migration, duplicate-install guard와 consumer-owned Assets hash 보존 통과
 - 수동 검증: Phase 1·2 Play Mode, Phase 3 계약, Phase 4 실제 모델 smoke test, Phase 5 live memory/reset, Phase 6 live TTS·교체·중지·fallback, Phase 7 live microphone/STT·검토·취소, Phase 8 consumer Play Mode 완료
 
@@ -266,7 +267,7 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 ### Phase 15 — Runtime Context & Lore Grounding
 
-- **상태: 구현·자동 검증 완료 — live V4 수동 검증 전**
+- **상태: 완료 — 구현·자동 검증·live V4 수동 검증 통과**
 - 상세 구현 계획: [`PHASE15_PLAN.md`](PHASE15_PLAN.md)
 - V4 wire 규격: [`CONTRACT_V4.md`](CONTRACT_V4.md)
 - character background, goals/values, rules와 dialogue examples를 consumer `CharacterProfile`에 저장한다.
@@ -301,6 +302,14 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - Backend V3는 같은 tag의 reference source로만 유지하며 UPM/npm package로 만들지 않는다.
 - published tag는 이동하거나 덮어쓰지 않으며 수정은 새 version으로 배포한다.
 
+### Package 0.4.0 — Context와 lore 공개 Git 릴리즈 후보
+
+- **상태: 릴리즈 준비 — exact release-preparation commit 승인 및 공개 전**
+- 상세 checklist와 release notes: [`RELEASE_0.4.0.md`](RELEASE_0.4.0.md)
+- `v0.4.0` tag의 Git subfolder URL로 Phase 15 grounding을 기존 대화·행동·음성 기능과 함께 배포할 예정이다.
+- Backend V4는 같은 tag의 loopback reference source로만 유지하며 UPM/npm package로 만들지 않는다.
+- 사용자 승인 전에는 `main` push, tag 생성·push 또는 GitHub Release 발행을 수행하지 않는다.
+
 ## 주요 위험과 통제
 
 - `Personality`와 `SpeechStyle`은 요청에 포함되지만 Mock이 자연어 설명을 해석하지는 않는다. Phase 2에서는 필수 데이터로 검증하고 전달하되, 결정적 차이는 `DisplayName`, `ExampleDialogue`, `DefaultEmotion`으로 만들며 실제 의미 해석은 Phase 4에 둔다.
@@ -319,4 +328,4 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 ## 바로 다음 행동
 
-**Phase 15 Grounded Guard를 matching local Backend에서 수동 검증한다.** gate/alarm 상태에 따라 응답 근거와 revision이 바뀌고 reset 뒤에도 현재 snapshot이 다시 제공되는지 확인한 뒤 문서를 완료 상태로 전환한다. 이후 `0.4.0` 릴리즈 준비와 exact-commit 공개 승인은 별도 작업이다. Advanced rules, Backend packaging, Realtime과 offline inference는 각각 [`PHASE12_PLAN.md`](PHASE12_PLAN.md), [`PHASE13_PLAN.md`](PHASE13_PLAN.md), [`PHASE14_PLAN.md`](PHASE14_PLAN.md), [`PHASE16_PLAN.md`](PHASE16_PLAN.md)에 후속 가안으로 보존하고 구현 직전에 다시 계획한다.
+**Package `0.4.0` 공개 후보를 검증하고 release-preparation commit의 exact SHA를 확정한다.** 이후 사용자가 해당 SHA의 공개를 별도로 승인한 경우에만 `main` push, annotated `v0.4.0` tag 생성·push와 GitHub Release 발행을 수행한다. Advanced rules, Backend packaging, Realtime과 offline inference는 각각 [`PHASE12_PLAN.md`](PHASE12_PLAN.md), [`PHASE13_PLAN.md`](PHASE13_PLAN.md), [`PHASE14_PLAN.md`](PHASE14_PLAN.md), [`PHASE16_PLAN.md`](PHASE16_PLAN.md)에 후속 가안으로 보존하고 구현 직전에 다시 계획한다.

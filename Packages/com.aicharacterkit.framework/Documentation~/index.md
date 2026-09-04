@@ -16,4 +16,4 @@ AI Character Kit separates provider-neutral dialogue, request-time grounding, co
 - [Speech contract V1](SPEECH_CONTRACT_V1.md)
 - [Transcription contract V1](TRANSCRIPTION_CONTRACT_V1.md)
 
-Published release `v0.3.0` supports tagged Git repository subfolder, local disk, and embedded installation and includes the Phase 11 conversation-action pipeline. The current `0.4.0` source candidate adds Phase 15 character canon, reusable lore, live game-state providers, and V4 grounding. No `v0.4.0` tag exists until separate release approval. Registry publishing, Backend packaging, offline model distribution, and remote deployment remain separate future milestones.
+Release `v0.4.0` supports tagged Git repository subfolder, local disk, and embedded installation. It includes the Phase 11 conversation-action pipeline and Phase 15 character canon, reusable lore, live game-state providers, and V4 grounding. The tag and GitHub Release are not published until one exact release-preparation commit receives separate approval. Registry publishing, Backend packaging, offline model distribution, and remote deployment remain separate future milestones.
