@@ -1,6 +1,6 @@
 # AI Character Kit 재사용 가이드
 
-Phase 9부터 정식 재사용 경계는 raw `Assets` 복사가 아니라 UPM package `com.aicharacterkit.framework`다. `v0.3.0`은 Phase 11의 선택형 대화 행동 기능을 포함하며 Unity `6000.5`, uGUI `2.5.0`을 기준으로 한다. URP와 Input System은 요구하지 않는다.
+Phase 9부터 정식 재사용 경계는 raw `Assets` 복사가 아니라 UPM package `com.aicharacterkit.framework`다. 최신 공개 `v0.3.0`은 Phase 11의 선택형 대화 행동 기능을 포함한다. 현재 저장소의 local `0.4.0` 후보는 Phase 15 context/lore grounding을 추가한다. Unity `6000.5`, uGUI `2.5.0`을 기준으로 하며 URP와 Input System은 요구하지 않는다.
 
 ## 설치
 
@@ -39,7 +39,7 @@ https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framew
 3. **Tools > AI Character Kit > Repair All Sample Scenes**를 실행한다.
 4. `Assets/Samples/AI Character Kit/<설치 버전>/AI NPC Prototypes` 아래의 원하는 scene을 연다.
 
-Version `0.3.0`에서는 import 뒤 **Tools > AI Character Kit > Samples > Create Conversation Action Prototype**을 실행하면 Editor API가 network-free action sample Scene을 생성한다. Package의 `.unity` YAML을 직접 수정하지 않는다.
+Version `0.3.0` 이상에서는 import 뒤 **Tools > AI Character Kit > Samples > Create Conversation Action Prototype**을 실행하면 Editor API가 network-free action sample Scene을 생성한다. Local `0.4.0` 후보에서는 **Create Grounded Guard Prototype**도 실행해 V4 sample Scene을 만든다. Package의 `.unity` YAML을 직접 수정하지 않는다.
 
 **Tools > AI Character Kit > Import or Repair AI NPC Prototypes** 메뉴를 사용하면 import와 repair를 한 번에 수행할 수 있다. Sample repair 도구는 imported sample이 없을 때 `Assets/AI Character Kit/Samples`에 새 sample을 생성한다. package의 `Samples~`나 package cache에는 쓰지 않는다. Input System이 설치돼 있으면 해당 uGUI module을 reflection으로 구성하고, 없으면 Legacy Input Manager module을 사용한다.
 
@@ -76,9 +76,21 @@ Phase 11 수동 확인은 imported `ActionNpcPrototype.unity` 또는 consumer-ow
 5. matching local Backend를 실행하고 mode를 **Backend Actions**로 바꾼 뒤, Mock 예시와 문장이 다르지만 같은 의미인 입력으로 V3 semantic trigger를 확인한다.
 6. Backend가 없거나 허용된 OpenAI key/model을 사용할 수 없다면 1~4만 검증했다고 기록하고 live V3 성공을 주장하지 않는다.
 
+## 선택형 Runtime Context와 Lore
+
+전체 절차와 provider 예제는 package의 [Runtime Context and Lore Quick Start](../Packages/com.aicharacterkit.framework/Documentation~/GROUNDING_QUICKSTART.md)를 따른다.
+
+1. Character Builder에서 background, goals/values, behavioral rules와 추가 dialogue examples를 `CharacterProfile`에 작성한다.
+2. objective lore와 character belief를 consumer-owned `NpcLoreProfile`에 작성한다.
+3. 현재 gate, 전투, 시간, quest 상태처럼 매 turn 달라지는 정보는 `NpcContextProviderBehaviour` 구현에서 `NpcContextFact`로 반환한다.
+4. Builder의 **Runtime Grounding**에서 lore/provider를 선택하고 mode를 **BackendContext**로 적용한다.
+5. matching Backend의 V4 endpoint를 사용해 상태 변경 전후의 응답과 context revision을 확인한다.
+
+Provider는 Send 직전에 읽히며 snapshot은 immutable Core 값으로 복사된다. fact budget을 넘으면 priority가 낮은 항목부터 결정적으로 제외된다. 이 정보는 대사 근거일 뿐 action 권한이 아니므로 문 열기, 아이템 지급과 quest 변경은 `INpcActionHandler.CanExecute`에서 실제 상태를 다시 확인한다.
+
 ## Backend와 선택형 음성
 
-V1/V2/V3 대화, TTS와 STT는 compatible loopback backend가 필요하다. 이 저장소의 `server/`는 같은 Git revision에 포함되는 reference source지만 UPM package나 npm package로 배포되지 않는다. 필요한 사용자는 package와 matching revision을 별도로 checkout하고 `server/README.md`에 따라 실행한다. API key와 provider SDK는 server process에만 두며 Unity asset이나 source에 저장하지 않는다.
+V1/V2/V3/V4 대화, TTS와 STT는 compatible loopback backend가 필요하다. 이 저장소의 `server/`는 같은 Git revision에 포함되는 reference source지만 UPM package나 npm package로 배포되지 않는다. 필요한 사용자는 package와 matching revision을 별도로 checkout하고 `server/README.md`에 따라 실행한다. API key와 provider SDK는 server process에만 두며 Unity asset이나 source에 저장하지 않는다. Internet이나 Backend 없는 local model 선택지는 Phase 16 후보이며 현재 package에는 model/runtime이 포함되지 않는다.
 
 ## 제거와 업그레이드
 

@@ -1,13 +1,13 @@
 # AI NPC Framework 진행 점검 및 로드맵
 
-> 기준일: 2026-09-02
-> 비교 기준: ChatGPT 대화 **“Unity Ai NPC 만들기”**의 초기 구상과 이후 합의된 Phase 1~11 범위
+> 기준일: 2026-09-04
+> 비교 기준: ChatGPT 대화 **“Unity Ai NPC 만들기”**의 초기 구상과 이후 합의된 Phase 1~16 책임 경계
 
 ## 결론
 
-저장소는 수정된 로드맵의 순서와 제약을 따르고 있다. **Phase 1~11의 구현과 자동·수동 검증 및 package `0.2.0` 공개가 완료됐다.** Phase 11의 최소 action pipeline은 package `0.3.0`으로 구현됐고 Server, root Unity와 별도 Built-in/Legacy consumer 자동 검증, Character Builder/Mock과 live V3 trigger 수동 Play Mode를 통과했다. 구현은 `c38b5a0`, 사용자 문서는 `7cf0a63`에 체크포인트로 보존됐으며 `v0.3.0` 공개 후보는 별도 최종 승인을 기다린다. 변수·점수·복합 조건은 Phase 12 선택형 Advanced 후보로 기록하되 Phase 11 실사용 결과를 바탕으로 구현 전에 다시 계획한다.
+저장소는 수정된 로드맵의 순서와 제약을 따르고 있다. **Phase 1~11의 구현·검증과 package `0.2.0`, `0.3.0` 공개가 완료됐다.** `v0.3.0`은 exact commit `42f5c5916f5e8fb20cfcec742b91a7451e062a0e`에서 공개됐으며 최소 action pipeline을 제공한다. 현재 Phase 15는 특정 캐릭터가 아닌 재사용 가능한 character canon, world lore와 live game-state grounding pipeline을 package `0.4.0` 후보로 구현한다.
 
-Phase 8 체크포인트는 `707123b`, Phase 9 체크포인트는 `cd5825b`, Phase 10 완료 커밋은 `4dc478f`, Phase 11 구현 체크포인트는 `c38b5a0`이다. Package `0.2.0`은 exact commit `dcad604a510b767b18154eb01408218a2e1e51f2`에 annotated tag `v0.2.0`과 Latest GitHub Release로 공개됐다. Phase 10 범위와 검증 결과는 [`PHASE10_PLAN.md`](PHASE10_PLAN.md), UPM 설치·sample·migration 절차는 [`REUSE_GUIDE.md`](REUSE_GUIDE.md), Phase 11 결과는 [`PHASE11_PLAN.md`](PHASE11_PLAN.md), 현재 릴리즈 후보는 [`RELEASE_0.3.0.md`](RELEASE_0.3.0.md)를 따른다. Phase 12~14는 각각 Advanced Behavior, Backend 배포, Realtime 후보로 번호와 책임 경계를 기록하되 구현 전 다시 계획한다. 기존 대화·Speech·Transcription wire 계약은 변경 없이 유효하다.
+Phase 15 Core/Unity/Transport/Backend/Character Builder와 Grounded Guard sample 구현이 완료됐고 Server **95/95**, Unity compile과 전체 EditMode **186/186**이 통과했다. live V4 수동 검증 전이므로 아직 완료 또는 `v0.4.0` 공개 상태로 표시하지 않는다. 상세 범위는 [`PHASE15_PLAN.md`](PHASE15_PLAN.md), wire 규격은 [`CONTRACT_V4.md`](CONTRACT_V4.md)를 따른다. Phase 12~14는 Advanced Behavior, Backend 배포, Realtime의 기존 책임 경계를 유지하고, Phase 16은 선택형 offline local inference 후보를 기록한다. 번호는 우선순위가 아니며 각 기능은 구현 직전에 다시 계획한다.
 
 ## 우리가 만드는 것
 
@@ -16,7 +16,9 @@ Phase 8 체크포인트는 `707123b`, Phase 9 체크포인트는 `cd5825b`, Phas
 목표 사용 흐름은 다음과 같다.
 
 ```text
-사용자 입력 + CharacterProfile
+사용자 입력 + CharacterProfile canon
+        + NpcLoreProfile
+        + INpcContextProvider live facts
         ↓
     AiNpcRequest
         ↓
@@ -26,8 +28,11 @@ Phase 8 체크포인트는 `707123b`, Phase 9 체크포인트는 `cd5825b`, Phas
                          │            ↕ JSON Contract V1 (stateless)
                          ├─ SessionBackendConversationClient
                          │            ↕ JSON Contract V2 + sessionId/reset
-                         └─ ActionBackendConversationClient
+                         ├─ ActionBackendConversationClient
                                       ↕ JSON Contract V3 + trigger snapshot
+                                  Backend bounded memory → OpenAI
+                         └─ ContextBackendConversationClient
+                                      ↕ JSON Contract V4 + grounding snapshot
                                   Backend bounded memory → OpenAI
         ↓
     AiNpcResponse
@@ -59,18 +64,19 @@ Push-to-Talk → IAudioCaptureDriver → bounded WAV
 - 캐릭터와 무관하게 재사용하고 자동 전송하지 않는 선택형 Push-to-Talk STT 입력 경계
 - 샘플, 자동 테스트, 두 번째 프로젝트 검증을 거친 최종 UPM 패키지
 - Character Builder에서 자연어 대화 조건을 action ID에 연결하고 프로젝트별 handler만 구현하는 선택형 행동 경계
+- 캐릭터 canon·재사용 lore·현재 게임 상태를 turn별 bounded snapshot으로 조립하는 grounding 경계
 
-API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유한다. TTS와 STT는 대화 Core를 변경하지 않는 선택형 adapter이며 전사 결과는 기존 텍스트 입력에서 검토한다. Realtime은 지연·끼어들기 요구가 실제로 확인된 뒤에만 검토한다. Phase 11은 대화 trigger와 consumer action 사이의 재사용 가능한 연결만 제공한다. 퀘스트·인벤토리·전투·NavMesh·Behavior Tree 자체와 관계도·범용 자율 에이전트는 프레임워크가 구현하지 않는다.
+API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유한다. TTS와 STT는 대화 Core를 변경하지 않는 선택형 adapter이며 전사 결과는 기존 텍스트 입력에서 검토한다. Realtime은 지연·끼어들기 요구가 실제로 확인된 뒤에만 검토한다. Phase 11은 대화 trigger와 consumer action 사이의 재사용 가능한 연결만 제공하고, Phase 15 grounding은 대사 생성 근거만 제공한다. 퀘스트·인벤토리·전투·NavMesh·Behavior Tree 자체와 관계도·범용 자율 에이전트는 프레임워크가 구현하지 않는다.
 
 ## 현재 기준선
 
 - Unity: `6000.5.3f1`
 - 주요 설치 패키지: URP `17.5.0`, Input System `1.19.0`, uGUI `2.5.0`, Test Framework `1.7.0`
-- 구현 위치: `Packages/com.aicharacterkit.framework/` (`0.3.0` local embedded UPM 및 `v0.3.0` 공개 후보)
-- 샘플: `Samples~/AI NPC Prototypes`의 Mock, MultiCharacter, Backend, Memory, Speech, VoiceInput 및 Editor API 기반 Action prototype
-- Git 공개 기준선: `dcad604a510b767b18154eb01408218a2e1e51f2` (`v0.2.0`); Phase 11 구현 `c38b5a0`, 문서 `7cf0a63`
-- Backend: Node.js 24 + TypeScript + Fastify + OpenAI SDK, 대화 V1/V2/V3와 선택형 Speech/Transcription V1, loopback 전용
-- 제외 범위: 영구·장기·Vector 기억, Realtime, VAD, 자동 전송, 원격 배포, client auth, streaming
+- 구현 위치: `Packages/com.aicharacterkit.framework/` (`0.4.0` local embedded 후보; 최신 공개 tag `v0.3.0`)
+- 샘플: `Samples~/AI NPC Prototypes`의 Mock, MultiCharacter, Backend, Memory, Speech, VoiceInput 및 Editor API 기반 Action/Grounded prototype
+- Git 공개 기준선: `42f5c5916f5e8fb20cfcec742b91a7451e062a0e` (`v0.3.0`)
+- Backend: Node.js 24 + TypeScript + Fastify + OpenAI SDK, 대화 V1/V2/V3/V4와 선택형 Speech/Transcription V1, loopback 전용
+- 제외 범위: 영구·장기·Vector 기억, Realtime, VAD, 자동 전송, 원격 배포, client auth, streaming, bundled offline inference
 
 ## 초기 로드맵과의 비교
 
@@ -89,9 +95,11 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 | UPM 패키지화 | Runtime/Editor/Tests/Samples~/Documentation~ 이전과 install/remove/upgrade/migration 검증 | Phase 9 완료 |
 | Character Builder | profile 작성, Mock preview, 기존 Scene/Prefab·presentation·선택형 UI/TTS 연결 | Phase 10 구현·자동·수동 검증 완료 |
 | 대화 기반 행동 | 자연어 trigger를 action ID에 연결하고 consumer handler가 실제 행동 수행 | Phase 11 구현·자동·수동 검증 완료 |
+| Runtime context와 lore | character canon, reusable lore/belief, live observation을 turn별 bounded snapshot으로 전달 | Phase 15 구현·자동 검증 완료; live V4 수동 검증 전 |
 | Advanced Behavior | 선택형 변수·점수·복합 gate를 기존 action handler 앞에 추가 | Phase 12 후속 가안; Phase 11 검증 후 재계획 |
 | Backend 배포 | reference server를 독립 설치·검증 가능한 artifact로 정리 | Phase 13 후속 가안; 배포 방식 재계획 필요 |
 | Realtime 음성 | Push-to-Talk로 해결되지 않는 저지연·barge-in 요구 대응 | Phase 14 후속 가안; 요구 증거 후 재계획 |
+| Offline local inference | consumer-selected local model runner를 `IAiConversationClient`로 연결 | Phase 16 후속 가안; 플랫폼·모델·라이선스 검증 후 재계획 |
 | 장기 기억 | 구현하지 않음 | 실제 persistence 요구와 privacy 설계 전까지 보류 |
 
 초기 대화에서는 실제 GPT/JSON 응답이 비교적 앞에 있었으나, 이후 계획은 Mock → 프로필 재사용 → 전송 계약 → 백엔드 순서로 정리됐다. 현재 저장소는 이 수정된 순서를 따른다.
@@ -99,15 +107,16 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 ## 구현 및 검증 현황
 
 - Core: 요청/응답 모델, `IAiConversationClient`, 결정적 `MockConversationClient`, 중복·취소·오류를 처리하는 `NpcAIController`
-- Transport: Unity 비의존 V1 DTO, validator, mapper와 Unity 경계의 `JsonUtility` codec
-- Unity 경계: `CharacterProfile`, `NpcConversationBehaviour`, uGUI 입력, `INpcPresentationDriver` 구현
-- Backend: V1 stateless 경로, V2 검증과 bounded session store, OpenAI Structured Output, 취소·timeout·오류 매핑과 안전한 telemetry log
-- Unity networking: V1 client/gateway와 V2 session client/gateway; 기존 Mock mode 유지
+- Transport: Unity 비의존 V1–V4 DTO, validator, mapper와 Unity 경계의 `JsonUtility` codec
+- Unity 경계: `CharacterProfile`, `NpcLoreProfile`, `NpcContextCoordinator`, `NpcConversationBehaviour`, uGUI 입력, `INpcPresentationDriver` 구현
+- Backend: V1 stateless, V2 session, V3 action, V4 grounding, OpenAI Structured Output, 취소·timeout·오류 매핑과 안전한 telemetry log
+- Unity networking: V1–V4 client/gateway; 기존 Mock mode 유지
 - Speech: provider-neutral controller/interface, 별도 Speech V1 계약, Backend voice preset, Unity PCM playback과 presentation decorator 구현
 - Transcription: provider-neutral controller/interface, canonical WAV encoder, 별도 V1 계약, Backend file transcription과 Unity microphone/input adapter 구현
-- 자동 설정: `PrototypeSceneBuilder`가 Editor API로 프로필과 Mock/Backend/Memory/Speech/VoiceInput 샘플 씬을 생성·복구
-- Character Builder: consumer-owned profile 작성, network-free Mock preview와 기존 Scene/Prefab의 비파괴 구성
+- 자동 설정: Editor API가 Mock/Backend/Memory/Speech/VoiceInput 및 Action/Grounded 샘플 씬을 생성·복구
+- Character Builder: consumer-owned character/lore/action profile 작성, network-free Mock·grounding preview와 기존 Scene/Prefab의 비파괴 구성
 - Conversation actions: Core router/handler, consumer-owned profile, deterministic Mock, V3 Transport/Backend와 Character Builder wiring 구현
+- Runtime grounding: immutable Core snapshot, deterministic revision/trimming, consumer context provider, V4 Transport/Backend와 Character Builder wiring 구현
 - 의존성: Core asmdef는 `noEngineReferences: true`; Runtime에는 `UnityEditor` 참조가 없음
 - 자동 검증: Server build와 Vitest **75/75**, Unity 6000.5.3f1 embedded package compile, sample import/repair와 EditMode **112/112** 통과
 - 재사용 검증: Built-in/Legacy consumer file install, EditMode **112/112**, consumer-owned presentation PlayMode **1/1**, Windows player build 통과
@@ -115,6 +124,7 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - Phase 10 수동 검증: Built-in/Legacy consumer의 Builder profile 작성, Scene/Prefab 재적용, Mock Play Mode와 선택형 TTS 정상 동작 확인
 - Phase 11 자동 검증: Server build 및 **85/85**, root와 Built-in/Legacy consumer EditMode 각각 **167/167**, consumer-owned action handler PlayMode **2/2**, Windows Development Player build 통과
 - Phase 11 수동 검증: Character Builder 재적용, Mock action·`CanExecute` 거부/허용 및 live Backend V3 semantic trigger 정상 동작 확인
+- Phase 15 자동 검증: Server build 및 **95/95**, Unity 6000.5.3f1 compile, sample import/repair/build와 EditMode **186/186** 통과
 - lifecycle 검증: remove/reinstall, validation `0.0.0`→`0.1.0`, raw Assets→UPM migration, duplicate-install guard와 consumer-owned Assets hash 보존 통과
 - 수동 검증: Phase 1·2 Play Mode, Phase 3 계약, Phase 4 실제 모델 smoke test, Phase 5 live memory/reset, Phase 6 live TTS·교체·중지·fallback, Phase 7 live microphone/STT·검토·취소, Phase 8 consumer Play Mode 완료
 
@@ -224,7 +234,7 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - package `0.3.0`은 Server **85/85**, Unity root/consumer **167/167**, consumer action PlayMode **2/2**와 player build가 통과했다.
 - 수정된 sample에서 수동 Mock/Builder, `CanExecute` 거부·허용과 live V3 semantic trigger가 정상 동작했다.
 - `0.3.0` 릴리즈 전에 신규 사용자가 handler 작성부터 Mock/V3 검증까지 완주하는 package Action Quick Start와 troubleshooting을 추가하고 예제 compile·링크를 검증했다.
-- `0.3.0` 구현은 `c38b5a0`, 완료 문서는 `7cf0a63`에 보존됐으며 공개 후보는 별도 exact-commit 승인을 기다린다.
+- `0.3.0` 구현은 `c38b5a0`, 완료 문서는 `7cf0a63`에 보존됐고 exact commit `42f5c5916f5e8fb20cfcec742b91a7451e062a0e`가 immutable `v0.3.0` tag와 GitHub Release로 공개됐다.
 
 ### Phase 12 후보 — 선택적 Advanced Behavior Rules
 
@@ -254,6 +264,27 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - 기존 text, Mock, TTS와 Push-to-Talk 경로는 대체하지 않는다.
 - provider key, remote relay 보안과 지원 플랫폼을 구현 승인 전에 확정한다.
 
+### Phase 15 — Runtime Context & Lore Grounding
+
+- **상태: 구현·자동 검증 완료 — live V4 수동 검증 전**
+- 상세 구현 계획: [`PHASE15_PLAN.md`](PHASE15_PLAN.md)
+- V4 wire 규격: [`CONTRACT_V4.md`](CONTRACT_V4.md)
+- character background, goals/values, rules와 dialogue examples를 consumer `CharacterProfile`에 저장한다.
+- reusable lore/belief asset과 consumer `INpcContextProvider`의 현재 game-state fact를 Send 직전에 결합한다.
+- deterministic priority trimming과 content-derived revision을 가진 immutable snapshot을 V4에 전달한다.
+- Backend는 grounding을 현재 생성 instruction에만 쓰고 log와 session history에 보관하지 않는다.
+- Character Builder가 canon/lore/provider와 V4 Scene/Prefab wiring을 지원하고 Editor API가 Grounded Guard sample을 생성한다.
+- V1–V3, Mock, actions, TTS와 STT를 그대로 유지하며 gameplay authorization은 계속 handler `CanExecute`가 맡는다.
+
+### Phase 16 후보 — 선택형 Offline Local Inference
+
+- **상태: 후속 가안 — 구현 승인 전 요구 조사와 재계획 필요**
+- 후보 범위와 재계획 게이트: [`PHASE16_PLAN.md`](PHASE16_PLAN.md)
+- consumer-selected local runner/model을 기존 `IAiConversationClient` 뒤에 선택적으로 연결한다.
+- 기본 UPM package에는 model weight, tokenizer와 native runtime을 포함하거나 강제하지 않는다.
+- 대상 플랫폼, 최소 하드웨어, 품질·latency, 배포 크기와 라이선스를 비교한 뒤 sidecar 또는 in-process 방식을 결정한다.
+- 기존 Mock/Backend, V4 grounding, structured response와 action authorization 경계는 유지한다.
+
 ### Package 0.2.0 — 공개 Git 릴리즈
 
 - **상태: 공개 완료 — `v0.2.0`, exact commit `dcad604a510b767b18154eb01408218a2e1e51f2`**
@@ -264,11 +295,11 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 ### Package 0.3.0 — 대화 행동 공개 Git 릴리즈
 
-- **상태: 릴리즈 후보 준비·검증 완료 — 공개 승인 전**
-- 상세 checklist와 release notes 초안: [`RELEASE_0.3.0.md`](RELEASE_0.3.0.md)
+- **상태: 공개 완료 — `v0.3.0`, exact commit `42f5c5916f5e8fb20cfcec742b91a7451e062a0e`**
+- 상세 checklist와 release notes: [`RELEASE_0.3.0.md`](RELEASE_0.3.0.md)
 - `v0.3.0` tag의 Git subfolder URL로 Phase 11 대화 행동 기능을 기존 대화·음성 기능과 함께 배포한다.
 - Backend V3는 같은 tag의 reference source로만 유지하며 UPM/npm package로 만들지 않는다.
-- exact release-preparation commit을 검증하고 사용자가 승인하기 전에는 tag 생성·push와 GitHub Release 발행을 수행하지 않는다.
+- published tag는 이동하거나 덮어쓰지 않으며 수정은 새 version으로 배포한다.
 
 ## 주요 위험과 통제
 
@@ -282,7 +313,10 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - UPM package와 raw Assets 복사본을 동시에 두면 assembly/GUID 충돌이 생긴다. resolver가 이중 설치를 거부하고 migration 문서가 consumer asset 분리를 요구한다.
 - Phase 11의 모델 반환 trigger ID는 신뢰하지 않는다. 요청에 등록되지 않은 ID를 거부하고 action handler가 실제 게임 상태와 권한을 다시 검사하며, 모델이 action parameter·메서드·Scene target을 생성하지 못하게 한다.
 - 자연어 trigger 수가 늘면 prompt 비용과 판정 모호성이 증가한다. Phase 11은 bounded trigger 목록, 한 turn 최대 한 행동과 명시적 priority만 지원하고 변수·점수·복합 규칙은 추가하지 않는다.
+- mutable world state가 빠르게 변하면 응답 생성 뒤 실제 action 시점과 snapshot이 달라질 수 있다. V4는 request-time 근거만 제공하고 handler가 실행 직전 실제 상태를 다시 검사한다.
+- 모든 lore를 매 turn 보내면 비용과 충돌이 증가한다. Phase 15는 strict byte/count budget과 deterministic priority trimming을 사용하며 RAG나 자동 요약을 선행 구현하지 않는다.
+- offline local inference는 플랫폼별 native runtime, model 재배포 라이선스와 큰 build 용량 위험이 있다. 기본 package에 포함하지 않고 Phase 16에서 실제 대상 사양을 먼저 측정한다.
 
 ## 바로 다음 행동
 
-**Package `0.3.0` 릴리즈 후보의 최종 검증과 준비 커밋을 완료한 뒤 exact commit의 공개 승인을 받는다.** 승인 전에는 `v0.3.0` tag나 GitHub Release를 만들지 않는다. 이후 변수·점수·복합 rule, Backend packaging, Realtime은 각각 [`PHASE12_PLAN.md`](PHASE12_PLAN.md), [`PHASE13_PLAN.md`](PHASE13_PLAN.md), [`PHASE14_PLAN.md`](PHASE14_PLAN.md)에 후속 가안으로 보존하고 구현 직전에 다시 계획한다.
+**Phase 15 Grounded Guard를 matching local Backend에서 수동 검증한다.** gate/alarm 상태에 따라 응답 근거와 revision이 바뀌고 reset 뒤에도 현재 snapshot이 다시 제공되는지 확인한 뒤 문서를 완료 상태로 전환한다. 이후 `0.4.0` 릴리즈 준비와 exact-commit 공개 승인은 별도 작업이다. Advanced rules, Backend packaging, Realtime과 offline inference는 각각 [`PHASE12_PLAN.md`](PHASE12_PLAN.md), [`PHASE13_PLAN.md`](PHASE13_PLAN.md), [`PHASE14_PLAN.md`](PHASE14_PLAN.md), [`PHASE16_PLAN.md`](PHASE16_PLAN.md)에 후속 가안으로 보존하고 구현 직전에 다시 계획한다.

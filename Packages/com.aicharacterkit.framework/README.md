@@ -1,10 +1,10 @@
 # AI Character Kit
 
-AI Character Kit is a reusable Unity 6 framework for structured NPC dialogue and consumer-owned game actions. It includes a deterministic offline Mock path, versioned transport contracts, optional loopback-backend adapters, bounded sessions, TTS, STT, and replaceable presentation and action boundaries.
+AI Character Kit is a reusable Unity 6 framework for structured NPC dialogue, bounded request-time grounding, and consumer-owned game actions. It includes a deterministic offline Mock path, versioned transport contracts, optional loopback-backend adapters, bounded sessions, TTS, STT, and replaceable context, presentation, and action boundaries.
 
 ## Install
 
-For release `v0.3.0`, choose **Window > Package Management > Package Manager**, click **+**, select **Install package from git URL**, and enter:
+For the latest published release `v0.3.0`, choose **Window > Package Management > Package Manager**, click **+**, select **Install package from git URL**, and enter:
 
 ```text
 https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.3.0
@@ -16,13 +16,15 @@ Import **AI NPC Prototypes** from the package's Samples tab. Then run **Tools > 
 
 ## Build a character
 
-Open **Tools > AI Character Kit > Character Builder** to create or edit a consumer-owned `CharacterProfile`, preview deterministic Mock output, and connect an existing Scene GameObject or writable Prefab to a consumer `INpcPresentationDriver`. The tool can also connect existing package uGUI views, configure optional TTS with an opaque `NpcVoiceProfile` preset ID, and author optional natural-language trigger-to-action bindings.
+Open **Tools > AI Character Kit > Character Builder** to create or edit a consumer-owned `CharacterProfile`, preview deterministic Mock output, and connect an existing Scene GameObject or writable Prefab to a consumer `INpcPresentationDriver`. The tool can also author character canon and `NpcLoreProfile` data, connect runtime `INpcContextProvider` components, configure V4 grounding, connect existing package uGUI views, configure optional TTS with an opaque `NpcVoiceProfile` preset ID, and author optional natural-language trigger-to-action bindings.
 
 For actions, create an `NpcActionProfile`, assign one consumer MonoBehaviour implementing `INpcActionHandler` for every configured `actionId`, and use Mock mode to verify the exact example input without a network. Backend Actions mode uses V3 to return only matched configured trigger IDs; Unity still selects at most one action and the handler's `CanExecute` makes the final game-state decision.
 
 Follow the [Conversation Actions Quick Start](Documentation~/ACTIONS_QUICKSTART.md) for a compile-ready handler, exact Character Builder fields, offline and live V3 verification, and troubleshooting.
 
-The builder never generates a game model, UI, presentation implementation, action implementation, or Prefab. Reapplying updates only the displayed Kit references and settings; it does not remove consumer components or assets. All created profiles remain under a user-selected `Assets/` folder.
+Follow the [Runtime Context and Lore Quick Start](Documentation~/GROUNDING_QUICKSTART.md) when dialogue must reflect stable worldbuilding and mutable game state. V4 captures a fresh bounded snapshot for each Send; it does not grant permission to change game state or persist lore in session memory.
+
+The builder never generates a game model, UI, presentation implementation, context provider implementation, action implementation, or Prefab. Reapplying updates only the displayed Kit references and settings; it does not remove consumer components or assets. All created profiles remain under a user-selected `Assets/` folder.
 
 ## Start with Mock
 
@@ -35,11 +37,11 @@ The package root is treated as read-only. Editor automation writes only to an im
 
 ## Run package tests
 
-Add `com.aicharacterkit.framework` to the consumer manifest's `testables` array and install Unity Test Framework `1.7.0`. Import and repair **AI NPC Prototypes** before running the full EditMode suite because scene-configuration tests intentionally verify imported consumer assets.
+Add `com.aicharacterkit.framework` to the consumer manifest's `testables` array and install Unity Test Framework `1.7.0`. Import and repair **AI NPC Prototypes**, then create the Action and Grounded Guard prototype scenes from their **Tools > AI Character Kit > Samples** menu entries before running the full EditMode suite. Scene-configuration tests intentionally verify those imported consumer assets.
 
 ## Backend boundary
 
-The UPM package never contains credentials or calls OpenAI directly. Backend, memory, action-aware V3, TTS, and STT modes require a compatible loopback service. The repository's `server/` directory is reference source at the matching repository revision; it remains outside the Unity package and is not published as an npm package.
+The UPM package never contains credentials or calls OpenAI directly. Backend, memory, action-aware V3, context-grounded V4, TTS, and STT modes require a compatible loopback service. The repository's `server/` directory is reference source at the matching repository revision; it remains outside the Unity package and is not published as an npm package. No language model or local inference runtime is bundled in the Unity package.
 
 See [Documentation](Documentation~/index.md) for architecture, lifecycle, migration, and contract references.
 

@@ -19,6 +19,8 @@ namespace AiCharacterKit.Core
 
         public string UserText { get; }
 
+        public NpcGroundingSnapshot Grounding { get; }
+
         /// <summary>
         /// Creates an immutable request without retaining a Unity object reference.
         /// </summary>
@@ -30,6 +32,30 @@ namespace AiCharacterKit.Core
             string exampleDialogue,
             NpcEmotion defaultEmotion,
             string userText)
+            : this(
+                characterId,
+                displayName,
+                personality,
+                speechStyle,
+                exampleDialogue,
+                defaultEmotion,
+                userText,
+                NpcGroundingSnapshot.Empty)
+        {
+        }
+
+        /// <summary>
+        /// Creates an immutable request with an optional turn-specific grounding snapshot.
+        /// </summary>
+        public AiNpcRequest(
+            string characterId,
+            string displayName,
+            string personality,
+            string speechStyle,
+            string exampleDialogue,
+            NpcEmotion defaultEmotion,
+            string userText,
+            NpcGroundingSnapshot grounding)
         {
             CharacterId = characterId ?? string.Empty;
             DisplayName = displayName ?? string.Empty;
@@ -38,6 +64,7 @@ namespace AiCharacterKit.Core
             ExampleDialogue = exampleDialogue ?? string.Empty;
             DefaultEmotion = defaultEmotion;
             UserText = userText ?? string.Empty;
+            Grounding = grounding ?? NpcGroundingSnapshot.Empty;
         }
     }
 }

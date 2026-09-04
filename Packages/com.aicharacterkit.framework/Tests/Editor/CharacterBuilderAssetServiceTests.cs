@@ -279,7 +279,57 @@ namespace AiCharacterKit.Core.Tests
         }
 
         /// <summary>
-        /// Creates one complete reusable draft shared by profile asset test cases.
+        /// Confirms character canon and reusable lore assets round-trip through editor drafts.
+        /// </summary>
+        [Test]
+        public void GroundingDrafts_CreateUpdateAndPreview_PreserveBoundedValues()
+        {
+            var characterDraft = CreateProfileDraft("GroundedGuide", "grounded-guide");
+            characterDraft.Background = "The guide serves Dawnfall.";
+            characterDraft.GoalsAndValues = "Protect travelers.";
+            characterDraft.BehavioralRules.Add("Never invent a location.");
+            characterDraft.AdditionalDialogueExamples.Add("Guide: Follow the eastern road.");
+            Assert.That(CharacterBuilderAssetService.TryCreateCharacterProfile(
+                characterDraft,
+                TestFolder,
+                out var character,
+                out var characterError), Is.True, characterError);
+            Assert.That(character.Background, Is.EqualTo(characterDraft.Background));
+            Assert.That(character.BehavioralRules, Has.Count.EqualTo(1));
+
+            var loreDraft = new LoreProfileDraft { AssetName = "DawnfallLore" };
+            loreDraft.LoreFacts.Add(new LoreEntryDraft
+            {
+                FactId = "east_road",
+                Statement = "The eastern road reaches the harbor.",
+                Priority = 70
+            });
+            Assert.That(CharacterBuilderAssetService.TryCreateLoreProfile(
+                loreDraft,
+                TestFolder,
+                out var lore,
+                out var loreError), Is.True, loreError);
+            Assert.That(lore.LoreFacts[0].FactId, Is.EqualTo("east_road"));
+
+            var update = LoreProfileDraft.FromProfile(lore);
+            update.LoreFacts[0].Statement = "The eastern road is blocked.";
+            Assert.That(CharacterBuilderAssetService.TryUpdateLoreProfile(
+                lore,
+                update,
+                out var updateError), Is.True, updateError);
+            Assert.That(lore.LoreFacts[0].Statement, Does.Contain("blocked"));
+
+            Assert.That(CharacterBuilderAssetService.TryPreviewGrounding(
+                characterDraft,
+                update,
+                out var snapshot,
+                out var previewError), Is.True, previewError);
+            Assert.That(snapshot.Facts[0].FactId, Is.EqualTo("east_road"));
+            Assert.That(snapshot.Revision, Does.StartWith("ctx-"));
+        }
+
+        /// <summary>
+        /// Creates one valid detached character draft for asset tests.
         /// </summary>
         private static CharacterProfileDraft CreateProfileDraft(
             string assetName,

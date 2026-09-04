@@ -10,7 +10,7 @@ URP and the Input System are not required. Audio, JSON serialization, and UnityW
 
 ## Tagged Git installation
 
-For release `v0.3.0`, select **Install package from git URL** in Package Manager and enter:
+The latest published release is `v0.3.0`. Select **Install package from git URL** in Package Manager and enter:
 
 ```text
 https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.3.0
@@ -36,9 +36,9 @@ Do not keep a raw `Assets/AiCharacterKit` copy and the UPM package installed tog
 
 ## Samples
 
-Import **AI NPC Prototypes** from the Package Manager Samples tab. Imported samples are writable under `Assets/Samples/AI Character Kit/<installed-version>/AI NPC Prototypes`. Run **Tools > AI Character Kit > Repair All Sample Scenes** after import or after changing the active input backend. In `0.3.0`, run **Tools > AI Character Kit > Samples > Create Conversation Action Prototype** once after import to generate the action Scene through Editor APIs.
+Import **AI NPC Prototypes** from the Package Manager Samples tab. Imported samples are writable under `Assets/Samples/AI Character Kit/<installed-version>/AI NPC Prototypes`. Run **Tools > AI Character Kit > Repair All Sample Scenes** after import or after changing the active input backend. In `0.3.0` and later, run **Tools > AI Character Kit > Samples > Create Conversation Action Prototype** once after import to generate the action Scene through Editor APIs. In the local `0.4.0` source candidate, run **Create Grounded Guard Prototype** to generate the V4 context/lore Scene as well.
 
-After verifying the generated Action Scene, follow the [Conversation Actions Quick Start](ACTIONS_QUICKSTART.md) to implement and connect a consumer-owned action handler.
+After verifying the generated Action Scene, follow the [Conversation Actions Quick Start](ACTIONS_QUICKSTART.md) to implement and connect a consumer-owned action handler. For V4 canon, lore, and live state setup, follow the [Runtime Context and Lore Quick Start](GROUNDING_QUICKSTART.md).
 
 ## Upgrade and removal
 
@@ -48,4 +48,4 @@ The reference Node backend is source in the same repository but is not part of t
 
 ## Package tests
 
-Install Test Framework `1.7.0`, add `com.aicharacterkit.framework` to the project's `testables` array, and import/repair **AI NPC Prototypes**. The full EditMode suite includes fixture, architecture, and imported scene-configuration checks, so it expects the sample to exist under `Assets`.
+Install Test Framework `1.7.0`, add `com.aicharacterkit.framework` to the project's `testables` array, import/repair **AI NPC Prototypes**, and generate the Action and Grounded Guard scenes from their sample menu entries. The full EditMode suite includes fixture, architecture, and imported scene-configuration checks, so it expects those writable sample assets under `Assets`.

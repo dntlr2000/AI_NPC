@@ -20,6 +20,8 @@ namespace AiCharacterKit.Editor
         private VoiceProfileDraft voiceDraft = new VoiceProfileDraft();
         private NpcActionProfile selectedActionProfile;
         private ActionProfileDraft actionDraft = new ActionProfileDraft();
+        private NpcLoreProfile selectedLoreProfile;
+        private LoreProfileDraft loreDraft = new LoreProfileDraft();
         private CharacterBuilderConfiguration configuration =
             new CharacterBuilderConfiguration();
         private CharacterBuilderValidationReport validationReport;
@@ -29,6 +31,7 @@ namespace AiCharacterKit.Editor
         private string previewInput = "hello";
         private AiNpcResponse previewResponse;
         private NpcTriggerDefinition previewAction;
+        private NpcGroundingSnapshot previewGrounding;
         private string statusMessage = string.Empty;
         private MessageType statusType = MessageType.Info;
 
@@ -54,6 +57,7 @@ namespace AiCharacterKit.Editor
             DrawProfileSection();
             DrawPreviewSection();
             DrawTargetSection();
+            DrawGroundingSection();
             DrawActionSection();
             DrawSpeechSection();
             DrawValidationSection();
@@ -67,7 +71,7 @@ namespace AiCharacterKit.Editor
         {
             EditorGUILayout.LabelField("AI Character Kit Character Builder", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Creates consumer-owned profiles and connects existing GameObjects, presentation drivers, and optional uGUI views. It does not generate models, UI, presentation code, or prefabs.",
+                "Creates consumer-owned profiles and connects existing GameObjects, context providers, presentation drivers, and optional uGUI views. It does not generate models, UI, provider/presentation code, or prefabs.",
                 MessageType.Info);
             EditorGUILayout.Space();
         }
@@ -113,6 +117,22 @@ namespace AiCharacterKit.Editor
             profileDraft.DefaultEmotion = (NpcEmotion)EditorGUILayout.EnumPopup(
                 "Default Emotion",
                 profileDraft.DefaultEmotion);
+            profileDraft.Background = DrawTextArea(
+                "Background / Canon",
+                profileDraft.Background,
+                52f);
+            profileDraft.GoalsAndValues = DrawTextArea(
+                "Goals and Values",
+                profileDraft.GoalsAndValues,
+                52f);
+            DrawStringList(
+                "Behavioral Rules",
+                profileDraft.BehavioralRules,
+                NpcGroundingSnapshot.MaxBehavioralRuleCount);
+            DrawStringList(
+                "Additional Dialogue Examples",
+                profileDraft.AdditionalDialogueExamples,
+                NpcGroundingSnapshot.MaxDialogueExampleCount);
             DrawAssetFolder();
 
             EditorGUILayout.BeginHorizontal();
@@ -131,6 +151,95 @@ namespace AiCharacterKit.Editor
 
             EditorGUILayout.EndHorizontal();
             DrawDuplicateIdWarning();
+            EditorGUILayout.Space();
+        }
+
+        /// <summary>
+        /// Draws reusable lore authoring, runtime provider selection, and authored preview.
+        /// </summary>
+        private void DrawGroundingSection()
+        {
+            EditorGUILayout.LabelField("4. Optional Runtime Grounding", EditorStyles.boldLabel);
+            configuration.ConfigureGrounding = EditorGUILayout.Toggle(
+                "Configure Grounding",
+                configuration.ConfigureGrounding);
+            if (!configuration.ConfigureGrounding)
+            {
+                configuration.ContextProviderSources = Array.Empty<MonoBehaviour>();
+                EditorGUILayout.HelpBox(
+                    "No grounding coordinator is connected. Existing lore assets and components are left untouched.",
+                    MessageType.Info);
+                EditorGUILayout.Space();
+                return;
+            }
+
+            EditorGUI.BeginChangeCheck();
+            var nextLore = (NpcLoreProfile)EditorGUILayout.ObjectField(
+                "Existing Lore Profile",
+                selectedLoreProfile,
+                typeof(NpcLoreProfile),
+                false);
+            if (EditorGUI.EndChangeCheck())
+            {
+                LoadLoreProfile(nextLore);
+            }
+
+            loreDraft.AssetName = EditorGUILayout.TextField(
+                "Lore Asset Name",
+                loreDraft.AssetName);
+            DrawLoreEntries("World Lore", loreDraft.LoreFacts);
+            DrawLoreEntries("Character Beliefs", loreDraft.Beliefs);
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button(selectedLoreProfile == null
+                    ? "Create Lore Profile"
+                    : "Save Lore Profile"))
+            {
+                SaveLoreProfile();
+            }
+
+            if (GUILayout.Button("New Lore Draft"))
+            {
+                LoadLoreProfile(null);
+                SetStatus("Started a new unsaved lore profile draft.", MessageType.Info);
+            }
+
+            EditorGUILayout.EndHorizontal();
+            EnsureSelectedLoreSource();
+            DrawLoreSourceSelections();
+            DrawContextProviderSelections();
+
+            if (GUILayout.Button("Preview Authored Grounding"))
+            {
+                if (CharacterBuilderAssetService.TryPreviewGrounding(
+                        profileDraft,
+                        loreDraft,
+                        out previewGrounding,
+                        out var previewError))
+                {
+                    SetStatus(
+                        "Grounding preview completed without providers or networking.",
+                        MessageType.Info);
+                }
+                else
+                {
+                    previewGrounding = null;
+                    SetStatus(previewError, MessageType.Error);
+                }
+            }
+
+            if (previewGrounding != null)
+            {
+                EditorGUILayout.HelpBox(
+                    "Revision: " + previewGrounding.Revision
+                    + "\nFacts: " + previewGrounding.Facts.Count
+                    + "\nRules: " + previewGrounding.BehavioralRules.Count
+                    + "\nDialogue Examples: " + previewGrounding.DialogueExamples.Count,
+                    MessageType.None);
+            }
+
+            EditorGUILayout.HelpBox(
+                "Preview includes this character draft and lore draft only. Runtime providers are captured immediately before each V4 request.",
+                MessageType.Info);
             EditorGUILayout.Space();
         }
 
@@ -191,7 +300,7 @@ namespace AiCharacterKit.Editor
         /// </summary>
         private void DrawActionSection()
         {
-            EditorGUILayout.LabelField("4. Optional Conversation Actions", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("5. Optional Conversation Actions", EditorStyles.boldLabel);
             configuration.ConfigureActions = EditorGUILayout.Toggle(
                 "Configure Actions",
                 configuration.ConfigureActions);
@@ -345,6 +454,113 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
+        /// Draws an editable bounded list of canonical character text values.
+        /// </summary>
+        private static void DrawStringList(
+            string label,
+            List<string> values,
+            int maxCount)
+        {
+            EditorGUILayout.LabelField(label, EditorStyles.miniBoldLabel);
+            var removeIndex = -1;
+            for (var index = 0; index < values.Count; index++)
+            {
+                EditorGUILayout.BeginHorizontal();
+                values[index] = EditorGUILayout.TextField(values[index] ?? string.Empty);
+                if (GUILayout.Button("Remove", GUILayout.Width(65f)))
+                {
+                    removeIndex = index;
+                }
+
+                EditorGUILayout.EndHorizontal();
+            }
+
+            if (removeIndex >= 0)
+            {
+                values.RemoveAt(removeIndex);
+            }
+
+            using (new EditorGUI.DisabledScope(values.Count >= maxCount))
+            {
+                if (GUILayout.Button("Add " + label))
+                {
+                    values.Add(string.Empty);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Draws one editable lore or belief entry group with bounded priorities.
+        /// </summary>
+        private static void DrawLoreEntries(
+            string label,
+            List<LoreEntryDraft> entries)
+        {
+            EditorGUILayout.LabelField(label, EditorStyles.miniBoldLabel);
+            var removeIndex = -1;
+            for (var index = 0; index < entries.Count; index++)
+            {
+                var entry = entries[index] ?? new LoreEntryDraft();
+                entries[index] = entry;
+                EditorGUILayout.BeginVertical("box");
+                entry.FactId = EditorGUILayout.TextField("Fact ID", entry.FactId);
+                entry.Statement = DrawTextArea("Statement", entry.Statement, 42f);
+                entry.Priority = EditorGUILayout.IntSlider(
+                    "Priority",
+                    entry.Priority,
+                    NpcContextFact.MinPriority,
+                    NpcContextFact.MaxPriority);
+                if (GUILayout.Button("Remove Entry"))
+                {
+                    removeIndex = index;
+                }
+
+                EditorGUILayout.EndVertical();
+            }
+
+            if (removeIndex >= 0)
+            {
+                entries.RemoveAt(removeIndex);
+            }
+
+            if (GUILayout.Button("Add " + label + " Entry"))
+            {
+                entries.Add(new LoreEntryDraft());
+            }
+        }
+
+        /// <summary>
+        /// Selects target-owned runtime providers whose current facts enter each V4 turn.
+        /// </summary>
+        private void DrawContextProviderSelections()
+        {
+            EditorGUILayout.LabelField("Runtime Context Providers", EditorStyles.miniBoldLabel);
+            var selected = new HashSet<MonoBehaviour>(
+                configuration.ContextProviderSources ?? Array.Empty<MonoBehaviour>());
+            var available = CharacterBuilderService.FindContextProviders(
+                configuration.Target);
+            var next = new List<MonoBehaviour>();
+            foreach (var provider in available)
+            {
+                var enabled = EditorGUILayout.ToggleLeft(
+                    GetComponentLabel(configuration.Target, provider),
+                    selected.Contains(provider));
+                if (enabled)
+                {
+                    next.Add(provider);
+                }
+            }
+
+            configuration.ContextProviderSources = next.ToArray();
+            if (available.Count == 0)
+            {
+                EditorGUILayout.HelpBox(
+                    "No INpcContextProvider component exists under the current target. Static character and lore grounding still works.",
+                    MessageType.Info);
+            }
+        }
+
+        /// <summary>
         /// Draws the existing Scene or Prefab target, presentation, mode, endpoints, and views.
         /// </summary>
         private void DrawTargetSection()
@@ -392,7 +608,7 @@ namespace AiCharacterKit.Editor
         /// </summary>
         private void DrawSpeechSection()
         {
-            EditorGUILayout.LabelField("5. Optional TTS", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("6. Optional TTS", EditorStyles.boldLabel);
             configuration.ConfigureSpeech = EditorGUILayout.Toggle(
                 "Configure TTS",
                 configuration.ConfigureSpeech);
@@ -459,7 +675,7 @@ namespace AiCharacterKit.Editor
         /// </summary>
         private void DrawValidationSection()
         {
-            EditorGUILayout.LabelField("6. Validate and Apply", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("7. Validate and Apply", EditorStyles.boldLabel);
             configuration.CharacterProfile = selectedProfile;
             configuration.VoiceProfile = selectedVoiceProfile;
             configuration.ActionProfile = selectedActionProfile;
@@ -600,6 +816,15 @@ namespace AiCharacterKit.Editor
                     "V3 Reset Endpoint",
                     configuration.ActionResetEndpoint);
             }
+            else if (configuration.ConversationMode == NpcConversationMode.BackendContext)
+            {
+                configuration.ContextBackendEndpoint = EditorGUILayout.TextField(
+                    "V4 Respond Endpoint",
+                    configuration.ContextBackendEndpoint);
+                configuration.ContextResetEndpoint = EditorGUILayout.TextField(
+                    "V4 Reset Endpoint",
+                    configuration.ContextResetEndpoint);
+            }
         }
 
         /// <summary>
@@ -688,7 +913,10 @@ namespace AiCharacterKit.Editor
             configuration.SpeechControlView = null;
             configuration.ConfigureSpeech = false;
             configuration.ConfigureActions = false;
+            configuration.ConfigureGrounding = false;
             configuration.ActionHandlerSources = Array.Empty<MonoBehaviour>();
+            configuration.ContextProviderSources = Array.Empty<MonoBehaviour>();
+            configuration.LoreProfiles = Array.Empty<NpcLoreProfile>();
             validationReport = null;
             if (target == null)
             {
@@ -742,6 +970,10 @@ namespace AiCharacterKit.Editor
                 .FindProperty("actionBackendEndpoint").stringValue;
             configuration.ActionResetEndpoint = serializedConversation
                 .FindProperty("actionResetEndpoint").stringValue;
+            configuration.ContextBackendEndpoint = serializedConversation
+                .FindProperty("contextBackendEndpoint").stringValue;
+            configuration.ContextResetEndpoint = serializedConversation
+                .FindProperty("contextResetEndpoint").stringValue;
             configuration.BackendTimeoutSeconds = serializedConversation
                 .FindProperty("backendTimeoutSeconds").intValue;
 
@@ -767,6 +999,52 @@ namespace AiCharacterKit.Editor
             LoadExistingActions(
                 serializedConversation.FindProperty("actionCoordinator")
                     .objectReferenceValue as NpcActionCoordinator);
+            LoadExistingGrounding(
+                serializedConversation.FindProperty("contextCoordinator")
+                    .objectReferenceValue as NpcContextCoordinator);
+        }
+
+        /// <summary>
+        /// Reads an existing grounding coordinator into lore and provider selections.
+        /// </summary>
+        private void LoadExistingGrounding(NpcContextCoordinator coordinator)
+        {
+            if (coordinator == null)
+            {
+                return;
+            }
+
+            configuration.ConfigureGrounding = true;
+            var serializedCoordinator = new SerializedObject(coordinator);
+            var loreProperty = serializedCoordinator.FindProperty("loreProfiles");
+            var loreProfiles = new List<NpcLoreProfile>();
+            for (var index = 0; index < loreProperty.arraySize; index++)
+            {
+                var profile = loreProperty.GetArrayElementAtIndex(index)
+                    .objectReferenceValue as NpcLoreProfile;
+                if (profile != null)
+                {
+                    loreProfiles.Add(profile);
+                }
+            }
+
+            configuration.LoreProfiles = loreProfiles.ToArray();
+            LoadLoreProfile(loreProfiles.Count > 0 ? loreProfiles[0] : null);
+
+            var providerProperty = serializedCoordinator.FindProperty(
+                "contextProviderSources");
+            var providers = new List<MonoBehaviour>();
+            for (var index = 0; index < providerProperty.arraySize; index++)
+            {
+                var provider = providerProperty.GetArrayElementAtIndex(index)
+                    .objectReferenceValue as MonoBehaviour;
+                if (provider != null)
+                {
+                    providers.Add(provider);
+                }
+            }
+
+            configuration.ContextProviderSources = providers.ToArray();
         }
 
         /// <summary>
@@ -810,6 +1088,120 @@ namespace AiCharacterKit.Editor
             validationReport = null;
             previewResponse = null;
             previewAction = null;
+        }
+
+        /// <summary>
+        /// Loads one persistent lore asset into a detached grounding draft.
+        /// </summary>
+        private void LoadLoreProfile(NpcLoreProfile profile)
+        {
+            selectedLoreProfile = profile;
+            loreDraft = LoreProfileDraft.FromProfile(profile);
+            validationReport = null;
+            previewGrounding = null;
+        }
+
+        /// <summary>
+        /// Creates or updates one validated consumer-owned lore profile.
+        /// </summary>
+        private void SaveLoreProfile()
+        {
+            NpcLoreProfile created = null;
+            string error;
+            bool succeeded;
+            if (selectedLoreProfile == null)
+            {
+                succeeded = CharacterBuilderAssetService.TryCreateLoreProfile(
+                    loreDraft,
+                    assetFolder,
+                    out created,
+                    out error);
+            }
+            else
+            {
+                succeeded = CharacterBuilderAssetService.TryUpdateLoreProfile(
+                    selectedLoreProfile,
+                    loreDraft,
+                    out error);
+            }
+
+            if (!succeeded)
+            {
+                SetStatus(error, MessageType.Error);
+                return;
+            }
+
+            if (selectedLoreProfile == null)
+            {
+                LoadLoreProfile(created);
+            }
+            else
+            {
+                loreDraft = LoreProfileDraft.FromProfile(selectedLoreProfile);
+            }
+
+            EnsureSelectedLoreSource();
+            Selection.activeObject = selectedLoreProfile;
+            SetStatus(
+                "NpcLoreProfile saved at "
+                + AssetDatabase.GetAssetPath(selectedLoreProfile),
+                MessageType.Info);
+        }
+
+        /// <summary>
+        /// Ensures the actively edited persistent lore asset participates in the composition.
+        /// </summary>
+        private void EnsureSelectedLoreSource()
+        {
+            if (selectedLoreProfile == null)
+            {
+                return;
+            }
+
+            var sources = new List<NpcLoreProfile>(
+                configuration.LoreProfiles ?? Array.Empty<NpcLoreProfile>());
+            if (!sources.Contains(selectedLoreProfile))
+            {
+                sources.Insert(0, selectedLoreProfile);
+                configuration.LoreProfiles = sources.ToArray();
+            }
+        }
+
+        /// <summary>
+        /// Draws the reusable lore asset list sent by the configured coordinator.
+        /// </summary>
+        private void DrawLoreSourceSelections()
+        {
+            EditorGUILayout.LabelField("Assigned Lore Sources", EditorStyles.miniBoldLabel);
+            var sources = new List<NpcLoreProfile>(
+                configuration.LoreProfiles ?? Array.Empty<NpcLoreProfile>());
+            var removeIndex = -1;
+            for (var index = 0; index < sources.Count; index++)
+            {
+                EditorGUILayout.BeginHorizontal();
+                sources[index] = (NpcLoreProfile)EditorGUILayout.ObjectField(
+                    sources[index],
+                    typeof(NpcLoreProfile),
+                    false);
+                if (GUILayout.Button("Remove", GUILayout.Width(65f)))
+                {
+                    removeIndex = index;
+                }
+
+                EditorGUILayout.EndHorizontal();
+            }
+
+            if (removeIndex >= 0)
+            {
+                sources.RemoveAt(removeIndex);
+            }
+
+            if (GUILayout.Button("Add Lore Source"))
+            {
+                sources.Add(null);
+            }
+
+            configuration.LoreProfiles = sources.ToArray();
         }
 
         /// <summary>

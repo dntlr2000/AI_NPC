@@ -1,8 +1,8 @@
-# AI Character Kit 0.3.0 릴리즈 준비
+# AI Character Kit 0.3.0 릴리즈 기록
 
-> 상태: 공개 릴리즈 후보 준비·검증 완료 — 최종 승인 및 발행 전
+> 상태: 공개 완료 — immutable annotated tag 및 GitHub Release 발행
 > 대상: `com.aicharacterkit.framework` `0.3.0`
-> 기준선: `c38b5a0` (Phase 11 구현), `7cf0a63` (사용자 문서)
+> exact release commit: `42f5c5916f5e8fb20cfcec742b91a7451e062a0e`
 
 ## 배포 결정
 
@@ -54,6 +54,6 @@ https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framew
 
 The UPM package works offline in Mock mode. The optional `server/` reference source is not installed or published as a package and must be run separately for semantic V3 matching and other Backend modes. Version `0.3.0` does not include model-generated action parameters, Reflection calls, persistent behavior variables, generic rule trees, Backend deployment, remote authentication, or Realtime voice.
 
-## 공개 승인 게이트
+## 공개 기록
 
-검증된 release-preparation commit을 만든 뒤 exact commit SHA, 테스트 결과와 이 초안을 검토한다. 사용자의 별도 최종 승인 전에는 `v0.3.0` tag를 만들거나 push하지 않고 GitHub Release를 발행하지 않는다. 공개 후 tag는 이동하지 않으며 수정은 `0.3.1` 이상의 새 version으로 배포한다.
+사용자가 exact commit을 승인한 뒤 `main` push, annotated `v0.3.0` tag 생성·push와 공개 GitHub Release 발행을 완료했다. 이 tag는 이동하거나 덮어쓰지 않으며 수정은 `0.3.1` 이상의 새 version으로 배포한다.

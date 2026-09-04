@@ -2,17 +2,19 @@ import { Buffer } from "node:buffer";
 import { NpcServiceError } from "./errors.js";
 import type {
   ConversationMessage,
+  NpcGroundingSnapshot,
   NpcGenerationResult,
   NpcResponseGenerator,
+  NpcSemanticTrigger,
 } from "./generator.js";
 import type { NpcCharacterSnapshot } from "./generator.js";
-import type { SemanticTrigger } from "./contracts/v3.js";
 
 export interface SessionConversationRequest {
   readonly sessionId: string;
   readonly character: NpcCharacterSnapshot;
   readonly userText: string;
-  readonly triggers?: readonly SemanticTrigger[];
+  readonly triggers?: readonly NpcSemanticTrigger[];
+  readonly grounding?: NpcGroundingSnapshot;
 }
 
 export interface SessionResetRequest {
@@ -211,6 +213,7 @@ export class SessionConversationService {
           history: toConversationMessages(lease.history),
           userText: request.userText,
           triggers: request.triggers,
+          grounding: request.grounding,
         },
         cancellationSignal,
       );
@@ -233,9 +236,9 @@ export class SessionConversationService {
   }
 }
 
-/** Rejects missing, duplicate, or unknown V3 trigger IDs before committing memory. */
+/** Rejects missing, duplicate, or unknown V3/V4 trigger IDs before committing memory. */
 function validateMatchedTriggerSubset(
-  triggers: readonly SemanticTrigger[] | undefined,
+  triggers: readonly NpcSemanticTrigger[] | undefined,
   generated: NpcGenerationResult,
 ): void {
   if (triggers === undefined) {

@@ -42,6 +42,17 @@ namespace AiCharacterKit.Unity
             "http://127.0.0.1:8787/v3/npc/sessions/reset";
 
         [SerializeField]
+        private string contextBackendEndpoint =
+            "http://127.0.0.1:8787/v4/npc/respond";
+
+        [SerializeField]
+        private string contextResetEndpoint =
+            "http://127.0.0.1:8787/v4/npc/sessions/reset";
+
+        [SerializeField]
+        private NpcContextCoordinator contextCoordinator;
+
+        [SerializeField]
         private NpcActionCoordinator actionCoordinator;
 
         [SerializeField]
@@ -51,6 +62,14 @@ namespace AiCharacterKit.Unity
         private INpcPresentationDriver presentationDriver;
         private NpcAIController controller;
         private CancellationTokenSource lifetimeCancellation;
+
+        public string LastContextRevision { get; private set; } = string.Empty;
+
+        public System.Collections.Generic.IReadOnlyList<string> LastOmittedContextFactIds
+        {
+            get;
+            private set;
+        } = System.Array.Empty<string>();
 
         public bool IsRequestInProgress =>
             controller != null && controller.IsRequestInProgress;
@@ -125,6 +144,30 @@ namespace AiCharacterKit.Unity
                 return false;
             }
 
+            var grounding = NpcGroundingSnapshot.Empty;
+            if (conversationMode == NpcConversationMode.BackendContext)
+            {
+                var omittedFactIds =
+                    (System.Collections.Generic.IReadOnlyList<string>)System.Array.Empty<string>();
+                var contextError = string.Empty;
+                if (contextCoordinator == null
+                    || !contextCoordinator.TryCreateSnapshot(
+                        characterProfile,
+                        out grounding,
+                        out omittedFactIds,
+                        out contextError))
+                {
+                    presentationDriver?.PresentError(
+                        string.IsNullOrWhiteSpace(contextError)
+                            ? "NPC 컨텍스트 구성이 준비되지 않았습니다."
+                            : contextError);
+                    return false;
+                }
+
+                LastContextRevision = grounding.Revision;
+                LastOmittedContextFactIds = omittedFactIds;
+            }
+
             var request = new AiNpcRequest(
                 characterProfile.CharacterId,
                 characterProfile.DisplayName,
@@ -132,7 +175,8 @@ namespace AiCharacterKit.Unity
                 characterProfile.SpeechStyle,
                 characterProfile.ExampleDialogue,
                 characterProfile.DefaultEmotion,
-                userText);
+                userText,
+                grounding);
 
             return await controller.SubmitAsync(
                 request,
@@ -197,6 +241,27 @@ namespace AiCharacterKit.Unity
                     $"Invalid NPC action configuration: {actionError}",
                     this);
                 return false;
+            }
+
+            if (conversationMode == NpcConversationMode.BackendContext)
+            {
+                if (contextCoordinator == null)
+                {
+                    Debug.LogError(
+                        "BackendContext mode requires an NpcContextCoordinator.",
+                        this);
+                    return false;
+                }
+
+                if (!contextCoordinator.TryValidate(
+                        characterProfile,
+                        out var contextError))
+                {
+                    Debug.LogError(
+                        $"Invalid NPC context configuration: {contextError}",
+                        this);
+                    return false;
+                }
             }
 
             if (!TryCreateConversationClient(out var conversationClient))
@@ -296,6 +361,29 @@ namespace AiCharacterKit.Unity
                 {
                     Debug.LogError(
                         $"Invalid NPC action backend configuration: {exception.Message}",
+                        this);
+                    return false;
+                }
+            }
+
+            if (conversationMode == NpcConversationMode.BackendContext)
+            {
+                try
+                {
+                    var gateway = new UnityWebRequestAiNpcContextBackendGateway(
+                        contextBackendEndpoint,
+                        contextResetEndpoint,
+                        backendTimeoutSeconds);
+                    conversationClient = new ContextBackendConversationClient(
+                        gateway,
+                        characterProfile.CharacterId,
+                        triggerDefinitions);
+                    return true;
+                }
+                catch (System.ArgumentException exception)
+                {
+                    Debug.LogError(
+                        $"Invalid NPC context backend configuration: {exception.Message}",
                         this);
                     return false;
                 }

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 4,
+  "requestId": "req-v4-001",
+  "status": "success",
+  "result": {
+    "dialogue": "Guard: The western gate is closed.",
+    "emotion": "neutral",
+    "gesture": "nod",
+    "matchedTriggerIds": []
+  }
+}

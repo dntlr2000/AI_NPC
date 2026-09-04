@@ -2,6 +2,17 @@
 
 All notable changes to this package are documented here.
 
+## [0.4.0] - 2026-09-04
+
+- Added immutable bounded per-turn grounding models and deterministic context revisions in Core.
+- Extended `CharacterProfile` with background, goals/values, behavioral rules, and additional dialogue examples.
+- Added reusable `NpcLoreProfile` assets and consumer `INpcContextProvider` runtime state adapters.
+- Added V4 DTO, validation, mapping, JSON codec, session client, and loopback Backend routes.
+- Extended Character Builder with canon/lore authoring, provider wiring, and authored grounding preview.
+- Added an Editor-generated Grounded Guard sample and V4 contract, quick-start, and regression coverage.
+- Kept grounding out of Backend logs and session history while preserving V1–V3, Mock, actions, TTS, and STT.
+- Recorded offline local inference as a separate optional future milestone; no model runtime or weights are bundled.
+
 ## [0.3.0] - 2026-09-02
 
 - Added consumer-owned `NpcActionProfile` data and `INpcActionHandler` extension boundaries.

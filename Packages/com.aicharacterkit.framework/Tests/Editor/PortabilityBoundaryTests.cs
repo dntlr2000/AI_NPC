@@ -23,7 +23,8 @@ namespace AiCharacterKit.Core.Tests
             "MemoryNpc/Scenes/MemoryNpcPrototype.unity",
             "SpeechNpc/Scenes/SpeechNpcPrototype.unity",
             "VoiceInputNpc/Scenes/VoiceInputNpcPrototype.unity",
-            "ActionNpc/Scenes/ActionNpcPrototype.unity"
+            "ActionNpc/Scenes/ActionNpcPrototype.unity",
+            "GroundedNpc/Scenes/GroundedNpcPrototype.unity"
         };
 
         /// <summary>
@@ -71,7 +72,7 @@ namespace AiCharacterKit.Core.Tests
             Assert.That(
                 contents,
                 Does.Contain("\"name\": \"com.aicharacterkit.framework\""));
-            Assert.That(contents, Does.Contain("\"version\": \"0.3.0\""));
+            Assert.That(contents, Does.Contain("\"version\": \"0.4.0\""));
             Assert.That(
                 contents,
                 Does.Contain("\"path\": \"Samples~/AI NPC Prototypes\""));

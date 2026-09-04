@@ -6,11 +6,11 @@ Open **Tools > AI Character Kit > Character Builder** to author character data a
 
 Create a new `CharacterProfile` under the default `Assets/AI Character Kit/Characters` folder or choose another writable `Assets/` location. Existing consumer profiles can be loaded and saved explicitly. Duplicate character IDs are warnings because the same identity may intentionally appear in multiple imported versions or configurations.
 
-The Mock preview uses the deterministic local conversation client with zero latency. It displays dialogue, emotion, gesture, matched triggers, and the selected action without entering Play Mode, calling a backend, or synthesizing speech.
+The Mock preview uses the deterministic local conversation client with zero latency. It displays dialogue, emotion, gesture, matched triggers, and the selected action without entering Play Mode, calling a backend, or synthesizing speech. Character canon fields and additional dialogue examples can be authored in the same profile section.
 
 ## Scene and Prefab configuration
 
-Select a loaded Scene GameObject or a regular/variant Prefab asset, then choose an existing MonoBehaviour that implements `INpcPresentationDriver`. The builder adds or reuses one `NpcConversationBehaviour` and configures Mock, stateless Backend, session Backend, or Backend Actions settings. Model Prefabs and package-owned Prefabs are read-only.
+Select a loaded Scene GameObject or a regular/variant Prefab asset, then choose an existing MonoBehaviour that implements `INpcPresentationDriver`. The builder adds or reuses one `NpcConversationBehaviour` and configures Mock, stateless Backend, session Backend, Backend Actions, or Backend Context settings. Model Prefabs and package-owned Prefabs are read-only.
 
 Existing `NpcTextInputView`, `NpcSessionControlView`, and `NpcSpeechControlView` components can be connected optionally. Their consumer-created uGUI control references must already be complete. Scene prefab instances receive local overrides; the source Prefab is never changed implicitly.
 
@@ -23,6 +23,14 @@ The [Conversation Actions Quick Start](ACTIONS_QUICKSTART.md) provides a compile
 Mock matching normalizes case and whitespace but otherwise requires the example text to match exactly. Backend Actions sends only trigger IDs and condition descriptions through V3; action IDs and Unity object references never leave Unity. When multiple triggers match, the highest priority wins and declaration order breaks ties. The selected handler's `CanExecute` is always the final authorization check.
 
 Implement `INpcActionHandler` directly for pure adapters or derive a consumer MonoBehaviour from `NpcActionHandlerBase`. The builder wires handlers but never generates gameplay code, method names, parameters, or Scene targets. Reapplying the same configuration reuses the coordinator and does not duplicate or delete consumer components.
+
+## Optional runtime grounding
+
+Enable **Runtime Grounding** to create or select one consumer-owned `NpcLoreProfile`, assign additional lore sources, and choose existing `INpcContextProvider` MonoBehaviours from the target hierarchy. The authored preview assembles canon and lore without calling runtime providers; live facts are intentionally captured only when Send begins.
+
+Select **BackendContext** to wire one `NpcContextCoordinator` and the V4 respond/reset endpoints. Lore facts, beliefs, and runtime observations require unique lower `snake_case` IDs. Applying an invalid or duplicate configuration is blocked before Scene or Prefab changes begin, and reapplying reuses the existing coordinator.
+
+Follow the [Runtime Context and Lore Quick Start](GROUNDING_QUICKSTART.md) for a provider example, exact setup, limits, and verification. Grounding controls dialogue context only; actual gameplay actions still require a consumer handler and final `CanExecute` check.
 
 ## Optional TTS
 

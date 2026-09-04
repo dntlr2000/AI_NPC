@@ -194,6 +194,58 @@ describe("OpenAiNpcResponseGenerator", () => {
     })).toContain("Never invent an ID");
   });
 
+  it("uses V4 grounding instructions and supports an empty trigger snapshot", async () => {
+    const capturedRequests: unknown[] = [];
+    const generator = createGeneratorWithParseResult(
+      {
+        id: "resp-grounding-test",
+        status: "completed",
+        output: [{
+          type: "message",
+          content: [{
+            type: "output_text",
+            parsed: {
+              dialogue: "경비병: 서쪽 문은 닫혀 있습니다.",
+              emotion: "neutral",
+              gesture: "nod",
+              matchedTriggerIds: [],
+            },
+          }],
+        }],
+        usage: null,
+      },
+      capturedRequests,
+    );
+    const groundedRequest: NpcGenerationRequest = {
+      ...request,
+      triggers: [],
+      grounding: {
+        revision: "ctx-test",
+        background: "The western gate protects Dawnfall.",
+        goalsAndValues: "Protect citizens.",
+        behavioralRules: ["Do not invent permissions."],
+        dialogueExamples: ["Guard: State your business."],
+        facts: [{
+          factId: "gate_status",
+          kind: "observation",
+          statement: "The western gate is closed.",
+          priority: 90,
+        }],
+      },
+    };
+
+    const generated = await generator.generate(
+      groundedRequest,
+      new AbortController().signal,
+    );
+
+    expect(generated.result.matchedTriggerIds).toEqual([]);
+    expect(capturedRequests[0]).toMatchObject({ store: false });
+    const instructions = buildNpcInstructions(groundedRequest);
+    expect(instructions).toContain("request-time game state");
+    expect(instructions).toContain('"factId":"gate_status"');
+  });
+
   it("maps a structured refusal without returning its text", async () => {
     const generator = createGeneratorWithParseResult({
       id: "resp-refusal",

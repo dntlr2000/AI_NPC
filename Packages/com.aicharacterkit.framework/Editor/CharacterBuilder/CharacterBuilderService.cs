@@ -37,6 +37,7 @@ namespace AiCharacterKit.Editor
             ValidateConversationSettings(configuration, report);
             ValidateOptionalViews(configuration, targetKindIsValid, report);
             ValidateExistingComponents(configuration, report);
+            ValidateGrounding(configuration, targetKindIsValid, report);
             ValidateActions(configuration, targetKindIsValid, report);
             ValidateSpeech(configuration, targetKindIsValid, report);
             return report;
@@ -130,6 +131,28 @@ namespace AiCharacterKit.Editor
             foreach (var component in target.GetComponentsInChildren<MonoBehaviour>(true))
             {
                 if (component is INpcActionHandler)
+                {
+                    results.Add(component);
+                }
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Returns every consumer context provider available under one target hierarchy.
+        /// </summary>
+        public static IReadOnlyList<MonoBehaviour> FindContextProviders(GameObject target)
+        {
+            var results = new List<MonoBehaviour>();
+            if (target == null)
+            {
+                return results;
+            }
+
+            foreach (var component in target.GetComponentsInChildren<MonoBehaviour>(true))
+            {
+                if (component is INpcContextProvider)
                 {
                     results.Add(component);
                 }
@@ -306,6 +329,12 @@ namespace AiCharacterKit.Editor
                             configuration.ActionResetEndpoint,
                             configuration.BackendTimeoutSeconds);
                         return;
+                    case NpcConversationMode.BackendContext:
+                        _ = new UnityWebRequestAiNpcContextBackendGateway(
+                            configuration.ContextBackendEndpoint,
+                            configuration.ContextResetEndpoint,
+                            configuration.BackendTimeoutSeconds);
+                        return;
                     default:
                         report.AddError(
                             "The selected conversation mode is not supported.");
@@ -365,7 +394,8 @@ namespace AiCharacterKit.Editor
                     "resetButton",
                     "memoryStatusText");
                 if (configuration.ConversationMode != NpcConversationMode.BackendSession
-                    && configuration.ConversationMode != NpcConversationMode.BackendActions)
+                    && configuration.ConversationMode != NpcConversationMode.BackendActions
+                    && configuration.ConversationMode != NpcConversationMode.BackendContext)
                 {
                     report.AddWarning(
                         "The selected Session control view will report reset as unsupported outside BackendSession mode.");
@@ -396,6 +426,91 @@ namespace AiCharacterKit.Editor
                 report.AddError(
                     "The target has multiple NpcActionCoordinator components; resolve them manually before applying.");
             }
+
+            if (configuration.Target.GetComponents<NpcContextCoordinator>().Length > 1)
+            {
+                report.AddError(
+                    "The target has multiple NpcContextCoordinator components; resolve them manually before applying.");
+            }
+        }
+
+        /// <summary>
+        /// Validates optional lore assets, current-state providers, and V4 mode requirements.
+        /// </summary>
+        private static void ValidateGrounding(
+            CharacterBuilderConfiguration configuration,
+            bool targetKindIsValid,
+            CharacterBuilderValidationReport report)
+        {
+            if (!configuration.ConfigureGrounding)
+            {
+                if (configuration.ConversationMode == NpcConversationMode.BackendContext)
+                {
+                    report.AddError("BackendContext mode requires Runtime Grounding.");
+                }
+
+                return;
+            }
+
+            if (configuration.ConversationMode != NpcConversationMode.BackendContext)
+            {
+                report.AddWarning(
+                    "Runtime Grounding is configured but only sent in BackendContext mode.");
+            }
+
+            var knownProfiles = new HashSet<NpcLoreProfile>();
+            foreach (var profile in configuration.LoreProfiles
+                         ?? Array.Empty<NpcLoreProfile>())
+            {
+                if (profile == null || !EditorUtility.IsPersistent(profile))
+                {
+                    report.AddError(
+                        "Every selected lore source must be a persistent NpcLoreProfile asset.");
+                    continue;
+                }
+
+                if (!knownProfiles.Add(profile))
+                {
+                    report.AddError(
+                        "The same NpcLoreProfile cannot be selected more than once.");
+                    continue;
+                }
+
+                if (!profile.TryValidate(out var loreError))
+                {
+                    report.AddError(
+                        "NpcLoreProfile is invalid: " + loreError);
+                }
+            }
+
+            var knownProviders = new HashSet<MonoBehaviour>();
+            foreach (var source in configuration.ContextProviderSources
+                         ?? Array.Empty<MonoBehaviour>())
+            {
+                if (!(source is INpcContextProvider))
+                {
+                    report.AddError(
+                        "Every selected context provider must implement INpcContextProvider.");
+                    continue;
+                }
+
+                if (!knownProviders.Add(source))
+                {
+                    report.AddError(
+                        "The same context provider cannot be selected more than once.");
+                    continue;
+                }
+
+                if (targetKindIsValid)
+                {
+                    ValidateReferenceContext(
+                        configuration.Target,
+                        source,
+                        "Context provider " + source.GetType().Name,
+                        true,
+                        report);
+                }
+            }
         }
 
         /// <summary>
@@ -417,10 +532,11 @@ namespace AiCharacterKit.Editor
             }
 
             if (configuration.ConversationMode != NpcConversationMode.Mock
-                && configuration.ConversationMode != NpcConversationMode.BackendActions)
+                && configuration.ConversationMode != NpcConversationMode.BackendActions
+                && configuration.ConversationMode != NpcConversationMode.BackendContext)
             {
                 report.AddError(
-                    "Conversation Actions require Mock or BackendActions mode.");
+                    "Conversation Actions require Mock, BackendActions, or BackendContext mode.");
             }
 
             if (configuration.ActionProfile == null
@@ -596,6 +712,9 @@ namespace AiCharacterKit.Editor
             var actionHandlerLocators = CreateLocators(
                 configuration.Target,
                 configuration.ActionHandlerSources);
+            var contextProviderLocators = CreateLocators(
+                configuration.Target,
+                configuration.ContextProviderSources);
 
             GameObject contents = null;
             try
@@ -608,7 +727,8 @@ namespace AiCharacterKit.Editor
                     inputLocator,
                     sessionLocator,
                     speechViewLocator,
-                    actionHandlerLocators);
+                    actionHandlerLocators,
+                    contextProviderLocators);
                 var stagedValidation = Validate(stagedConfiguration);
                 if (stagedValidation.HasErrors)
                 {
@@ -650,7 +770,8 @@ namespace AiCharacterKit.Editor
             ComponentLocator inputLocator,
             ComponentLocator sessionLocator,
             ComponentLocator speechViewLocator,
-            ComponentLocator[] actionHandlerLocators)
+            ComponentLocator[] actionHandlerLocators,
+            ComponentLocator[] contextProviderLocators)
         {
             return new CharacterBuilderConfiguration
             {
@@ -669,6 +790,13 @@ namespace AiCharacterKit.Editor
                     actionHandlerLocators),
                 ActionBackendEndpoint = source.ActionBackendEndpoint,
                 ActionResetEndpoint = source.ActionResetEndpoint,
+                ConfigureGrounding = source.ConfigureGrounding,
+                LoreProfiles = source.LoreProfiles,
+                ContextProviderSources = ResolveLocators(
+                    contents,
+                    contextProviderLocators),
+                ContextBackendEndpoint = source.ContextBackendEndpoint,
+                ContextResetEndpoint = source.ContextResetEndpoint,
                 BackendTimeoutSeconds = source.BackendTimeoutSeconds,
                 TextInputView = inputLocator?.Resolve(contents) as NpcTextInputView,
                 SessionControlView =
@@ -694,6 +822,7 @@ namespace AiCharacterKit.Editor
             MonoBehaviour presentationSource = configuration.VisualPresentationDriver;
             NpcSpeechOutput speechOutput = null;
             NpcActionCoordinator actionCoordinator = null;
+            NpcContextCoordinator contextCoordinator = null;
 
             if (configuration.ConfigureActions)
             {
@@ -701,6 +830,14 @@ namespace AiCharacterKit.Editor
                     configuration.Target,
                     useUndo);
                 ConfigureActions(actionCoordinator, configuration, useUndo);
+            }
+
+            if (configuration.ConfigureGrounding)
+            {
+                contextCoordinator = GetOrAddComponent<NpcContextCoordinator>(
+                    configuration.Target,
+                    useUndo);
+                ConfigureGrounding(contextCoordinator, configuration, useUndo);
             }
 
             if (configuration.ConfigureSpeech)
@@ -722,6 +859,7 @@ namespace AiCharacterKit.Editor
                 configuration,
                 presentationSource,
                 actionCoordinator,
+                contextCoordinator,
                 useUndo);
             ConfigureOptionalViews(
                 configuration,
@@ -733,7 +871,8 @@ namespace AiCharacterKit.Editor
                 conversation,
                 presentationSource,
                 speechOutput,
-                actionCoordinator);
+                actionCoordinator,
+                contextCoordinator);
             return conversation;
         }
 
@@ -821,6 +960,7 @@ namespace AiCharacterKit.Editor
             CharacterBuilderConfiguration configuration,
             MonoBehaviour presentationSource,
             NpcActionCoordinator actionCoordinator,
+            NpcContextCoordinator contextCoordinator,
             bool useUndo)
         {
             RecordObject(conversation, useUndo, "Configure AI NPC Conversation");
@@ -857,10 +997,22 @@ namespace AiCharacterKit.Editor
                 serializedConversation,
                 "actionResetEndpoint",
                 configuration.ActionResetEndpoint);
+            SetString(
+                serializedConversation,
+                "contextBackendEndpoint",
+                configuration.ContextBackendEndpoint);
+            SetString(
+                serializedConversation,
+                "contextResetEndpoint",
+                configuration.ContextResetEndpoint);
             SetObjectReference(
                 serializedConversation,
                 "actionCoordinator",
                 actionCoordinator);
+            SetObjectReference(
+                serializedConversation,
+                "contextCoordinator",
+                contextCoordinator);
             SetInteger(
                 serializedConversation,
                 "backendTimeoutSeconds",
@@ -893,6 +1045,44 @@ namespace AiCharacterKit.Editor
             {
                 handlerProperty.GetArrayElementAtIndex(index).objectReferenceValue =
                     sources[index];
+            }
+
+            serializedCoordinator.ApplyModifiedPropertiesWithoutUndo();
+            MarkChanged(coordinator);
+        }
+
+        /// <summary>
+        /// Writes reusable lore assets and target-owned providers into one context coordinator.
+        /// </summary>
+        private static void ConfigureGrounding(
+            NpcContextCoordinator coordinator,
+            CharacterBuilderConfiguration configuration,
+            bool useUndo)
+        {
+            RecordObject(coordinator, useUndo, "Configure AI NPC Grounding");
+            var serializedCoordinator = new SerializedObject(coordinator);
+            var loreProperty = GetRequiredProperty(
+                serializedCoordinator,
+                "loreProfiles");
+            var loreProfiles = configuration.LoreProfiles
+                ?? Array.Empty<NpcLoreProfile>();
+            loreProperty.arraySize = loreProfiles.Length;
+            for (var index = 0; index < loreProfiles.Length; index++)
+            {
+                loreProperty.GetArrayElementAtIndex(index).objectReferenceValue =
+                    loreProfiles[index];
+            }
+
+            var providerProperty = GetRequiredProperty(
+                serializedCoordinator,
+                "contextProviderSources");
+            var providers = configuration.ContextProviderSources
+                ?? Array.Empty<MonoBehaviour>();
+            providerProperty.arraySize = providers.Length;
+            for (var index = 0; index < providers.Length; index++)
+            {
+                providerProperty.GetArrayElementAtIndex(index).objectReferenceValue =
+                    providers[index];
             }
 
             serializedCoordinator.ApplyModifiedPropertiesWithoutUndo();
@@ -947,7 +1137,8 @@ namespace AiCharacterKit.Editor
             NpcConversationBehaviour conversation,
             MonoBehaviour presentationSource,
             NpcSpeechOutput speechOutput,
-            NpcActionCoordinator actionCoordinator)
+            NpcActionCoordinator actionCoordinator,
+            NpcContextCoordinator contextCoordinator)
         {
             var serializedConversation = new SerializedObject(conversation);
             if (GetObjectReference(serializedConversation, "characterProfile")
@@ -957,7 +1148,9 @@ namespace AiCharacterKit.Editor
                 || GetInteger(serializedConversation, "conversationMode")
                     != (int)configuration.ConversationMode
                 || GetObjectReference(serializedConversation, "actionCoordinator")
-                    != actionCoordinator)
+                    != actionCoordinator
+                || GetObjectReference(serializedConversation, "contextCoordinator")
+                    != contextCoordinator)
             {
                 throw new InvalidOperationException(
                     "The conversation component did not retain the requested configuration.");
@@ -971,6 +1164,19 @@ namespace AiCharacterKit.Editor
                 {
                     throw new InvalidOperationException(
                         "The target did not retain one valid action composition.");
+                }
+            }
+
+            if (configuration.ConfigureGrounding)
+            {
+                if (contextCoordinator == null
+                    || configuration.Target.GetComponents<NpcContextCoordinator>().Length != 1
+                    || !contextCoordinator.TryValidate(
+                        configuration.CharacterProfile,
+                        out _))
+                {
+                    throw new InvalidOperationException(
+                        "The target did not retain one valid grounding composition.");
                 }
             }
 

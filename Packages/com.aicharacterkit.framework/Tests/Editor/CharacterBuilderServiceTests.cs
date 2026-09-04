@@ -565,6 +565,70 @@ namespace AiCharacterKit.Core.Tests
         }
 
         /// <summary>
+        /// Confirms V4 grounding composition is valid, idempotent, and preserves provider wiring.
+        /// </summary>
+        [Test]
+        public void ApplyGrounding_Twice_CreatesOneCoordinatorAndV4Endpoints()
+        {
+            var loreDraft = new LoreProfileDraft { AssetName = "GuardLore" };
+            loreDraft.LoreFacts.Add(new LoreEntryDraft
+            {
+                FactId = "city_name",
+                Statement = "The city is called Dawnfall.",
+                Priority = 50
+            });
+            Assert.That(CharacterBuilderAssetService.TryCreateLoreProfile(
+                loreDraft,
+                TestFolder,
+                out var lore,
+                out var loreError), Is.True, loreError);
+            var target = CreateTarget("Grounded NPC", out var presentation);
+            var provider = target.AddComponent<TestNpcContextProvider>();
+            provider.Facts = new[]
+            {
+                new NpcContextFact(
+                    "gate_status",
+                    NpcContextFactKind.Observation,
+                    "The gate is closed.",
+                    90)
+            };
+            var configuration = CreateConfiguration(target, presentation);
+            configuration.ConversationMode = NpcConversationMode.BackendContext;
+            configuration.ConfigureGrounding = true;
+            configuration.LoreProfiles = new[] { lore };
+            configuration.ContextProviderSources = new MonoBehaviour[] { provider };
+            configuration.ContextBackendEndpoint =
+                "http://localhost:8787/v4/npc/respond";
+            configuration.ContextResetEndpoint =
+                "http://localhost:8787/v4/npc/sessions/reset";
+
+            Assert.That(CharacterBuilderService.TryApply(
+                configuration,
+                out var first,
+                out var firstError), Is.True, firstError);
+            Assert.That(CharacterBuilderService.TryApply(
+                configuration,
+                out var second,
+                out var secondError), Is.True, secondError);
+
+            var coordinator = target.GetComponent<NpcContextCoordinator>();
+            Assert.That(second, Is.SameAs(first));
+            Assert.That(target.GetComponents<NpcContextCoordinator>(), Has.Length.EqualTo(1));
+            Assert.That(GetObjectReference(second, "contextCoordinator"),
+                Is.SameAs(coordinator));
+            AssertSerializedString(
+                second,
+                "contextBackendEndpoint",
+                configuration.ContextBackendEndpoint);
+            Assert.That(coordinator.TryCreateSnapshot(
+                profile,
+                out var snapshot,
+                out _,
+                out var contextError), Is.True, contextError);
+            Assert.That(snapshot.Facts, Has.Count.EqualTo(2));
+        }
+
+        /// <summary>
         /// Confirms Model Prefabs and package namespace paths are not writable targets.
         /// </summary>
         [Test]

@@ -26,6 +26,15 @@ namespace AiCharacterKit.Editor
 
         public NpcEmotion DefaultEmotion { get; set; } = NpcEmotion.Neutral;
 
+        public string Background { get; set; } = string.Empty;
+
+        public string GoalsAndValues { get; set; } = string.Empty;
+
+        public List<string> BehavioralRules { get; } = new List<string>();
+
+        public List<string> AdditionalDialogueExamples { get; } =
+            new List<string>();
+
         /// <summary>
         /// Copies the current values of one runtime profile into a detached editor draft.
         /// </summary>
@@ -36,7 +45,7 @@ namespace AiCharacterKit.Editor
                 return new CharacterProfileDraft();
             }
 
-            return new CharacterProfileDraft
+            var draft = new CharacterProfileDraft
             {
                 AssetName = profile.name,
                 CharacterId = profile.CharacterId,
@@ -44,8 +53,85 @@ namespace AiCharacterKit.Editor
                 Personality = profile.Personality,
                 SpeechStyle = profile.SpeechStyle,
                 ExampleDialogue = profile.ExampleDialogue,
-                DefaultEmotion = profile.DefaultEmotion
+                DefaultEmotion = profile.DefaultEmotion,
+                Background = profile.Background,
+                GoalsAndValues = profile.GoalsAndValues
             };
+            foreach (var rule in profile.BehavioralRules)
+            {
+                draft.BehavioralRules.Add(rule);
+            }
+
+            foreach (var example in profile.AdditionalDialogueExamples)
+            {
+                draft.AdditionalDialogueExamples.Add(example);
+            }
+
+            return draft;
+        }
+    }
+
+    /// <summary>
+    /// Stores one detached lore entry edited by Character Builder.
+    /// </summary>
+    internal sealed class LoreEntryDraft
+    {
+        public string FactId { get; set; } = "world_fact";
+
+        public string Statement { get; set; } = "A stable fact about the game world.";
+
+        public int Priority { get; set; } = 50;
+
+        /// <summary>
+        /// Copies one serialized lore entry into detached editor values.
+        /// </summary>
+        public static LoreEntryDraft FromEntry(NpcLoreEntry entry)
+        {
+            return entry == null
+                ? new LoreEntryDraft()
+                : new LoreEntryDraft
+                {
+                    FactId = entry.FactId,
+                    Statement = entry.Statement,
+                    Priority = entry.Priority
+                };
+        }
+    }
+
+    /// <summary>
+    /// Stores unsaved reusable lore and belief values without mutating consumer assets.
+    /// </summary>
+    internal sealed class LoreProfileDraft
+    {
+        public string AssetName { get; set; } = "NpcLoreProfile";
+
+        public List<LoreEntryDraft> LoreFacts { get; } = new List<LoreEntryDraft>();
+
+        public List<LoreEntryDraft> Beliefs { get; } = new List<LoreEntryDraft>();
+
+        /// <summary>
+        /// Copies one persisted lore profile into an independent editor draft.
+        /// </summary>
+        public static LoreProfileDraft FromProfile(NpcLoreProfile profile)
+        {
+            var draft = new LoreProfileDraft();
+            if (profile == null)
+            {
+                return draft;
+            }
+
+            draft.AssetName = profile.name;
+            foreach (var entry in profile.LoreFacts)
+            {
+                draft.LoreFacts.Add(LoreEntryDraft.FromEntry(entry));
+            }
+
+            foreach (var entry in profile.Beliefs)
+            {
+                draft.Beliefs.Add(LoreEntryDraft.FromEntry(entry));
+            }
+
+            return draft;
         }
     }
 
@@ -164,6 +250,12 @@ namespace AiCharacterKit.Editor
         public const string DefaultActionResetEndpoint =
             "http://127.0.0.1:8787/v3/npc/sessions/reset";
 
+        public const string DefaultContextBackendEndpoint =
+            "http://127.0.0.1:8787/v4/npc/respond";
+
+        public const string DefaultContextResetEndpoint =
+            "http://127.0.0.1:8787/v4/npc/sessions/reset";
+
         public const int DefaultTimeoutSeconds = 35;
 
         public GameObject Target { get; set; }
@@ -201,6 +293,20 @@ namespace AiCharacterKit.Editor
 
         public string ActionResetEndpoint { get; set; } =
             DefaultActionResetEndpoint;
+
+        public bool ConfigureGrounding { get; set; }
+
+        public NpcLoreProfile[] LoreProfiles { get; set; } =
+            System.Array.Empty<NpcLoreProfile>();
+
+        public MonoBehaviour[] ContextProviderSources { get; set; } =
+            System.Array.Empty<MonoBehaviour>();
+
+        public string ContextBackendEndpoint { get; set; } =
+            DefaultContextBackendEndpoint;
+
+        public string ContextResetEndpoint { get; set; } =
+            DefaultContextResetEndpoint;
 
         public bool ConfigureSpeech { get; set; }
 

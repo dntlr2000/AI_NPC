@@ -348,6 +348,158 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
+        /// Creates one validated consumer-owned NpcLoreProfile at a unique Assets path.
+        /// </summary>
+        public static bool TryCreateLoreProfile(
+            LoreProfileDraft draft,
+            string folderPath,
+            out NpcLoreProfile profile,
+            out string error)
+        {
+            profile = null;
+            error = string.Empty;
+            if (!TryNormalizeWritableFolder(folderPath, out var folder, out error)
+                || !TryCreateTransientLoreProfile(draft, out var transient, out error))
+            {
+                return false;
+            }
+
+            var assetPath = string.Empty;
+            try
+            {
+                EnsureFolder(folder);
+                var assetName = GetSafeAssetName(
+                    draft.AssetName,
+                    null,
+                    "NpcLoreProfile");
+                assetPath = AssetDatabase.GenerateUniqueAssetPath(
+                    folder + "/" + assetName + ".asset");
+                transient.name = assetName;
+                AssetDatabase.CreateAsset(transient, assetPath);
+                Undo.RegisterCreatedObjectUndo(transient, "Create AI NPC Lore Profile");
+                AssetDatabase.SaveAssets();
+                AssetDatabase.ImportAsset(
+                    assetPath,
+                    ImportAssetOptions.ForceSynchronousImport);
+                profile = AssetDatabase.LoadAssetAtPath<NpcLoreProfile>(assetPath);
+                if (profile == null || !profile.TryValidate(out error))
+                {
+                    throw new InvalidOperationException(
+                        string.IsNullOrWhiteSpace(error)
+                            ? "Unity could not reload the created NpcLoreProfile."
+                            : error);
+                }
+
+                return true;
+            }
+            catch (Exception exception)
+            {
+                if (!string.IsNullOrEmpty(assetPath)
+                    && AssetDatabase.LoadMainAssetAtPath(assetPath) != null)
+                {
+                    AssetDatabase.DeleteAsset(assetPath);
+                }
+
+                if (transient != null && !EditorUtility.IsPersistent(transient))
+                {
+                    Object.DestroyImmediate(transient);
+                }
+
+                profile = null;
+                error = "NpcLoreProfile creation failed: " + exception.Message;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Updates one consumer-owned NpcLoreProfile after validating a detached copy.
+        /// </summary>
+        public static bool TryUpdateLoreProfile(
+            NpcLoreProfile profile,
+            LoreProfileDraft draft,
+            out string error)
+        {
+            error = string.Empty;
+            if (!TryValidateWritableAsset(profile, "NpcLoreProfile", out error)
+                || !TryCreateTransientLoreProfile(draft, out var copy, out error))
+            {
+                return false;
+            }
+
+            Object.DestroyImmediate(copy);
+            Undo.IncrementCurrentGroup();
+            var group = Undo.GetCurrentGroup();
+            Undo.SetCurrentGroupName("Update AI NPC Lore Profile");
+            try
+            {
+                Undo.RecordObject(profile, "Update AI NPC Lore Profile");
+                ApplyLoreProfileDraft(profile, draft);
+                profile.name = GetSafeAssetName(draft.AssetName, null, profile.name);
+                EditorUtility.SetDirty(profile);
+                AssetDatabase.SaveAssets();
+                Undo.CollapseUndoOperations(group);
+                return true;
+            }
+            catch (Exception exception)
+            {
+                Undo.RevertAllDownToGroup(group);
+                error = "NpcLoreProfile update failed: " + exception.Message;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Builds an authored-only grounding preview without invoking runtime providers or a network.
+        /// </summary>
+        public static bool TryPreviewGrounding(
+            CharacterProfileDraft characterDraft,
+            LoreProfileDraft loreDraft,
+            out NpcGroundingSnapshot snapshot,
+            out string error)
+        {
+            snapshot = NpcGroundingSnapshot.Empty;
+            error = string.Empty;
+            if (!TryCreateTransientProfile(characterDraft, out var character, out error)
+                || !TryCreateTransientLoreProfile(loreDraft, out var lore, out error))
+            {
+                if (character != null)
+                {
+                    Object.DestroyImmediate(character);
+                }
+
+                return false;
+            }
+
+            try
+            {
+                if (!lore.TryCreateFacts(out var facts, out error))
+                {
+                    return false;
+                }
+
+                snapshot = NpcContextAssembler.CreateSnapshot(
+                    character.Background,
+                    character.GoalsAndValues,
+                    character.BehavioralRules,
+                    character.AdditionalDialogueExamples,
+                    facts,
+                    out _);
+                return true;
+            }
+            catch (Exception exception)
+            {
+                snapshot = NpcGroundingSnapshot.Empty;
+                error = "Grounding preview failed: " + exception.Message;
+                return false;
+            }
+            finally
+            {
+                Object.DestroyImmediate(character);
+                Object.DestroyImmediate(lore);
+            }
+        }
+
+        /// <summary>
         /// Produces one deterministic network-free response from unsaved profile values.
         /// </summary>
         public static bool TryPreviewMock(
@@ -569,6 +721,16 @@ namespace AiCharacterKit.Editor
                 draft.ExampleDialogue;
             serializedProfile.FindProperty("defaultEmotion").enumValueIndex =
                 (int)draft.DefaultEmotion;
+            serializedProfile.FindProperty("background").stringValue =
+                draft.Background ?? string.Empty;
+            serializedProfile.FindProperty("goalsAndValues").stringValue =
+                draft.GoalsAndValues ?? string.Empty;
+            SetStringArray(
+                serializedProfile.FindProperty("behavioralRules"),
+                draft.BehavioralRules);
+            SetStringArray(
+                serializedProfile.FindProperty("additionalDialogueExamples"),
+                draft.AdditionalDialogueExamples);
             serializedProfile.ApplyModifiedPropertiesWithoutUndo();
         }
 
@@ -652,6 +814,44 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
+        /// Builds and validates one temporary lore profile from detached values.
+        /// </summary>
+        private static bool TryCreateTransientLoreProfile(
+            LoreProfileDraft draft,
+            out NpcLoreProfile profile,
+            out string error)
+        {
+            profile = null;
+            error = string.Empty;
+            if (draft == null)
+            {
+                error = "Lore profile values are required.";
+                return false;
+            }
+
+            profile = ScriptableObject.CreateInstance<NpcLoreProfile>();
+            try
+            {
+                ApplyLoreProfileDraft(profile, draft);
+                if (profile.TryValidate(out error))
+                {
+                    return true;
+                }
+
+                Object.DestroyImmediate(profile);
+                profile = null;
+                return false;
+            }
+            catch (Exception exception)
+            {
+                Object.DestroyImmediate(profile);
+                profile = null;
+                error = "Lore profile values are invalid: " + exception.Message;
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Copies detached binding values into serialized NpcActionProfile fields.
         /// </summary>
         private static void ApplyActionProfileDraft(
@@ -675,6 +875,56 @@ namespace AiCharacterKit.Editor
             }
 
             serializedProfile.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// Copies detached lore and belief entries into serialized NpcLoreProfile fields.
+        /// </summary>
+        private static void ApplyLoreProfileDraft(
+            NpcLoreProfile profile,
+            LoreProfileDraft draft)
+        {
+            var serializedProfile = new SerializedObject(profile);
+            SetLoreEntries(
+                serializedProfile.FindProperty("loreFacts"),
+                draft.LoreFacts);
+            SetLoreEntries(
+                serializedProfile.FindProperty("beliefs"),
+                draft.Beliefs);
+            serializedProfile.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// Writes one detached text list into a serialized string array.
+        /// </summary>
+        private static void SetStringArray(
+            SerializedProperty property,
+            IReadOnlyList<string> values)
+        {
+            property.arraySize = values?.Count ?? 0;
+            for (var index = 0; index < property.arraySize; index++)
+            {
+                property.GetArrayElementAtIndex(index).stringValue =
+                    values[index] ?? string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Writes one detached lore group into its serialized entry array.
+        /// </summary>
+        private static void SetLoreEntries(
+            SerializedProperty property,
+            IReadOnlyList<LoreEntryDraft> entries)
+        {
+            property.arraySize = entries?.Count ?? 0;
+            for (var index = 0; index < property.arraySize; index++)
+            {
+                var source = entries[index] ?? new LoreEntryDraft();
+                var target = property.GetArrayElementAtIndex(index);
+                target.FindPropertyRelative("factId").stringValue = source.FactId;
+                target.FindPropertyRelative("statement").stringValue = source.Statement;
+                target.FindPropertyRelative("priority").intValue = source.Priority;
+            }
         }
 
         /// <summary>

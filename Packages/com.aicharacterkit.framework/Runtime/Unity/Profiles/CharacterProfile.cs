@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using AiCharacterKit.Core;
 using UnityEngine;
 
@@ -33,6 +34,20 @@ namespace AiCharacterKit.Unity
         [SerializeField]
         private NpcEmotion defaultEmotion = NpcEmotion.Neutral;
 
+        [SerializeField]
+        [TextArea(2, 6)]
+        private string background = string.Empty;
+
+        [SerializeField]
+        [TextArea(2, 6)]
+        private string goalsAndValues = string.Empty;
+
+        [SerializeField]
+        private List<string> behavioralRules = new List<string>();
+
+        [SerializeField]
+        private List<string> additionalDialogueExamples = new List<string>();
+
         public string CharacterId => characterId;
 
         public string DisplayName => displayName;
@@ -44,6 +59,20 @@ namespace AiCharacterKit.Unity
         public string ExampleDialogue => exampleDialogue;
 
         public NpcEmotion DefaultEmotion => defaultEmotion;
+
+        public string Background => background ?? string.Empty;
+
+        public string GoalsAndValues => goalsAndValues ?? string.Empty;
+
+        public IReadOnlyList<string> BehavioralRules =>
+            behavioralRules != null
+                ? (IReadOnlyList<string>)behavioralRules
+                : Array.Empty<string>();
+
+        public IReadOnlyList<string> AdditionalDialogueExamples =>
+            additionalDialogueExamples != null
+                ? (IReadOnlyList<string>)additionalDialogueExamples
+                : Array.Empty<string>();
 
         /// <summary>
         /// Verifies that the profile contains every value required to create a conversation request.
@@ -83,6 +112,21 @@ namespace AiCharacterKit.Unity
             if (!Enum.IsDefined(typeof(NpcEmotion), defaultEmotion))
             {
                 error = "Default emotion is not supported.";
+                return false;
+            }
+
+            try
+            {
+                _ = new NpcGroundingSnapshot(
+                    Background,
+                    GoalsAndValues,
+                    BehavioralRules,
+                    AdditionalDialogueExamples,
+                    Array.Empty<NpcContextFact>());
+            }
+            catch (ArgumentException exception)
+            {
+                error = $"Character grounding is invalid: {exception.Message}";
                 return false;
             }
 

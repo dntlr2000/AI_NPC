@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 4,
+  "requestId": "req-v4-001",
+  "sessionId": "session-v4-001",
+  "character": {
+    "characterId": "sample-guard",
+    "displayName": "Guard",
+    "personality": "Disciplined.",
+    "speechStyle": "Formal.",
+    "exampleDialogue": "State your business.",
+    "defaultEmotion": "neutral"
+  },
+  "userText": "May I enter?",
+  "triggers": []
+}

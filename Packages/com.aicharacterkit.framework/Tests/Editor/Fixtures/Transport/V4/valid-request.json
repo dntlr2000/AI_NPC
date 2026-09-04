@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 4,
+  "requestId": "req-v4-001",
+  "sessionId": "session-v4-001",
+  "character": {
+    "characterId": "sample-guard",
+    "displayName": "Guard",
+    "personality": "Disciplined and observant.",
+    "speechStyle": "Formal and concise.",
+    "exampleDialogue": "State your business.",
+    "defaultEmotion": "neutral"
+  },
+  "grounding": {
+    "revision": "ctx-0fbb1fef8071da13b9476369537500347025c3762df5df65449f89b5275022bc",
+    "background": "The western gate protects Dawnfall.",
+    "goalsAndValues": "Protect citizens and honor lawful travelers.",
+    "behavioralRules": [
+      "Never reveal guard rotations.",
+      "Prefer de-escalation."
+    ],
+    "dialogueExamples": [
+      "Guard: State your business."
+    ],
+    "facts": [
+      {
+        "factId": "gate_status",
+        "kind": "observation",
+        "statement": "The western gate is closed.",
+        "priority": 90
+      },
+      {
+        "factId": "city_founder",
+        "kind": "lore",
+        "statement": "Dawnfall was founded by Queen Mira.",
+        "priority": 40
+      },
+      {
+        "factId": "guard_suspicion",
+        "kind": "belief",
+        "statement": "The traveler may be hiding something.",
+        "priority": 50
+      }
+    ]
+  },
+  "userText": "May I enter?",
+  "triggers": []
+}

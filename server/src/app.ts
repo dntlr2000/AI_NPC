@@ -30,6 +30,16 @@ import {
   SCHEMA_VERSION as SCHEMA_VERSION_V3,
 } from "./contracts/v3.js";
 import {
+  aiNpcRequestSchema as aiNpcRequestSchemaV4,
+  aiNpcSessionResetRequestSchema as aiNpcSessionResetRequestSchemaV4,
+  createErrorResponse as createErrorResponseV4,
+  createResetErrorResponse as createResetErrorResponseV4,
+  createResetSuccessResponse as createResetSuccessResponseV4,
+  createSuccessResponse as createSuccessResponseV4,
+  readRequestId as readRequestIdV4,
+  SCHEMA_VERSION as SCHEMA_VERSION_V4,
+} from "./contracts/v4.js";
+import {
   createSpeechErrorResponse,
   readSpeechRequestId,
   SPEECH_AUDIO_FORMAT,
@@ -204,6 +214,79 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
     }
   });
 
+  app.post("/v4/npc/respond", async (request, reply) => {
+    const requestId = readRequestIdV4(request.body, request.id);
+    const version = readSchemaVersion(request.body);
+    if (version !== undefined && version !== SCHEMA_VERSION_V4) {
+      return reply.status(400).send(
+        createErrorResponseV4(
+          requestId,
+          "unsupported_schema_version",
+          "Only AI NPC contract version 4 is supported on this endpoint.",
+          false,
+        ),
+      );
+    }
+
+    const parsedRequest = aiNpcRequestSchemaV4.safeParse(request.body);
+    if (!parsedRequest.success) {
+      return reply.status(400).send(
+        createErrorResponseV4(
+          requestId,
+          "invalid_request",
+          "The context-grounded AI NPC request is invalid.",
+          false,
+        ),
+      );
+    }
+
+    const cancellation = createRequestCancellation(request.raw, reply.raw);
+    try {
+      const generated = await dependencies.sessionService.respond(
+        parsedRequest.data,
+        cancellation.signal,
+      );
+      const matchedTriggerIds = generated.result.matchedTriggerIds ?? [];
+      const configuredTriggerIds = parsedRequest.data.triggers.map(
+        (trigger) => trigger.triggerId,
+      );
+      if (matchedTriggerIds.some((id) => !configuredTriggerIds.includes(id))) {
+        throw new NpcServiceError(
+          "upstream_invalid_response",
+          "The model returned an invalid structured response.",
+          502,
+          true,
+          "openai_unknown_trigger_id",
+        );
+      }
+
+      logGenerationSuccess(request.log, parsedRequest.data.requestId, generated);
+      return reply.status(200).send(
+        createSuccessResponseV4(
+          parsedRequest.data.requestId,
+          {
+            ...toPresentationResult(generated.result),
+            matchedTriggerIds: [...matchedTriggerIds],
+          },
+          configuredTriggerIds,
+        ),
+      );
+    } catch (error: unknown) {
+      const serviceError = normalizeServiceError(error);
+      logServiceFailure(request.log, parsedRequest.data.requestId, serviceError);
+      return reply.status(serviceError.statusCode).send(
+        createErrorResponseV4(
+          parsedRequest.data.requestId,
+          serviceError.code,
+          serviceError.message,
+          serviceError.retryable,
+        ),
+      );
+    } finally {
+      cancellation.dispose();
+    }
+  });
+
   app.post("/v3/npc/respond", async (request, reply) => {
     const requestId = readRequestIdV3(request.body, request.id);
     const version = readSchemaVersion(request.body);
@@ -274,6 +357,57 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
       );
     } finally {
       cancellation.dispose();
+    }
+  });
+
+  app.post("/v4/npc/sessions/reset", async (request, reply) => {
+    const requestId = readRequestIdV4(request.body, request.id);
+    const version = readSchemaVersion(request.body);
+    if (version !== undefined && version !== SCHEMA_VERSION_V4) {
+      return reply.status(400).send(
+        createResetErrorResponseV4(
+          requestId,
+          "unsupported_schema_version",
+          "Only AI NPC contract version 4 is supported on this endpoint.",
+          false,
+        ),
+      );
+    }
+
+    const parsedRequest = aiNpcSessionResetRequestSchemaV4.safeParse(
+      request.body,
+    );
+    if (!parsedRequest.success) {
+      return reply.status(400).send(
+        createResetErrorResponseV4(
+          requestId,
+          "invalid_request",
+          "The context-grounded session reset request is invalid.",
+          false,
+        ),
+      );
+    }
+
+    try {
+      dependencies.sessionService.reset(parsedRequest.data);
+      request.log.info(
+        { contractRequestId: parsedRequest.data.requestId },
+        "AI NPC context-grounded session reset",
+      );
+      return reply.status(200).send(
+        createResetSuccessResponseV4(parsedRequest.data.requestId),
+      );
+    } catch (error: unknown) {
+      const serviceError = normalizeServiceError(error);
+      logServiceFailure(request.log, parsedRequest.data.requestId, serviceError);
+      return reply.status(serviceError.statusCode).send(
+        createResetErrorResponseV4(
+          parsedRequest.data.requestId,
+          serviceError.code,
+          serviceError.message,
+          serviceError.retryable,
+        ),
+      );
     }
   });
 
@@ -557,6 +691,18 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
     if (request.url.startsWith("/v1/speech/")) {
       return reply.status(statusCode).send(
         createSpeechErrorResponse(request.id, code, message, false),
+      );
+    }
+
+    if (request.url.startsWith("/v4/npc/sessions/reset")) {
+      return reply.status(statusCode).send(
+        createResetErrorResponseV4(request.id, code, message, false),
+      );
+    }
+
+    if (request.url.startsWith("/v4/")) {
+      return reply.status(statusCode).send(
+        createErrorResponseV4(request.id, code, message, false),
       );
     }
 

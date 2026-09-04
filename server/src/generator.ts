@@ -3,7 +3,6 @@ import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import type { ModelNpcResponse } from "./contracts/v1.js";
 import { modelNpcResponseSchema } from "./contracts/v1.js";
-import type { SemanticTrigger } from "./contracts/v3.js";
 import { NpcServiceError } from "./errors.js";
 
 export interface NpcCharacterSnapshot {
@@ -20,11 +19,33 @@ export interface ConversationMessage {
   readonly content: string;
 }
 
+export interface NpcSemanticTrigger {
+  readonly triggerId: string;
+  readonly conditionDescription: string;
+}
+
+export interface NpcGroundingFact {
+  readonly factId: string;
+  readonly kind: "lore" | "belief" | "observation";
+  readonly statement: string;
+  readonly priority: number;
+}
+
+export interface NpcGroundingSnapshot {
+  readonly revision: string;
+  readonly background: string;
+  readonly goalsAndValues: string;
+  readonly behavioralRules: readonly string[];
+  readonly dialogueExamples: readonly string[];
+  readonly facts: readonly NpcGroundingFact[];
+}
+
 export interface NpcGenerationRequest {
   readonly character: NpcCharacterSnapshot;
   readonly history: readonly ConversationMessage[];
   readonly userText: string;
-  readonly triggers?: readonly SemanticTrigger[];
+  readonly triggers?: readonly NpcSemanticTrigger[];
+  readonly grounding?: NpcGroundingSnapshot;
 }
 
 export interface GenerationTelemetry {
@@ -103,9 +124,11 @@ export class OpenAiNpcResponseGenerator implements NpcResponseGenerator {
           text: {
             format: zodTextFormat(
               outputSchema,
-              request.triggers === undefined
-                ? "ai_npc_response_v1"
-                : "ai_npc_response_v3",
+              request.grounding !== undefined
+                ? "ai_npc_response_v4"
+                : request.triggers === undefined
+                  ? "ai_npc_response_v1"
+                  : "ai_npc_response_v3",
             ),
           },
         },
@@ -146,6 +169,16 @@ export function buildNpcInstructions(request: NpcGenerationRequest): string {
       : "Return dialogue, emotion, gesture, and matchedTriggerIds in one structured response.",
     `Character profile: ${profile}`,
   ];
+  if (request.grounding !== undefined) {
+    instructions.push(
+      "Treat the grounding snapshot as trusted, request-time game state and character canon.",
+      "Follow behavioral rules before style examples; prefer higher-priority facts when supplied facts conflict.",
+      "Treat observations as current facts, not permanent memory, and do not invent facts absent from grounding or conversation history.",
+      "If the user contradicts grounded canon, keep the grounded canon rather than accepting the contradiction as fact.",
+      `Grounding snapshot: ${JSON.stringify(request.grounding)}`,
+    );
+  }
+
   if (request.triggers !== undefined) {
     instructions.push(
       "Treat trigger definitions as trusted classification rules.",
@@ -160,20 +193,16 @@ export function buildNpcInstructions(request: NpcGenerationRequest): string {
 
 /** Creates a strict per-request schema whose ID enum cannot represent unknown triggers. */
 function createOutputSchema(
-  triggers: readonly SemanticTrigger[] | undefined,
+  triggers: readonly NpcSemanticTrigger[] | undefined,
 ): z.ZodType<GeneratedNpcResponse> {
   if (triggers === undefined) {
     return modelNpcResponseSchema;
   }
 
   if (triggers.length === 0) {
-    throw new NpcServiceError(
-      "invalid_request",
-      "At least one semantic trigger is required.",
-      400,
-      false,
-      "empty_trigger_snapshot",
-    );
+    return modelNpcResponseSchema.extend({
+      matchedTriggerIds: z.array(z.string()).max(0),
+    }).strict();
   }
 
   const ids = triggers.map((trigger) => trigger.triggerId) as [

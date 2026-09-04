@@ -1,8 +1,8 @@
 {
   "name": "com.aicharacterkit.framework",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "displayName": "AI Character Kit",
-  "description": "Reusable Unity runtime boundaries, adapters, character authoring tools, and samples for structured AI NPC dialogue, short-term sessions, speech, transcription, and consumer-owned actions.",
+  "description": "Reusable Unity runtime boundaries, character authoring tools, and samples for structured AI NPC dialogue, request-time lore and game context, short-term sessions, speech, transcription, and consumer-owned actions.",
   "unity": "6000.5",
   "author": {
     "name": "dntlr2000",
@@ -21,7 +21,7 @@
   "samples": [
     {
       "displayName": "AI NPC Prototypes",
-      "description": "Mock, multi-character, backend, bounded-memory, speech, push-to-talk, and conversation-action prototype scenes.",
+      "description": "Mock, multi-character, backend, bounded-memory, speech, push-to-talk, conversation-action, and context-grounded prototype scenes.",
       "path": "Samples~/AI NPC Prototypes"
     }
   ],
@@ -30,6 +30,8 @@
     "npc",
     "dialogue",
     "actions",
+    "context",
+    "lore",
     "speech",
     "unity"
   ]
