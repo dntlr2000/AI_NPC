@@ -1,13 +1,13 @@
 # AI NPC Framework 진행 점검 및 로드맵
 
-> 기준일: 2026-09-04
+> 기준일: 2026-09-30
 > 비교 기준: ChatGPT 대화 **“Unity Ai NPC 만들기”**의 초기 구상과 이후 합의된 Phase 1~16 책임 경계
 
 ## 결론
 
-저장소는 수정된 로드맵의 순서와 제약을 따르고 있다. **Phase 1~11과 Phase 15의 구현·검증 및 package `0.2.0`, `0.3.0` 공개가 완료됐다.** `v0.3.0`은 exact commit `42f5c5916f5e8fb20cfcec742b91a7451e062a0e`에서 공개됐으며 최소 action pipeline을 제공한다. 완료된 Phase 15의 재사용 가능한 character canon, world lore와 live game-state grounding pipeline은 package `0.4.0` 공개 후보로 준비한다.
+저장소는 수정된 로드맵의 순서와 제약을 따르고 있다. **Phase 1~11과 Phase 15의 구현·검증 및 package `0.2.0`, `0.3.0`, `0.4.0` 공개가 완료됐다.** `v0.3.0`은 exact commit `42f5c5916f5e8fb20cfcec742b91a7451e062a0e`에서 공개됐으며 최소 action pipeline을 제공한다. Phase 15의 character canon, world lore와 live game-state grounding pipeline은 2026-09-04 exact commit `027b61f053c620d4e5202830b18692a6d45d3458`의 `v0.4.0`으로 공개됐다.
 
-Phase 15 Core/Unity/Transport/Backend/Character Builder와 Grounded Guard sample 구현이 완료됐고 Server **95/95**, Unity compile, 전체 EditMode **186/186**과 live V4 수동 검증이 통과했다. `0.4.0`은 release-preparation commit의 exact SHA 승인 전이므로 아직 공개 상태가 아니다. 상세 범위는 [`PHASE15_PLAN.md`](PHASE15_PLAN.md), wire 규격은 [`CONTRACT_V4.md`](CONTRACT_V4.md), 릴리즈 후보 기록은 [`RELEASE_0.4.0.md`](RELEASE_0.4.0.md)를 따른다. Phase 12~14는 Advanced Behavior, Backend 배포, Realtime의 기존 책임 경계를 유지하고, Phase 16은 선택형 offline local inference 후보를 기록한다. 번호는 우선순위가 아니며 각 기능은 구현 직전에 다시 계획한다.
+Phase 15 공개 시점에는 Server **95/95**, Unity compile, 전체 EditMode **186/186**과 live V4 수동 검증이 통과했다. 2026-09-08 검토에서 확인한 V4 HTTP 본문 제한, provider 초기화 시점과 릴리즈 문서 불일치는 별도 **Unreleased 안정화**로 보완했다. 수정본은 Server **106/106**, root 및 Built-in/Legacy consumer Unity **각 203/203**을 통과했다. 기존 완료 기록과 이번 보완의 검증 근거는 [`PHASE15_PLAN.md`](PHASE15_PLAN.md)에 구분한다. wire 규격은 [`CONTRACT_V4.md`](CONTRACT_V4.md), 공개 기록은 [`RELEASE_0.4.0.md`](RELEASE_0.4.0.md)를 따른다. Phase 16은 2026-09-30 승인 범위의 Windows 로컬 대화 구현·검증을 완료했으며 **Unreleased**다. Server **106/106**, root·Built-in/Legacy EditMode **각 240/240**, 실제 모델 Play Mode와 최종 Windows Mono **35/35** 검사를 통과했다. 측정값과 제한은 [검증 기록](PHASE16_VALIDATION.md)에 남긴다. Phase 12~14는 Advanced Behavior, Backend 배포, Realtime의 기존 책임 경계를 유지한다. 번호는 우선순위가 아니며 후보 기능은 구현 직전에 다시 계획한다.
 
 ## 우리가 만드는 것
 
@@ -31,9 +31,12 @@ Phase 15 Core/Unity/Transport/Backend/Character Builder와 Grounded Guard sample
                          ├─ ActionBackendConversationClient
                                       ↕ JSON Contract V3 + trigger snapshot
                                   Backend bounded memory → OpenAI
-                         └─ ContextBackendConversationClient
-                                      ↕ JSON Contract V4 + grounding snapshot
-                                  Backend bounded memory → OpenAI
+                         ├─ ContextBackendConversationClient
+                         │            ↕ JSON Contract V4 + grounding snapshot
+                         │        Backend bounded memory → OpenAI
+                         └─ LocalInferenceConversationClient [Unreleased Phase 16]
+                                      ↕ ILocalInferenceRunner + V4 validation
+                                  Unity host → external llama.cpp / Gemma
         ↓
     AiNpcResponse
         ├─ INpcPresentationDriver
@@ -65,6 +68,7 @@ Push-to-Talk → IAudioCaptureDriver → bounded WAV
 - 샘플, 자동 테스트, 두 번째 프로젝트 검증을 거친 최종 UPM 패키지
 - Character Builder에서 자연어 대화 조건을 action ID에 연결하고 프로젝트별 handler만 구현하는 선택형 행동 경계
 - 캐릭터 canon·재사용 lore·현재 게임 상태를 turn별 bounded snapshot으로 조립하는 grounding 경계
+- 외부 설치 모델로 인터넷 없이 대화하는 선택형 Windows 로컬 실행기와 NPC별 기억
 
 API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유한다. TTS와 STT는 대화 Core를 변경하지 않는 선택형 adapter이며 전사 결과는 기존 텍스트 입력에서 검토한다. Realtime은 지연·끼어들기 요구가 실제로 확인된 뒤에만 검토한다. Phase 11은 대화 trigger와 consumer action 사이의 재사용 가능한 연결만 제공하고, Phase 15 grounding은 대사 생성 근거만 제공한다. 퀘스트·인벤토리·전투·NavMesh·Behavior Tree 자체와 관계도·범용 자율 에이전트는 프레임워크가 구현하지 않는다.
 
@@ -72,9 +76,9 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 - Unity: `6000.5.3f1`
 - 주요 설치 패키지: URP `17.5.0`, Input System `1.19.0`, uGUI `2.5.0`, Test Framework `1.7.0`
-- 구현 위치: `Packages/com.aicharacterkit.framework/` (`0.4.0` local embedded 후보; 최신 공개 tag `v0.3.0`)
+- 구현 위치: `Packages/com.aicharacterkit.framework/` (`0.4.0` local embedded 및 Unreleased 안정화; 최신 공개 tag `v0.4.0`)
 - 샘플: `Samples~/AI NPC Prototypes`의 Mock, MultiCharacter, Backend, Memory, Speech, VoiceInput 및 Editor API 기반 Action/Grounded prototype
-- Git 공개 기준선: `42f5c5916f5e8fb20cfcec742b91a7451e062a0e` (`v0.3.0`)
+- Git 공개 기준선: `027b61f053c620d4e5202830b18692a6d45d3458` (`v0.4.0`)
 - Backend: Node.js 24 + TypeScript + Fastify + OpenAI SDK, 대화 V1/V2/V3/V4와 선택형 Speech/Transcription V1, loopback 전용
 - 제외 범위: 영구·장기·Vector 기억, Realtime, VAD, 자동 전송, 원격 배포, client auth, streaming, bundled offline inference
 
@@ -99,7 +103,7 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 | Advanced Behavior | 선택형 변수·점수·복합 gate를 기존 action handler 앞에 추가 | Phase 12 후속 가안; Phase 11 검증 후 재계획 |
 | Backend 배포 | reference server를 독립 설치·검증 가능한 artifact로 정리 | Phase 13 후속 가안; 배포 방식 재계획 필요 |
 | Realtime 음성 | Push-to-Talk로 해결되지 않는 저지연·barge-in 요구 대응 | Phase 14 후속 가안; 요구 증거 후 재계획 |
-| Offline local inference | consumer-selected local model runner를 `IAiConversationClient`로 연결 | Phase 16 후속 가안; 플랫폼·모델·라이선스 검증 후 재계획 |
+| Offline local inference | 외부 Gemma/llama.cpp를 Unity 공유 실행기와 NPC별 client로 연결 | Phase 16 Windows Editor/Mono 구현·실행 검증 완료, Unreleased |
 | 장기 기억 | 구현하지 않음 | 실제 persistence 요구와 privacy 설계 전까지 보류 |
 
 초기 대화에서는 실제 GPT/JSON 응답이 비교적 앞에 있었으나, 이후 계획은 Mock → 프로필 재사용 → 전송 계약 → 백엔드 순서로 정리됐다. 현재 저장소는 이 수정된 순서를 따른다.
@@ -277,14 +281,15 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - Character Builder가 canon/lore/provider와 V4 Scene/Prefab wiring을 지원하고 Editor API가 Grounded Guard sample을 생성한다.
 - V1–V3, Mock, actions, TTS와 STT를 그대로 유지하며 gameplay authorization은 계속 handler `CanExecute`가 맡는다.
 
-### Phase 16 후보 — 선택형 Offline Local Inference
+### Phase 16 — Windows 로컬 NPC 대화
 
-- **상태: 후속 가안 — 구현 승인 전 요구 조사와 재계획 필요**
-- 후보 범위와 재계획 게이트: [`PHASE16_PLAN.md`](PHASE16_PLAN.md)
-- consumer-selected local runner/model을 기존 `IAiConversationClient` 뒤에 선택적으로 연결한다.
-- 기본 UPM package에는 model weight, tokenizer와 native runtime을 포함하거나 강제하지 않는다.
-- 대상 플랫폼, 최소 하드웨어, 품질·latency, 배포 크기와 라이선스를 비교한 뒤 sidecar 또는 in-process 방식을 결정한다.
-- 기존 Mock/Backend, V4 grounding, structured response와 action authorization 경계는 유지한다.
+- **상태: 2026-09-30 승인된 Windows Editor/Mono 범위 구현·검증 완료, Unreleased**
+- [확정 계획](PHASE16_PLAN.md), [설치 안내](LOCAL_INFERENCE_QUICKSTART.md), [실제 검증 기록](PHASE16_VALIDATION.md)
+- 2026-10-02 로컬 샘플 정합성을 추가 보완했다. 실제 행동 결과에 따른 대사·기억 확정, 현재 관찰 우선 입력과 두 NPC의 공통 문 상태를 적용했다. Server 106/106, root·Built-in/Legacy EditMode 각 248/248, root·consumer·Windows Mono에서 각 54/54 상태·행동 검사와 개인 기억·격리·reset·프로세스 종료를 통과했다. 최초 2026-09-30 검증 기록과 구분하며 일반 모델 답변의 의미적 정확성을 보장하는 기능은 아니다.
+- Gemma 4 E4B IT Q4_K_M + llama.cpp b11146 Vulkan을 외부 설치로 연결한다.
+- Unity Editor와 Windows x64 Mono, 공유 프로세스와 NPC별 bounded memory, V4 grounding과 최종 action authorization을 지원한다.
+- 기본 UPM에는 모델·실행기·native DLL을 포함하지 않는다. 게임 중 다운로드·모델 복사·자동 재요청·온라인 fallback은 없다.
+- 두 후보 비교, Phase 12~14, 장기 기억, RAG, 로컬 음성과 스트리밍은 이번 범위에서 제외한다.
 
 ### Package 0.2.0 — 공개 Git 릴리즈
 
@@ -302,13 +307,13 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - Backend V3는 같은 tag의 reference source로만 유지하며 UPM/npm package로 만들지 않는다.
 - published tag는 이동하거나 덮어쓰지 않으며 수정은 새 version으로 배포한다.
 
-### Package 0.4.0 — Context와 lore 공개 Git 릴리즈 후보
+### Package 0.4.0 — Context와 lore 공개 Git 릴리즈
 
-- **상태: 릴리즈 준비 — exact release-preparation commit 승인 및 공개 전**
+- **상태: 공개 완료 — 2026-09-04, `v0.4.0`, exact commit `027b61f053c620d4e5202830b18692a6d45d3458`**
 - 상세 checklist와 release notes: [`RELEASE_0.4.0.md`](RELEASE_0.4.0.md)
-- `v0.4.0` tag의 Git subfolder URL로 Phase 15 grounding을 기존 대화·행동·음성 기능과 함께 배포할 예정이다.
+- `v0.4.0` tag의 Git subfolder URL로 Phase 15 grounding을 기존 대화·행동·음성 기능과 함께 배포한다.
 - Backend V4는 같은 tag의 loopback reference source로만 유지하며 UPM/npm package로 만들지 않는다.
-- 사용자 승인 전에는 `main` push, tag 생성·push 또는 GitHub Release 발행을 수행하지 않는다.
+- 공개 tag는 이동하거나 다시 만들지 않는다. 현재 안정화는 Unreleased이며 후속 발행은 별도 exact-commit 승인이 필요하다.
 
 ## 주요 위험과 통제
 
@@ -324,8 +329,8 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - 자연어 trigger 수가 늘면 prompt 비용과 판정 모호성이 증가한다. Phase 11은 bounded trigger 목록, 한 turn 최대 한 행동과 명시적 priority만 지원하고 변수·점수·복합 규칙은 추가하지 않는다.
 - mutable world state가 빠르게 변하면 응답 생성 뒤 실제 action 시점과 snapshot이 달라질 수 있다. V4는 request-time 근거만 제공하고 handler가 실행 직전 실제 상태를 다시 검사한다.
 - 모든 lore를 매 turn 보내면 비용과 충돌이 증가한다. Phase 15는 strict byte/count budget과 deterministic priority trimming을 사용하며 RAG나 자동 요약을 선행 구현하지 않는다.
-- offline local inference는 플랫폼별 native runtime, model 재배포 라이선스와 큰 build 용량 위험이 있다. 기본 package에 포함하지 않고 Phase 16에서 실제 대상 사양을 먼저 측정한다.
+- offline local inference는 플랫폼별 native runtime, model 재배포 라이선스와 큰 설치 용량 위험이 있다. 기본 package에 포함하지 않으며 Phase 16은 지정된 Windows/Gemma/Vulkan 구성만 검증했다. 기본 응답 p95 3.199초와 별개로 일시적인 프레임 지연이 관측되었으므로 [측정 결과](PHASE16_VALIDATION.md)를 따른다.
 
 ## 바로 다음 행동
 
-**Package `0.4.0` 공개 후보를 검증하고 release-preparation commit의 exact SHA를 확정한다.** 이후 사용자가 해당 SHA의 공개를 별도로 승인한 경우에만 `main` push, annotated `v0.4.0` tag 생성·push와 GitHub Release 발행을 수행한다. Advanced rules, Backend packaging, Realtime과 offline inference는 각각 [`PHASE12_PLAN.md`](PHASE12_PLAN.md), [`PHASE13_PLAN.md`](PHASE13_PLAN.md), [`PHASE14_PLAN.md`](PHASE14_PLAN.md), [`PHASE16_PLAN.md`](PHASE16_PLAN.md)에 후속 가안으로 보존하고 구현 직전에 다시 계획한다.
+**완료된 Phase 16 로컬 샘플과 설치 안내를 실제 consumer 구성에 적용하여 사용성을 확인한다.** [설치 안내](LOCAL_INFERENCE_QUICKSTART.md)와 [검증 기록](PHASE16_VALIDATION.md)에서 실행 방법, Windows 범위와 프레임 지연 제한을 확인한다. Phase 15 안정화 결과는 유지한다. Phase 12~14 후보 문서와 우선순위는 변경하지 않으며 새 후보 단계는 시작하지 않는다. 패키지 버전 변경, push, 태그와 릴리즈 발행은 별도 승인 작업이다.

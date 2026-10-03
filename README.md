@@ -36,6 +36,10 @@ The installable UPM package lives at `Packages/com.aicharacterkit.framework`. It
 
 The `server/` directory is a separate, loopback-only reference implementation for optional conversation, memory, semantic V3 triggers, V4 grounding, TTS, and STT paths. It is included as repository source but is not published as a UPM or npm package. Remote deployment, client authentication, Realtime voice, persistent memory, and bundled offline inference remain out of scope.
 
+## Windows local dialogue (Unreleased)
+
+The **Unreleased Phase 16** source adds optional Windows local NPC dialogue with an external Gemma model and llama.cpp process. See the [local setup guide](docs/LOCAL_INFERENCE_QUICKSTART.md), [approved plan](docs/PHASE16_PLAN.md) and [verification record](docs/PHASE16_VALIDATION.md). The public v0.4.0 installation does not include this feature.
+
 ## Repository layout
 
 - `Packages/com.aicharacterkit.framework/`: reusable UPM Runtime, Editor tools, tests, samples, and documentation

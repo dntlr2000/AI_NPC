@@ -56,6 +56,10 @@ public sealed class DoorContextProvider : NpcContextProviderBehaviour
 
 Add the component to the target NPC, then select it under **Runtime Context Providers**. IDs must remain unique across all assigned lore and providers. Provider exceptions or invalid facts fail the turn safely without exposing raw exception details.
 
+With the **Unreleased stabilization**, Character Builder validation, authored-data preview, Scene/Prefab apply or reapply, and NPC `Awake` initialization do not call `CaptureFacts`. A provider may therefore prepare its dependencies in `Start`. Use `NpcContextCoordinator.TryValidateConfiguration(CharacterProfile, out string error)` to check authored character/lore data, fact ID collisions, references, and provider interfaces without reading live state. Existing `TryValidate` and `TryCreateSnapshot` retain their live capture behavior for callers that explicitly need it.
+
+Each conversation submission captures live facts. If a provider is not ready, throws, returns null, or produces conflicting fact IDs, that submission fails safely while the NPC and controller remain available. Submit again once the provider is ready; no automatic retry is performed. The immutable snapshot and its revision belong to that turn, and action execution still checks `CanExecute` against current game state.
+
 ## 4. Connect V4
 
 In **NPC Connection**, choose the existing target and presentation driver, select **BackendContext**, and keep the default loopback endpoints unless the matching local service uses another permitted loopback port:
@@ -73,4 +77,8 @@ Reset clears bounded conversation history only. Authored canon, lore, and the la
 
 ## Limits
 
+The Unreleased **LocalInference** mode reuses these same snapshots and static Builder/provider rules with an external Windows model process. See [Local Inference Quick Start](LOCAL_INFERENCE_QUICKSTART.md). Its 4,096-token window adds a separate limit after template application; a valid V4 request can still be too large for that model window.
+
 One snapshot permits 32 facts and 12 KiB of fact statements. Lower-priority facts are omitted deterministically when the budget is full, and their IDs are available from `NpcConversationBehaviour.LastOmittedContextFactIds`. This is deliberate bounded context, not long-term memory, RAG, or a generic rule engine.
+
+The **Unreleased stabilization** also limits the entire serialized V4 respond request to 512 KiB (524,288 UTF-8 bytes), including profile fields, user text, triggers, extension fields, JSON structure, and escaping. Existing field limits still apply. Unity rejects an oversized serialized request before HTTP transmission; the server returns V4 HTTP 413 for a directly submitted oversized body. This whole-body check does not trim data or change the existing snapshot selection budget. See [Contract V4](CONTRACT_V4.md). These stabilization changes are not part of the immutable public `v0.4.0` tag.

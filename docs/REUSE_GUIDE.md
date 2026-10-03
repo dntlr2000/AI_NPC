@@ -1,8 +1,10 @@
 # AI Character Kit 재사용 가이드
 
-Phase 9부터 정식 재사용 경계는 raw `Assets` 복사가 아니라 UPM package `com.aicharacterkit.framework`다. `v0.4.0` 릴리즈 후보는 Phase 11의 선택형 대화 행동과 Phase 15 context/lore grounding을 포함한다. Unity `6000.5`, uGUI `2.5.0`을 기준으로 하며 URP와 Input System은 요구하지 않는다.
+Phase 9부터 정식 재사용 경계는 UPM package `com.aicharacterkit.framework`다. 2026-09-04 공개된 `v0.4.0`은 Phase 11의 선택형 대화 행동과 Phase 15 context/lore grounding을 포함한다. 공개 commit은 `027b61f053c620d4e5202830b18692a6d45d3458`이다. Unity `6000.5`, uGUI `2.5.0`을 기준으로 하며 URP와 Input System은 요구하지 않는다. 현재 작업 트리의 안정화 보완은 `Unreleased`에 기록되며, 아래 공개 tag에는 포함되지 않는다.
 
 ## 설치
+
+현재 소스의 **Unreleased Phase 16**은 외부 Gemma/llama.cpp 설치를 연결하는 Windows 로컬 대화를 제공한다. [설치·구성 안내](LOCAL_INFERENCE_QUICKSTART.md)와 [수정 소스 검증](PHASE16_VALIDATION.md)을 따른다. 공개 v0.4.0 태그에는 포함되지 않으며 모델과 실행기는 UPM에 번들하지 않는다.
 
 공개 version은 Unity Package Manager에서 **+ > Install package from git URL**을 선택하고 tag가 고정된 다음 URL을 입력한다.
 
@@ -88,9 +90,13 @@ Phase 11 수동 확인은 imported `ActionNpcPrototype.unity` 또는 consumer-ow
 
 Provider는 Send 직전에 읽히며 snapshot은 immutable Core 값으로 복사된다. fact budget을 넘으면 priority가 낮은 항목부터 결정적으로 제외된다. 이 정보는 대사 근거일 뿐 action 권한이 아니므로 문 열기, 아이템 지급과 quest 변경은 `INpcActionHandler.CanExecute`에서 실제 상태를 다시 확인한다.
 
+현재 `Unreleased` 보완에서는 Builder 미리보기와 Scene/Prefab 적용·재적용, NPC `Awake`가 live provider를 호출하지 않는다. `TryValidateConfiguration(CharacterProfile, out string error)`은 authored 데이터와 참조만 검사하며, 기존 `TryValidate`와 `TryCreateSnapshot`은 live 캡처 동작을 유지한다. Provider는 `Start`에서 준비되어도 된다. 준비 전 제출이 실패하더라도 같은 NPC에서 준비 후 다시 제출할 수 있으며 자동 재시도는 없다.
+
+같은 보완의 V4 respond 전체 상한은 JSON 이스케이프·구조, 프로필과 확장 필드를 포함해 512 KiB(524,288 UTF-8 바이트)다. 기존 필드 및 fact 한도는 유지한다. Unity는 직렬화 후 초과 요청을 전송 전에 거부하고, 서버는 직접 들어온 초과 요청을 generator 호출 없이 V4 HTTP 413으로 거부한다. 본문 상한에 맞추기 위한 자동 삭제·잘라내기는 없다. 상세 기준은 [V4 계약](CONTRACT_V4.md)을 따른다.
+
 ## Backend와 선택형 음성
 
-V1/V2/V3/V4 대화, TTS와 STT는 compatible loopback backend가 필요하다. 이 저장소의 `server/`는 같은 Git revision에 포함되는 reference source지만 UPM package나 npm package로 배포되지 않는다. 필요한 사용자는 package와 matching revision을 별도로 checkout하고 `server/README.md`에 따라 실행한다. API key와 provider SDK는 server process에만 두며 Unity asset이나 source에 저장하지 않는다. Internet이나 Backend 없는 local model 선택지는 Phase 16 후보이며 현재 package에는 model/runtime이 포함되지 않는다.
+Backend V1/V2/V3/V4 대화, TTS와 STT는 compatible loopback backend가 필요하다. 이 저장소의 `server/`는 같은 Git revision에 포함되는 reference source지만 UPM package나 npm package로 배포되지 않는다. 필요한 사용자는 package와 matching revision을 별도로 checkout하고 `server/README.md`에 따라 실행한다. API key와 provider SDK는 server process에만 두며 Unity asset이나 source에 저장하지 않는다. 현재 Unreleased의 LocalInference 모드는 외부 Gemma/llama.cpp 설치로 인터넷·Node Backend 없는 대화를 제공한다. 모델과 실행기는 package에 포함되지 않으며 [로컬 설치 안내](LOCAL_INFERENCE_QUICKSTART.md)를 따른다.
 
 ## 제거와 업그레이드
 

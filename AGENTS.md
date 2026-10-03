@@ -36,7 +36,7 @@ The Unity project root is the repository root. Do not assume a separate `unity/`
 
 ## Current milestone
 
-Public GitHub releases `v0.2.0` and `v0.3.0` are immutable. `v0.3.0` was published from exact commit `42f5c5916f5e8fb20cfcec742b91a7451e062a0e` under the MIT License with `dntlr2000` as author and copyright holder. Distribution uses the package subfolder Git URL; `server/` remains unpackaged reference source. Never move or overwrite a published tag. Registry publishing and later releases require separate explicit approval.
+Public GitHub releases `v0.2.0`, `v0.3.0`, and `v0.4.0` are immutable. `v0.3.0` was published from exact commit `42f5c5916f5e8fb20cfcec742b91a7451e062a0e`; `v0.4.0` was published on 2026-09-04 from exact commit `027b61f053c620d4e5202830b18692a6d45d3458`, under the MIT License with `dntlr2000` as author and copyright holder. Distribution uses the package subfolder Git URL; `server/` remains unpackaged reference source. Never move or overwrite a published tag. Registry publishing and later releases require separate explicit approval.
 
 Phase 11 is complete and published in `v0.3.0`. Its minimal conversation-trigger action pipeline:
 
@@ -47,9 +47,15 @@ Phase 11 is complete and published in `v0.3.0`. Its minimal conversation-trigger
 - Preserve V1/V2 and the existing action-free Mock path; provide deterministic example-based Mock trigger matching.
 - Keep arbitrary variables, scores, relationship systems and a generic rule engine out of Phase 11.
 
-Phase 15 Runtime Context & Lore Grounding is complete and is being prepared as package `0.4.0`. It adds immutable per-turn grounding snapshots, V4 transport/backend routes, Character Builder authoring and a Grounded Guard sample while preserving V1–V3. Automatic Server and root Unity validation plus user-confirmed live V4 Play Mode validation have passed. Do not create or push `v0.4.0`, publish a GitHub Release, or describe it as public until the user approves one exact release-preparation commit. Its source of truth is `docs/PHASE15_PLAN.md`, `docs/CONTRACT_V4.md`, and `docs/RELEASE_0.4.0.md`.
+Phase 15 Runtime Context & Lore Grounding is complete and published as package `0.4.0`. It adds immutable per-turn grounding snapshots, V4 transport/backend routes, Character Builder authoring and a Grounded Guard sample while preserving V1–V3. Release-time automatic Server and Unity validation plus user-confirmed live V4 Play Mode validation passed. Its source of truth is `docs/PHASE15_PLAN.md`, `docs/CONTRACT_V4.md`, and `docs/RELEASE_0.4.0.md`.
 
-Phase 12 is still the provisional optional Advanced Behavior milestone, Phase 13 covers Backend distribution, Phase 14 covers optional Realtime voice, and Phase 16 records optional offline local inference. Do not begin these without a new implementation plan. Their scope, order, public API and package version may be re-planned from consumer evidence, but preserve their responsibility boundaries in the roadmap.
+The Phase 15 Unreleased stabilization preserves the V4 serialized request budget, static provider validation, regressions and corrected release records. Keep its changes and validation separate from the published release. Builder/Awake configuration checks must not call live providers; retain the explicit live validation APIs.
+
+Phase 16 is now authorized by the user's 2026-09-30 implementation plan: optional Windows Editor and Windows x64 Mono local dialogue with Gemma 4 E4B IT Q4_K_M and llama.cpp b11146 Vulkan. Follow docs/PHASE16_PLAN.md and record current-source verification in docs/PHASE16_VALIDATION.md. Keep model/runtime files external, reuse original weights, and never auto-download, copy weights, or bundle native binaries into UPM. Preserve Unity/package versions, dependencies, V4/Core interfaces and public tags. Pure LocalInference owns bounded per-NPC memory; Unity owns process/HTTP/JSON; final action authorization remains CanExecute. No automatic retries or online fallback. Do not claim completion without actual Unity, consumer and Windows player verification.
+
+Phase 12 remains optional Advanced Behavior, Phase 13 Backend distribution, and Phase 14 Realtime voice. Their candidate plans and priority are unchanged and are not part of Phase 16.
+
+The approved Phase 16 Windows scope is implemented in Unreleased source. The 2026-10-02 local sample consistency correction passed Server 106/106, root and Built-in/Legacy Unity EditMode 248/248 each, and 54/54 state/action checks in each of root Play Mode, consumer Play Mode and Windows Mono player, plus personal memory/isolation/reset and process cleanup. Local action response formatting is opt-in and precedes memory/presentation; the sample shares one gate/alarm while memory stays per NPC. Preserve current-state priority and bounded quoted user recall in prompts. See docs/PHASE16_VALIDATION.md for exact source evidence, the separately retained initial validation, measured frame stalls and remaining model/platform limits. This does not authorize a version change, tag or public release.
 
 The Phase 15 boundary excludes:
 
@@ -65,7 +71,7 @@ The Phase 15 boundary excludes:
 - LLM tool calling, model-generated action parameters or Reflection-based method invocation
 - Generic variables, scores, relationship systems, persistent action state, or long-term memory
 - Bundling or downloading a local language model, inference runtime, tokenizer, or native plugin
-- Moving any published package tag, or creating/pushing `v0.4.0` without exact-commit approval
+- Moving or recreating any published package tag, or publishing a later release without exact-commit approval
 
 ## Architecture rules
 

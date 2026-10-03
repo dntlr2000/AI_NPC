@@ -1,0 +1,7 @@
+{
+    "name": "AiCharacterKit.LocalInference",
+    "rootNamespace": "AiCharacterKit.LocalInference",
+    "references": ["AiCharacterKit.Core", "AiCharacterKit.Transport"],
+    "noEngineReferences": true,
+    "autoReferenced": true
+}

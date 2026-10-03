@@ -37,6 +37,7 @@ import {
   createResetSuccessResponse as createResetSuccessResponseV4,
   createSuccessResponse as createSuccessResponseV4,
   readRequestId as readRequestIdV4,
+  MAX_REQUEST_BODY_UTF8_BYTES,
   SCHEMA_VERSION as SCHEMA_VERSION_V4,
 } from "./contracts/v4.js";
 import {
@@ -214,7 +215,7 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
     }
   });
 
-  app.post("/v4/npc/respond", async (request, reply) => {
+  app.post("/v4/npc/respond", { bodyLimit: MAX_REQUEST_BODY_UTF8_BYTES }, async (request, reply) => {
     const requestId = readRequestIdV4(request.body, request.id);
     const version = readSchemaVersion(request.body);
     if (version !== undefined && version !== SCHEMA_VERSION_V4) {

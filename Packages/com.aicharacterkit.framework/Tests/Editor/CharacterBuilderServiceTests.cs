@@ -3,6 +3,8 @@ using AiCharacterKit.Core;
 using AiCharacterKit.Editor;
 using AiCharacterKit.Unity;
 using AiCharacterKit.Unity.Speech;
+using AiCharacterKit.Unity.LocalInference;
+using AiCharacterKit.LocalInference;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -584,6 +586,7 @@ namespace AiCharacterKit.Core.Tests
                 out var loreError), Is.True, loreError);
             var target = CreateTarget("Grounded NPC", out var presentation);
             var provider = target.AddComponent<TestNpcContextProvider>();
+            provider.ThrowOnCapture = true;
             provider.Facts = new[]
             {
                 new NpcContextFact(
@@ -620,12 +623,105 @@ namespace AiCharacterKit.Core.Tests
                 second,
                 "contextBackendEndpoint",
                 configuration.ContextBackendEndpoint);
+            Assert.That(provider.CaptureCount, Is.Zero);
+            provider.ThrowOnCapture = false;
             Assert.That(coordinator.TryCreateSnapshot(
                 profile,
                 out var snapshot,
                 out _,
                 out var contextError), Is.True, contextError);
             Assert.That(snapshot.Facts, Has.Count.EqualTo(2));
+        }
+
+        /// <summary>
+        /// Applies and reapplies a Prefab whose provider cannot capture any facts in Edit Mode.
+        /// </summary>
+        [Test]
+        public void ApplyGroundingPrefab_RuntimeOnlyProvider_DoesNotCapture()
+        {
+            var path = TestFolder + "/DeferredGrounded.prefab";
+            var source = CreateTarget("Deferred Grounded Prefab", out _);
+            source.AddComponent<DeferredTestContextProvider>();
+            PrefabUtility.SaveAsPrefabAsset(source, path);
+            Object.DestroyImmediate(source);
+
+            for (var attempt = 0; attempt < 2; attempt++)
+            {
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                var provider = prefab.GetComponent<DeferredTestContextProvider>();
+                Assert.That(provider, Is.Not.Null);
+                var configuration = CreateConfiguration(prefab, prefab.GetComponent<NpcTextPresentationDriver>());
+                configuration.ConfigureGrounding = true;
+                configuration.ConversationMode = NpcConversationMode.BackendContext;
+                configuration.ContextProviderSources = new MonoBehaviour[] { provider };
+
+                Assert.That(CharacterBuilderService.Validate(configuration).HasErrors, Is.False);
+                Assert.That(CharacterBuilderService.TryApply(configuration, out _, out var error), Is.True, error);
+                prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                Assert.That(prefab.GetComponents<NpcContextCoordinator>(), Has.Length.EqualTo(1));
+                Assert.That(prefab.GetComponents<NpcConversationBehaviour>(), Has.Length.EqualTo(1));
+                provider = prefab.GetComponent<DeferredTestContextProvider>();
+                Assert.That(provider.CaptureCount, Is.Zero);
+                Assert.That(prefab.GetComponent<NpcContextCoordinator>().ContextProviderSources[0], Is.SameAs(provider));
+            }
+        }
+
+        /// <summary>Local scene apply and reapply inspect configuration without model files or live captures.</summary>
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ApplyLocalScene_IsStaticAndIdempotent(bool explicitHost)
+        {
+            var host = new GameObject("Local Host").AddComponent<LocalInferenceRuntime>();
+            var localProfile = ScriptableObject.CreateInstance<LocalInferenceProfile>();
+            AssetDatabase.CreateAsset(localProfile, TestFolder + "/Local.asset");
+            var serialized = new SerializedObject(localProfile);
+            serialized.FindProperty("manifestPath").stringValue = "E:/absent-but-static-only/local.json";
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            SetObjectReference(host, "profile", localProfile);
+            var target = CreateTarget("Local NPC", out var presentation);
+            if (!explicitHost) target.transform.SetParent(host.transform);
+            var provider = target.AddComponent<DeferredTestContextProvider>();
+            var configuration = CreateConfiguration(target, presentation);
+            configuration.ConversationMode = NpcConversationMode.LocalInference;
+            configuration.ConfigureGrounding = true;
+            configuration.ContextProviderSources = new MonoBehaviour[] { provider };
+            configuration.LocalInferenceRuntime = explicitHost ? host : null;
+            for (var i = 0; i < 2; i++)
+                Assert.That(CharacterBuilderService.TryApply(configuration, out _, out var error), Is.True, error);
+            Assert.That(target.GetComponents<NpcConversationBehaviour>(), Has.Length.EqualTo(1));
+            Assert.That(provider.CaptureCount, Is.Zero);
+            Assert.That(host.State, Is.EqualTo(LocalInferenceState.Stopped));
+            Assert.That(host.ProcessId, Is.Zero);
+        }
+
+        /// <summary>A local prefab can defer its parent host, but never persist an external scene host reference.</summary>
+        [Test]
+        public void ApplyLocalPrefab_ParentRequirementAndExternalReferenceAreExplicit()
+        {
+            var source = CreateTarget("Local Prefab", out _);
+            source.AddComponent<DeferredTestContextProvider>();
+            var path = TestFolder + "/Local.prefab";
+            PrefabUtility.SaveAsPrefabAsset(source, path);
+            Object.DestroyImmediate(source);
+            var sceneHost = new GameObject("External Host").AddComponent<LocalInferenceRuntime>();
+            for (var i = 0; i < 2; i++)
+            {
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                var configuration = CreateConfiguration(prefab, prefab.GetComponent<NpcTextPresentationDriver>());
+                configuration.ConversationMode = NpcConversationMode.LocalInference;
+                configuration.ConfigureGrounding = true;
+                configuration.ContextProviderSources = new MonoBehaviour[] { prefab.GetComponent<DeferredTestContextProvider>() };
+                var report = CharacterBuilderService.Validate(configuration);
+                Assert.That(report.HasErrors, Is.False);
+                Assert.That(ReportContains(report, "parent") || ReportContains(report, "under"), Is.True);
+                Assert.That(CharacterBuilderService.TryApply(configuration, out _, out var error), Is.True, error);
+                prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                Assert.That(prefab.GetComponent<DeferredTestContextProvider>().CaptureCount, Is.Zero);
+                Assert.That(GetObjectReference(prefab.GetComponent<NpcConversationBehaviour>(), "localInferenceRuntime"), Is.Null);
+                configuration.LocalInferenceRuntime = sceneHost;
+                Assert.That(CharacterBuilderService.Validate(configuration).HasErrors, Is.True);
+            }
+            Assert.That(sceneHost.ProcessId, Is.Zero);
         }
 
         /// <summary>

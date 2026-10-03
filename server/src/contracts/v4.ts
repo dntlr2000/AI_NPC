@@ -9,6 +9,7 @@ import {
 } from "./v1.js";
 
 export const SCHEMA_VERSION = 4 as const;
+export const MAX_REQUEST_BODY_UTF8_BYTES = 512 * 1024;
 export const SUCCESS_STATUS = "success" as const;
 export const ERROR_STATUS = "error" as const;
 export const MAX_SESSION_ID_LENGTH = 128;

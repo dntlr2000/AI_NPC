@@ -35,6 +35,10 @@ The builder never generates a game model, UI, presentation implementation, conte
 
 The package root is treated as read-only. Editor automation writes only to an imported sample location or `Assets/AI Character Kit/Samples`. When versioned sample folders coexist, automation selects the sample matching the installed package version.
 
+## Windows local dialogue (Unreleased)
+
+For **Unreleased Windows local inference**, follow [Local Inference Quick Start](Documentation~/LOCAL_INFERENCE_QUICKSTART.md). A scene-owned LocalInferenceRuntime shares an external model process while each NPC retains independent memory. This feature is available from current source and is not in the public v0.4.0 tag.
+
 ## Run package tests
 
 Add `com.aicharacterkit.framework` to the consumer manifest's `testables` array and install Unity Test Framework `1.7.0`. Import and repair **AI NPC Prototypes**, then create the Action and Grounded Guard prototype scenes from their **Tools > AI Character Kit > Samples** menu entries before running the full EditMode suite. Scene-configuration tests intentionally verify those imported consumer assets.

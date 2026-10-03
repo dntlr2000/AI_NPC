@@ -1,0 +1,14 @@
+{
+    "name": "AiCharacterKit.Tests.Support",
+    "rootNamespace": "AiCharacterKit.Core.Tests",
+    "references": [
+        "AiCharacterKit.Core",
+        "AiCharacterKit.Unity"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "autoReferenced": false,
+    "includePlatforms": [],
+    "excludePlatforms": []
+}

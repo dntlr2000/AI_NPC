@@ -6,6 +6,7 @@ namespace AiCharacterKit.Transport.V4
     public static class AiNpcContractV4
     {
         public const int SchemaVersion = 4;
+        public const int MaxRequestBodyUtf8Bytes = 512 * 1024;
         public const int MaxSessionIdLength = 128;
         public const int MaxUserTextUtf8Bytes = 8 * 1024;
         public const int MaxTriggerCount = 16;

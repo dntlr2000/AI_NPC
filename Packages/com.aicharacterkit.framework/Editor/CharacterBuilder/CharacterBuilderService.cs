@@ -4,6 +4,7 @@ using AiCharacterKit.Core;
 using AiCharacterKit.Unity;
 using AiCharacterKit.Unity.Actions;
 using AiCharacterKit.Unity.Networking;
+using AiCharacterKit.Unity.LocalInference;
 using AiCharacterKit.Unity.Speech;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -294,12 +295,17 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
-        /// Validates timeout and only the loopback endpoints used by the selected dialogue mode.
+        /// Validates only the selected backend endpoints or static local runtime configuration.
         /// </summary>
         private static void ValidateConversationSettings(
             CharacterBuilderConfiguration configuration,
             CharacterBuilderValidationReport report)
         {
+            if (configuration.ConversationMode == NpcConversationMode.LocalInference)
+            {
+                ValidateLocalInference(configuration, report);
+                return;
+            }
             if (configuration.BackendTimeoutSeconds < 1)
             {
                 report.AddError("Backend timeout must be at least one second.");
@@ -345,6 +351,30 @@ namespace AiCharacterKit.Editor
             {
                 report.AddError("Conversation backend settings are invalid: " + exception.Message);
             }
+        }
+
+        /// <summary>
+        /// Checks local host references without preparing models; prefabs may bind to a future parent host.
+        /// </summary>
+        private static void ValidateLocalInference(
+            CharacterBuilderConfiguration configuration,
+            CharacterBuilderValidationReport report)
+        {
+            var runtime = configuration.LocalInferenceRuntime;
+            if (runtime != null)
+                ValidateReferenceContext(configuration.Target, runtime, "Local inference runtime", false, report);
+            if (runtime == null && configuration.Target != null)
+                runtime = configuration.Target.GetComponentInParent<LocalInferenceRuntime>();
+            if (runtime == null)
+            {
+                if (configuration.Target != null && (EditorUtility.IsPersistent(configuration.Target)
+                    || UnityEditor.SceneManagement.EditorSceneManager.IsPreviewSceneObject(configuration.Target)))
+                    report.AddWarning("Place this Prefab under a configured LocalInferenceRuntime before entering Play Mode.");
+                else
+                    report.AddError("LocalInference mode requires an explicit or parent LocalInferenceRuntime.");
+                return;
+            }
+            if (!runtime.TryValidateConfiguration(out var error)) report.AddError(error);
         }
 
         /// <summary>
@@ -395,7 +425,8 @@ namespace AiCharacterKit.Editor
                     "memoryStatusText");
                 if (configuration.ConversationMode != NpcConversationMode.BackendSession
                     && configuration.ConversationMode != NpcConversationMode.BackendActions
-                    && configuration.ConversationMode != NpcConversationMode.BackendContext)
+                    && configuration.ConversationMode != NpcConversationMode.BackendContext
+                    && configuration.ConversationMode != NpcConversationMode.LocalInference)
                 {
                     report.AddWarning(
                         "The selected Session control view will report reset as unsupported outside BackendSession mode.");
@@ -435,7 +466,7 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
-        /// Validates optional lore assets, current-state providers, and V4 mode requirements.
+        /// Validates authored grounding and provider references for backend or local grounded modes.
         /// </summary>
         private static void ValidateGrounding(
             CharacterBuilderConfiguration configuration,
@@ -444,18 +475,20 @@ namespace AiCharacterKit.Editor
         {
             if (!configuration.ConfigureGrounding)
             {
-                if (configuration.ConversationMode == NpcConversationMode.BackendContext)
+                if (configuration.ConversationMode == NpcConversationMode.BackendContext
+                    || configuration.ConversationMode == NpcConversationMode.LocalInference)
                 {
-                    report.AddError("BackendContext mode requires Runtime Grounding.");
+                    report.AddError("Grounded conversation modes require Runtime Grounding.");
                 }
 
                 return;
             }
 
-            if (configuration.ConversationMode != NpcConversationMode.BackendContext)
+            if (configuration.ConversationMode != NpcConversationMode.BackendContext
+                && configuration.ConversationMode != NpcConversationMode.LocalInference)
             {
                 report.AddWarning(
-                    "Runtime Grounding is configured but only sent in BackendContext mode.");
+                    "Runtime Grounding is only sent in BackendContext or LocalInference mode.");
             }
 
             var knownProfiles = new HashSet<NpcLoreProfile>();
@@ -533,10 +566,11 @@ namespace AiCharacterKit.Editor
 
             if (configuration.ConversationMode != NpcConversationMode.Mock
                 && configuration.ConversationMode != NpcConversationMode.BackendActions
-                && configuration.ConversationMode != NpcConversationMode.BackendContext)
+                && configuration.ConversationMode != NpcConversationMode.BackendContext
+                && configuration.ConversationMode != NpcConversationMode.LocalInference)
             {
                 report.AddError(
-                    "Conversation Actions require Mock, BackendActions, or BackendContext mode.");
+                    "Conversation Actions require Mock, BackendActions, BackendContext, or LocalInference mode.");
             }
 
             if (configuration.ActionProfile == null
@@ -780,6 +814,8 @@ namespace AiCharacterKit.Editor
                 VisualPresentationDriver =
                     visualLocator.Resolve(contents) as MonoBehaviour,
                 ConversationMode = source.ConversationMode,
+                LocalInferenceRuntime = ComponentLocator.CreateOptional(source.Target, source.LocalInferenceRuntime)
+                    ?.Resolve(contents) as LocalInferenceRuntime,
                 BackendEndpoint = source.BackendEndpoint,
                 SessionBackendEndpoint = source.SessionBackendEndpoint,
                 SessionResetEndpoint = source.SessionResetEndpoint,
@@ -953,7 +989,7 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
-        /// Writes profile, presentation, mode, endpoints, and timeout into the runtime bridge.
+        /// Writes profile, presentation, selected local host, mode, endpoints, and timeout into the bridge.
         /// </summary>
         private static void ConfigureConversation(
             NpcConversationBehaviour conversation,
@@ -1013,6 +1049,7 @@ namespace AiCharacterKit.Editor
                 serializedConversation,
                 "contextCoordinator",
                 contextCoordinator);
+            SetObjectReference(serializedConversation, "localInferenceRuntime", configuration.LocalInferenceRuntime);
             SetInteger(
                 serializedConversation,
                 "backendTimeoutSeconds",
@@ -1150,7 +1187,9 @@ namespace AiCharacterKit.Editor
                 || GetObjectReference(serializedConversation, "actionCoordinator")
                     != actionCoordinator
                 || GetObjectReference(serializedConversation, "contextCoordinator")
-                    != contextCoordinator)
+                    != contextCoordinator
+                || GetObjectReference(serializedConversation, "localInferenceRuntime")
+                    != configuration.LocalInferenceRuntime)
             {
                 throw new InvalidOperationException(
                     "The conversation component did not retain the requested configuration.");
@@ -1171,7 +1210,7 @@ namespace AiCharacterKit.Editor
             {
                 if (contextCoordinator == null
                     || configuration.Target.GetComponents<NpcContextCoordinator>().Length != 1
-                    || !contextCoordinator.TryValidate(
+                    || !contextCoordinator.TryValidateConfiguration(
                         configuration.CharacterProfile,
                         out _))
                 {

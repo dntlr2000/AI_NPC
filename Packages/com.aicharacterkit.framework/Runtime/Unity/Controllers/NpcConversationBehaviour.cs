@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using AiCharacterKit.Core;
 using AiCharacterKit.Unity.Actions;
 using AiCharacterKit.Unity.Networking;
+using AiCharacterKit.Unity.LocalInference;
 using UnityEngine;
 
 namespace AiCharacterKit.Unity
@@ -56,10 +57,16 @@ namespace AiCharacterKit.Unity
         private NpcActionCoordinator actionCoordinator;
 
         [SerializeField]
+        private LocalInferenceRuntime localInferenceRuntime;
+
+        private System.IDisposable ownedConversationClient;
+
+        [SerializeField]
         [Min(1)]
         private int backendTimeoutSeconds = 35;
 
         private INpcPresentationDriver presentationDriver;
+        private INpcActionResponseFormatter localActionResponseFormatter;
         private NpcAIController controller;
         private CancellationTokenSource lifetimeCancellation;
 
@@ -130,6 +137,8 @@ namespace AiCharacterKit.Unity
         private void OnDestroy()
         {
             controller?.Dispose();
+            ownedConversationClient?.Dispose();
+            ownedConversationClient = null;
             controller = null;
         }
 
@@ -145,7 +154,7 @@ namespace AiCharacterKit.Unity
             }
 
             var grounding = NpcGroundingSnapshot.Empty;
-            if (conversationMode == NpcConversationMode.BackendContext)
+            if (UsesGrounding)
             {
                 var omittedFactIds =
                     (System.Collections.Generic.IReadOnlyList<string>)System.Array.Empty<string>();
@@ -205,7 +214,7 @@ namespace AiCharacterKit.Unity
         }
 
         /// <summary>
-        /// Resolves the interface adapter and creates the configured conversation controller.
+        /// Resolves adapters, opting local consumers into action-before-presentation only when a formatter exists.
         /// </summary>
         private bool TryInitialize()
         {
@@ -243,17 +252,17 @@ namespace AiCharacterKit.Unity
                 return false;
             }
 
-            if (conversationMode == NpcConversationMode.BackendContext)
+            if (UsesGrounding)
             {
                 if (contextCoordinator == null)
                 {
                     Debug.LogError(
-                        "BackendContext mode requires an NpcContextCoordinator.",
+                        "Grounded conversation modes require an NpcContextCoordinator.",
                         this);
                     return false;
                 }
 
-                if (!contextCoordinator.TryValidate(
+                if (!contextCoordinator.TryValidateConfiguration(
                         characterProfile,
                         out var contextError))
                 {
@@ -264,6 +273,8 @@ namespace AiCharacterKit.Unity
                 }
             }
 
+            localActionResponseFormatter = conversationMode == NpcConversationMode.LocalInference && actionCoordinator != null
+                ? GetComponent<INpcActionResponseFormatter>() : null;
             if (!TryCreateConversationClient(out var conversationClient))
             {
                 return false;
@@ -272,12 +283,12 @@ namespace AiCharacterKit.Unity
             controller = new NpcAIController(
                 conversationClient,
                 presentationDriver,
-                actionCoordinator);
+                localActionResponseFormatter == null ? actionCoordinator : null);
             return true;
         }
 
         /// <summary>
-        /// Creates only the client selected by the serialized prototype mode.
+        /// Creates the selected client, finalizing opted-in local action replies before their memory commit.
         /// </summary>
         private bool TryCreateConversationClient(
             out IAiConversationClient conversationClient)
@@ -286,6 +297,29 @@ namespace AiCharacterKit.Unity
             var triggerDefinitions = actionCoordinator == null
                 ? System.Array.Empty<NpcTriggerDefinition>()
                 : actionCoordinator.CreateTriggerDefinitions();
+            if (conversationMode == NpcConversationMode.LocalInference)
+            {
+                var runtime = localInferenceRuntime != null
+                    ? localInferenceRuntime : GetComponentInParent<LocalInferenceRuntime>();
+                if (runtime == null || !runtime.TryValidateConfiguration(out _))
+                {
+                    Debug.LogError("LocalInference requires a configured explicit or parent LocalInferenceRuntime.", this);
+                    return false;
+                }
+                try
+                {
+                    var client = runtime.CreateClient(characterProfile.CharacterId, triggerDefinitions,
+                        localActionResponseFormatter == null ? null : FinalizeLocalResponseAsync);
+                    conversationClient = client;
+                    ownedConversationClient = client;
+                    return true;
+                }
+                catch (System.Exception)
+                {
+                    Debug.LogError("Local inference configuration is invalid.", this);
+                    return false;
+                }
+            }
             if (conversationMode == NpcConversationMode.Mock)
             {
                 conversationClient = new MockConversationClient(
@@ -400,6 +434,16 @@ namespace AiCharacterKit.Unity
             return false;
         }
 
+        /// <summary>Routes a validated local turn once, then formats the actual outcome without a second model call.</summary>
+        private async Task<AiNpcResponse> FinalizeLocalResponseAsync(
+            AiNpcRequest request, AiNpcResponse proposedResponse, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await actionCoordinator.ObserveAsync(new NpcTurnContext(request, proposedResponse), cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            return localActionResponseFormatter.FormatResponse(request, proposedResponse, actionCoordinator.LastResult);
+        }
+
         /// <summary>
         /// Restores the profile dialogue, default emotion, and neutral gesture pose.
         /// </summary>
@@ -419,5 +463,8 @@ namespace AiCharacterKit.Unity
             presentationDriver.PresentGesture(NpcGesture.None);
             presentationDriver.SetBusy(false);
         }
+
+        private bool UsesGrounding => conversationMode == NpcConversationMode.BackendContext
+            || conversationMode == NpcConversationMode.LocalInference;
     }
 }

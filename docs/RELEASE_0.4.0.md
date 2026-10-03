@@ -1,8 +1,11 @@
-# AI Character Kit 0.4.0 릴리즈 준비
+# AI Character Kit 0.4.0 공개 릴리즈 기록
 
-> 상태: 공개 릴리즈 후보 준비·검증 완료 — 최종 승인 및 발행 전
+> 상태: 공개 완료 — 2026-09-04
 > 대상: `com.aicharacterkit.framework` `0.4.0`
-> 기준선: `570dcb84a7e0126b3e5ca0de67e94a567b291e4d` (Phase 15 구현 및 사용자 수동 검증)
+> 공개 exact commit: `027b61f053c620d4e5202830b18692a6d45d3458`
+> 구현 기준선: `570dcb84a7e0126b3e5ca0de67e94a567b291e4d` (Phase 15 구현 및 사용자 수동 검증)
+
+[GitHub Release](https://github.com/dntlr2000/AI_NPC/releases/tag/v0.4.0)의 발행 시각은 2026-09-04 02:09:56 UTC이며 draft/prerelease가 아니다. 이 기록은 확인한 공개 상태를 반영하며 별도의 승인 이력을 추정하지 않는다.
 
 ## 배포 결정
 
@@ -13,13 +16,13 @@
 - Registry, Asset Store, npm과 별도 package-only 저장소 배포는 제외
 - `server/`는 같은 tag의 loopback reference source이며 package artifact로 배포하지 않음
 
-예정 설치 URL:
+공개 설치 URL:
 
 ```text
 https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framework#v0.4.0
 ```
 
-## 후보 검증
+## 공개 전 검증 기록
 
 - [x] package version, author, MIT license와 문서 URL 검증
 - [x] Runtime/Transport 경계, package dependency와 root manifest·lock 불변 감사
@@ -33,7 +36,7 @@ https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framew
 
 검증 로그와 결과는 `E:\CodexValidation`, TEMP/TMP는 `E:\CodexTemp`에만 뒀다. 별도 consumer는 Built-in Render Pipeline, Legacy Input Manager이며 package lock의 Git hash가 기준선 전체 SHA와 일치했다. 실제 OpenAI 호출은 자동화하지 않으며, Backend 배포와 package registry 발행은 이 릴리즈에 포함하지 않는다.
 
-## GitHub Release 노트 초안
+## GitHub Release 기능 기록
 
 AI Character Kit `0.4.0` adds bounded request-time character and world grounding to the reusable Unity 6 AI NPC framework.
 
@@ -56,6 +59,6 @@ https://github.com/dntlr2000/AI_NPC.git?path=/Packages/com.aicharacterkit.framew
 
 The UPM package works offline in Mock mode. The optional `server/` reference source is not installed or published as a package and must run separately for V4 semantic grounding and other Backend modes. Version `0.4.0` does not include persistent memory, RAG, remote Backend deployment, client authentication, Realtime voice, generic behavior variables or scores, or a bundled local model runtime.
 
-## 공개 승인 게이트
+## 공개 이후 안정화와 발행 경계
 
-검증된 release-preparation commit을 만든 뒤 exact commit SHA, 테스트 결과와 이 초안을 검토한다. 사용자의 별도 최종 승인 전에는 `main`을 push하거나 `v0.4.0` tag를 생성·push하지 않고 GitHub Release를 발행하지 않는다. 공개 후 tag는 이동하지 않으며 수정은 `0.4.1` 이상의 새 version으로 배포한다.
+`v0.4.0` tag와 위 공개 기록은 보존한다. 2026-09-08에 발견한 V4 요청 크기 제한, context provider 호출 시점과 문서 정합성 보완은 `Unreleased`이며 이 공개 tag에 소급 적용되지 않는다. 구현·검증 상태는 [Phase 15 계획](PHASE15_PLAN.md)의 안정화 기록을 따른다. 현재 보완은 package/Unity version과 의존성을 변경하지 않으며 push, tag 생성·이동 또는 Release 발행을 포함하지 않는다. 후속 릴리즈는 검증된 exact commit에 대한 별도 승인이 필요하다.

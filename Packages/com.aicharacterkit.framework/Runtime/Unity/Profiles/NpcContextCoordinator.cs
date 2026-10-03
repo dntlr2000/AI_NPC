@@ -48,6 +48,42 @@ namespace AiCharacterKit.Unity
                 return false;
             }
 
+            return TryAssembleSnapshot(characterProfile, facts, out snapshot, out omittedFactIds, out error);
+        }
+
+        /// <summary>
+        /// Validates authored data and provider references without capturing live game state.
+        /// </summary>
+        public bool TryValidateConfiguration(CharacterProfile characterProfile, out string error)
+        {
+            if (characterProfile == null)
+            {
+                error = "A CharacterProfile is required to build NPC grounding.";
+                return false;
+            }
+
+            if (!characterProfile.TryValidate(out error)
+                || !TryCollectAuthoredFacts(out var facts, out error)
+                || !TryValidateProviderSources(out error))
+            {
+                return false;
+            }
+
+            return TryAssembleSnapshot(characterProfile, facts, out _, out _, out error);
+        }
+
+        /// <summary>
+        /// Converts collected facts and canon to the same bounded immutable snapshot for both checks.
+        /// </summary>
+        private static bool TryAssembleSnapshot(
+            CharacterProfile characterProfile,
+            IReadOnlyList<NpcContextFact> facts,
+            out NpcGroundingSnapshot snapshot,
+            out IReadOnlyList<string> omittedFactIds,
+            out string error)
+        {
+            snapshot = NpcGroundingSnapshot.Empty;
+            omittedFactIds = Array.Empty<string>();
             try
             {
                 snapshot = NpcContextAssembler.CreateSnapshot(
@@ -70,7 +106,7 @@ namespace AiCharacterKit.Unity
         }
 
         /// <summary>
-        /// Validates configured assets and provider components without requiring a conversation.
+        /// Preserves the live validation API, including provider capture and current fact validation.
         /// </summary>
         public bool TryValidate(CharacterProfile characterProfile, out string error)
         {
@@ -82,95 +118,113 @@ namespace AiCharacterKit.Unity
         }
 
         /// <summary>
-        /// Reads all configured sources and rejects missing, duplicate, or throwing providers.
+        /// Collects authored lore and rejects missing or repeated assets without reading providers.
         /// </summary>
-        private bool TryCollectFacts(
-            out IReadOnlyList<NpcContextFact> facts,
+        private bool TryCollectAuthoredFacts(
+            out List<NpcContextFact> facts,
             out string error)
         {
-            var collected = new List<NpcContextFact>();
+            facts = new List<NpcContextFact>();
             var knownProfiles = new HashSet<NpcLoreProfile>();
             for (var index = 0; index < LoreProfiles.Count; index++)
             {
                 var profile = LoreProfiles[index];
                 if (profile == null)
                 {
-                    facts = Array.Empty<NpcContextFact>();
                     error = $"Lore profile {index} is missing.";
                     return false;
                 }
 
                 if (!knownProfiles.Add(profile))
                 {
-                    facts = Array.Empty<NpcContextFact>();
                     error = $"Lore profile '{profile.name}' is assigned more than once.";
                     return false;
                 }
 
                 if (!profile.TryCreateFacts(out var profileFacts, out var profileError))
                 {
-                    facts = Array.Empty<NpcContextFact>();
                     error = $"Lore profile '{profile.name}' is invalid: {profileError}";
                     return false;
                 }
 
-                collected.AddRange(profileFacts);
+                facts.AddRange(profileFacts);
             }
 
+            error = string.Empty;
+            return true;
+        }
+
+        /// <summary>
+        /// Checks provider references and interfaces without calling consumer capture methods.
+        /// </summary>
+        private bool TryValidateProviderSources(out string error)
+        {
             var knownProviders = new HashSet<MonoBehaviour>();
             for (var index = 0; index < ContextProviderSources.Count; index++)
             {
                 var source = ContextProviderSources[index];
                 if (source == null)
                 {
-                    facts = Array.Empty<NpcContextFact>();
                     error = $"Context provider source {index} is missing.";
                     return false;
                 }
 
                 if (!knownProviders.Add(source))
                 {
-                    facts = Array.Empty<NpcContextFact>();
                     error = $"Context provider '{source.name}' is assigned more than once.";
                     return false;
                 }
 
-                if (!(source is INpcContextProvider provider))
+                if (!(source is INpcContextProvider))
                 {
-                    facts = Array.Empty<NpcContextFact>();
                     error = $"Context provider '{source.name}' must implement INpcContextProvider.";
                     return false;
                 }
+            }
 
-                IReadOnlyList<NpcContextFact> providerFacts;
+            error = string.Empty;
+            return true;
+        }
+
+        /// <summary>
+        /// Captures each live provider once and copies its facts while containing consumer failures.
+        /// </summary>
+        private bool TryCollectFacts(out IReadOnlyList<NpcContextFact> facts, out string error)
+        {
+            facts = Array.Empty<NpcContextFact>();
+            if (!TryCollectAuthoredFacts(out var collected, out error)
+                || !TryValidateProviderSources(out error))
+            {
+                return false;
+            }
+
+            foreach (var source in ContextProviderSources)
+            {
                 try
                 {
-                    providerFacts = provider.CaptureFacts();
-                }
-                catch
-                {
-                    facts = Array.Empty<NpcContextFact>();
-                    error = $"Context provider '{source.name}' failed while capturing facts.";
-                    return false;
-                }
-
-                if (providerFacts == null)
-                {
-                    facts = Array.Empty<NpcContextFact>();
-                    error = $"Context provider '{source.name}' returned no fact collection.";
-                    return false;
-                }
-
-                for (var factIndex = 0; factIndex < providerFacts.Count; factIndex++)
-                {
-                    if (providerFacts[factIndex] == null)
+                    var providerFacts = ((INpcContextProvider)source).CaptureFacts();
+                    if (providerFacts == null)
                     {
-                        facts = Array.Empty<NpcContextFact>();
-                        error = $"Context provider '{source.name}' returned a null fact.";
+                        error = $"Context provider '{source.name}' returned no fact collection.";
                         return false;
                     }
 
-                    collected.Add(providerFacts[factIndex]);
+                    for (var index = 0; index < providerFacts.Count; index++)
+                    {
+                        var fact = providerFacts[index];
+                        if (fact == null)
+                        {
+                            error = $"Context provider '{source.name}' returned a null fact.";
+                            return false;
+                        }
+
+                        collected.Add(fact);
+                    }
+                }
+                catch
+                {
+                    error = $"Context provider '{source.name}' failed while capturing facts.";
+                    return false;
                 }
             }
 

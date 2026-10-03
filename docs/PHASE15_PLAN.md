@@ -73,4 +73,31 @@ Grounding은 응답 품질을 위한 입력이지 권한 판정이 아니다. �
 - Realtime 음성
 - 로컬 모델 runtime, model file 다운로드와 native inference plugin
 
-자동 검증과 위 수동 시나리오가 모두 통과해 Phase 15를 완료 처리했다. `v0.4.0` tag와 GitHub Release는 검증된 exact release-preparation commit에 대한 별도 승인이 있어야 한다.
+자동 검증과 위 수동 시나리오가 모두 통과해 Phase 15를 완료 처리했다. 2026-09-04 exact commit `027b61f053c620d4e5202830b18692a6d45d3458`의 `v0.4.0` tag와 GitHub Release가 공개됐다. 상세 기록은 [RELEASE_0.4.0.md](RELEASE_0.4.0.md)를 따른다.
+
+## 2026-09-08 안정화 — Unreleased
+
+공개 이후 검토에서 발견한 다음 세 항목만 보완한다. 기존 필드 한도, version, dependency와 공개 tag를 유지하며 Phase 12~14·16은 구현하거나 재계획하지 않는다.
+
+- `/v4/npc/respond`에만 실제 직렬화된 UTF-8 JSON 기준 512 KiB 상한을 적용한다. Unity gateway도 전송 전에 같은 상한을 검사하며 초과 시 `invalid_request`, `retryable=false`로 실패한다. 기존 경로의 32 KiB 및 STT audio 제한은 유지한다.
+- `NpcContextCoordinator.TryValidateConfiguration`은 authored 데이터와 provider 참조만 검사한다. Builder/Awake는 이 메서드를 사용하며 `CaptureFacts()`를 실행하지 않는다. 기존 `TryValidate`와 `TryCreateSnapshot`의 live 검사 의미는 유지한다. `Start` 이후 준비되는 provider의 캡처 실패는 해당 제출만 실패시키고 다음 제출에서 다시 현재 상태를 읽는다.
+- 로드맵과 릴리즈 문서를 실제 `v0.4.0` 공개 기록에 맞추고 공개 시점의 검증과 이번 수정본 검증을 구분한다.
+
+### 수정본 검증 결과 — 2026-09-08
+
+세 항목의 구현과 회귀 검증을 완료했다. 앞의 95/95·186/186과 live 수동 결과는 공개 시점의 기록이며, 아래 수치는 이번 `Unreleased` 수정본에서 새로 실행한 결과다.
+
+| 검증 | 실제 결과 |
+| --- | --- |
+| Server TypeScript build 및 전체 Vitest | build 성공, **106/106** 통과(기존 95 + 새 회귀 11) |
+| 현재 소스의 root 프로젝트 복제본 | Unity `6000.5.3f1` 컴파일 성공, 전체 EditMode **203/203** 통과(기존 186 + 새 회귀 17) |
+| Built-in/Legacy consumer 복제본 | 수정 package의 로컬 snapshot으로 컴파일 성공, 전체 EditMode **203/203** 통과 |
+| 실제 Play Mode 수명 주기 | EditMode suite에서 Play Mode에 진입해 `Awake` 호출 0회, `Start` 준비 전 실패와 이후 같은 NPC/controller 복구, snapshot/revision 변경 및 reset 통과 |
+| Scene/Prefab Builder | 적용·재적용과 정적 검사에서 provider 캡처 0회; 기존 참조와 중복 방지 회귀 통과 |
+| 요청 크기 | 34,994바이트 재현, 최대 필드/한글/이스케이프 조합, 524,288바이트 허용 및 1바이트 초과 거부 통과 |
+
+Unity gateway의 정확한 상한 요청은 loopback fake HTTP 서버가 수신한 바이트 수로 확인했다. 초과 요청은 HTTP 전송 전에 고정 `invalid_request`로 실패했다. Server 초과 요청은 generator 호출 없이 V4 HTTP 413을 반환했으며 V1~V3, reset, TTS·STT 회귀도 통과했다. Provider 예외·null 결과·fact 충돌의 안전한 실패, 기존 live 검사 API와 `CanExecute` 회귀를 포함한다. 실제 OpenAI 호출은 사용하지 않았다.
+
+라이선스 사전 확인과 Unity 실행은 정상 종료했다. 검증 root는 `E:\CodexValidation\AI_NPC-phase15-stabilization-20260908`, `TEMP`·`TMP`는 `E:\CodexTemp`다. Consumer package lock은 공개 Git 캐시가 아닌 `package-snapshot`의 `source: local`을 가리키며, 두 검증 환경의 C# 소스와 asmdef를 현재 작업 트리와 대조했다. 최종 결과 파일은 `server-tests-final.json`, `root-editmode-final.xml`, `consumer-editmode.xml`이다.
+
+첫 root 검증에서 확인한 샘플 미설치와 테스트용 Editor 컴포넌트/HTTP fake 구성 문제는 샘플의 Editor API 생성 및 테스트 구성 보완 후 해소했다. 기존 `.meta`와 직렬화 asset YAML은 변경하지 않았고, 새 테스트 자산의 `.meta`는 검증 Unity가 생성한 값을 보존했다. 패키지에 중복 제공하는 계약/grounding 안내와 릴리즈 기록을 함께 갱신했다. Package/Unity version, 의존성, 후속 후보 문서와 공개 tag는 그대로이며, 이후 후보 구현·push·릴리즈 발행은 수행하지 않았다.

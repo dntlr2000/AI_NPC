@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using AiCharacterKit.Core;
 using AiCharacterKit.Unity;
 using AiCharacterKit.Unity.Actions;
+using AiCharacterKit.Unity.LocalInference;
 using AiCharacterKit.Unity.Speech;
 using UnityEngine;
 
@@ -266,6 +267,8 @@ namespace AiCharacterKit.Editor
 
         public NpcConversationMode ConversationMode { get; set; } =
             NpcConversationMode.Mock;
+
+        public LocalInferenceRuntime LocalInferenceRuntime { get; set; }
 
         public string BackendEndpoint { get; set; } = DefaultBackendEndpoint;
 

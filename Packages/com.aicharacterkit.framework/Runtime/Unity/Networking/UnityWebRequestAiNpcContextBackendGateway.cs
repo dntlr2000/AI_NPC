@@ -45,7 +45,7 @@ namespace AiCharacterKit.Unity.Networking
         }
 
         /// <summary>
-        /// Posts one V4 conversation request and validates HTTP and contract branches.
+        /// Checks the serialized V4 byte budget before posting and validates the response branches.
         /// </summary>
         public async Task<AiNpcResponseEnvelopeDto> SendAsync(
             AiNpcRequestEnvelopeDto requestEnvelope,
@@ -55,6 +55,14 @@ namespace AiCharacterKit.Unity.Networking
             if (!AiNpcJsonCodecV4.TrySerializeRequest(requestEnvelope, out var json, out _))
             {
                 throw CreateProtocolException();
+            }
+
+            if (Encoding.UTF8.GetByteCount(json) > AiNpcContractV4.MaxRequestBodyUtf8Bytes)
+            {
+                throw new AiConversationException(
+                    AiNpcContractV4.InvalidRequestErrorCode,
+                    "NPC 대화 요청이 최대 허용 크기(512 KiB)를 초과했습니다.",
+                    false);
             }
 
             using (var request = CreateRequest(respondEndpoint, json))

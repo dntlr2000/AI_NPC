@@ -63,6 +63,14 @@ Grounding strings are trimmed and use LF line endings. Fact kinds are `lore`, `b
 
 The `ctx-<sha256>` revision covers normalized canon and facts. The SDK mapper computes it; consumers should not hand-author revisions.
 
+## Serialized request body limit — Unreleased stabilization
+
+`POST /v4/npc/respond` accepts at most **512 KiB (524,288 bytes)** of serialized UTF-8 JSON, including character profile fields, grounding, user text, triggers, same-version extension fields, JSON structure, and JSON string escaping. Exactly 524,288 bytes is allowed; one byte more is rejected. Individual field and snapshot limits above are unchanged and still apply independently.
+
+The Unity gateway checks the actual UTF-8 byte count after serialization and before creating an HTTP request. An oversized body fails with `invalid_request`, `retryable=false`, and the fixed message `NPC 대화 요청이 최대 허용 크기(512 KiB)를 초과했습니다.` The gateway does not remove or truncate data to fit. A directly submitted oversized server request returns HTTP 413 in the existing V4 error envelope without invoking the generator.
+
+The matching constants are `AiNpcContractV4.MaxRequestBodyUtf8Bytes` in C# and `MAX_REQUEST_BODY_UTF8_BYTES` in `server/src/contracts/v4.ts`. This route-specific limit leaves the server's global 32 KiB limit, V1–V3 routes, V4 reset, and speech route limits unchanged. These fixes belong to `Unreleased`; the immutable public `v0.4.0` release used the prior global limit for V4 respond.
+
 ## Success and error
 
 ```json

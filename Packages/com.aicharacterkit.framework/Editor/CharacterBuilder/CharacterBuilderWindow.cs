@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using AiCharacterKit.Core;
 using AiCharacterKit.Unity;
 using AiCharacterKit.Unity.Actions;
+using AiCharacterKit.Unity.LocalInference;
 using AiCharacterKit.Unity.Speech;
 using UnityEditor;
 using UnityEngine;
@@ -583,9 +584,9 @@ namespace AiCharacterKit.Editor
                     "Conversation Mode",
                     configuration.ConversationMode);
             DrawConversationEndpoints();
-            configuration.BackendTimeoutSeconds = EditorGUILayout.IntField(
-                "Timeout Seconds",
-                configuration.BackendTimeoutSeconds);
+            if (configuration.ConversationMode != NpcConversationMode.LocalInference)
+                configuration.BackendTimeoutSeconds = EditorGUILayout.IntField(
+                    "Timeout Seconds", configuration.BackendTimeoutSeconds);
 
             EditorGUILayout.LabelField("Optional Existing uGUI Views", EditorStyles.miniBoldLabel);
             configuration.TextInputView =
@@ -788,11 +789,17 @@ namespace AiCharacterKit.Editor
         }
 
         /// <summary>
-        /// Draws only the endpoint fields used by the selected conversation mode.
+        /// Draws only the backend endpoints or shared local host used by the selected mode.
         /// </summary>
         private void DrawConversationEndpoints()
         {
-            if (configuration.ConversationMode == NpcConversationMode.Backend)
+            if (configuration.ConversationMode == NpcConversationMode.LocalInference)
+            {
+                configuration.LocalInferenceRuntime = (LocalInferenceRuntime)EditorGUILayout.ObjectField(
+                    "Shared Local Runtime", configuration.LocalInferenceRuntime, typeof(LocalInferenceRuntime), true);
+                EditorGUILayout.HelpBox("An empty reference resolves the parent LocalInferenceRuntime. Prefabs must be placed under that host. Configure Runtime Grounding below.", MessageType.Info);
+            }
+            else if (configuration.ConversationMode == NpcConversationMode.Backend)
             {
                 configuration.BackendEndpoint = EditorGUILayout.TextField(
                     "V1 Respond Endpoint",
@@ -914,6 +921,7 @@ namespace AiCharacterKit.Editor
             configuration.ConfigureSpeech = false;
             configuration.ConfigureActions = false;
             configuration.ConfigureGrounding = false;
+            configuration.LocalInferenceRuntime = null;
             configuration.ActionHandlerSources = Array.Empty<MonoBehaviour>();
             configuration.ContextProviderSources = Array.Empty<MonoBehaviour>();
             configuration.LoreProfiles = Array.Empty<NpcLoreProfile>();
@@ -960,6 +968,8 @@ namespace AiCharacterKit.Editor
             configuration.ConversationMode =
                 (NpcConversationMode)serializedConversation
                     .FindProperty("conversationMode").intValue;
+            configuration.LocalInferenceRuntime = serializedConversation
+                .FindProperty("localInferenceRuntime").objectReferenceValue as LocalInferenceRuntime;
             configuration.BackendEndpoint = serializedConversation
                 .FindProperty("backendEndpoint").stringValue;
             configuration.SessionBackendEndpoint = serializedConversation

@@ -4,9 +4,11 @@
   <Project Path="AiCharacterKit.Transcription.csproj" />
   <Project Path="AiCharacterKit.Transport.csproj" />
   <Project Path="AiCharacterKit.Editor.csproj" />
+  <Project Path="AiCharacterKit.LocalInference.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="AiCharacterKit.Unity.Speech.csproj" />
   <Project Path="AiCharacterKit.Core.csproj" />
   <Project Path="AiCharacterKit.Speech.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="AiCharacterKit.Tests.Support.csproj" />
 </Solution>

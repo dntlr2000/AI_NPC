@@ -1,53 +1,55 @@
-# Phase 16 후보 — 선택형 Offline Local Inference
+# Phase 16 — Windows 로컬 NPC 대화
 
-> 상태: 후속 가안 — 구현 승인 전 요구 조사와 재계획 필요
-> 선행 조건: Phase 15 grounding 경계 안정화
-> package version: 미정
+> 확정 계획: 2026-09-30 사용자 구현 승인. 승인 범위의 구현·실행 검증 완료, Unreleased.
+> Unity 6000.5.3f1 / package 0.4.0 유지. 공개 v0.4.0에는 이 변경이 포함되지 않는다.
 
-## 목적
+## 목표와 경계
 
-게임이 외부 Backend나 인터넷 없이 완결돼야 하는 consumer를 위해, 다운로드된 언어 모델을 선택형 대화 provider로 연결한다. 기존 `IAiConversationClient`, structured response, presentation, grounding과 action 경계를 재사용하며 기본 UPM package에 특정 모델이나 native runtime을 강제하지 않는다.
+Unity Editor와 Windows x64 Mono 게임에서 인터넷, OpenAI 또는 Node 서버 없이 실제 NPC 대화를 제공한다. 첫 검증 대상은 RAM 32GB, RTX 5070 Laptop 8GB다. 다른 플랫폼, IL2CPP, 저사양 보장과 두 후보 모델 비교는 후속 작업이다. Phase 12~14, 장기 기억, RAG, 로컬 음성, 스트리밍은 구현하지 않는다.
 
-## 권장 방향
+모델 원본은 외부 설치 폴더에서 읽는다. 게임의 자동 다운로드와 모델 복사는 없다. UPM에 모델·tokenizer·실행기·native DLL 또는 새 의존성을 포함하지 않는다.
 
-첫 구현은 별도 로컬 process 또는 consumer-owned adapter를 우선 검토한다. 이 방식은 Unity main process의 native crash와 플랫폼별 plugin 충돌을 격리하고, 모델/runtime 교체를 Core 변경 없이 수행하기 쉽다. 완전한 단일 실행 파일이 필수이고 대상 플랫폼이 고정됐을 때만 in-process native inference를 비교한다.
+## 고정 구성
 
-```text
-NpcAIController
-    → IAiConversationClient
-         ├─ existing Mock
-         ├─ existing loopback Backend
-         └─ optional LocalInferenceConversationClient
-                 → consumer-selected runner/model
-```
+| 항목 | 값 |
+| --- | --- |
+| 모델 | Gemma 4 E4B IT Q4_K_M GGUF, 5,335,289,664 bytes |
+| 모델 SHA-256 | `3f72a20a06f626c78e6c475ae07a64c88b2663149c0f6197b56bf7cf1f37585c` |
+| 실행기 | llama.cpp b11146 Vulkan Windows x64 |
+| llama-server.exe SHA-256 | `7b886298b688509ced3e92b420edd57dd3d665da72c1fc207d7a537be5870352` |
+| 템플릿 SHA-256 | `37d87b94f5d7ce4a3ba69fd625d63b2062502efd256c993b76a9764ae4b4ce53` |
+| context / 출력 예약 | 4,096 / 256 tokens |
+| temperature / seed | 0.2 / 42 |
+| 준비 / 생성 제한 | 180초 / 35초 |
+| 동시 생성 / FIFO 대기 | 1건 / 최대 8건, 각 30초 |
+| NPC별 성공 대화 기억 | 최대 8턴, UTF-8 16KiB, 유휴 30분 |
 
-## 구현 전 결정할 항목
+GGUF 내장 템플릿 대신 사전 검사에서 확인한 LM Studio model.yaml의 Jinja 템플릿을 사용한다. thinking을 비활성화하고 reasoning 응답을 거부한다. 실행기 DLL도 manifest에 크기·해시를 기록하여 준비마다 검사한다.
 
-1. 지원 플랫폼과 CPU/GPU/NPU backend
-2. 허용 다운로드 크기, RAM/VRAM, 첫 token 및 전체 응답 latency
-3. 모델·tokenizer·runtime 라이선스와 재배포 조건
-4. 모델 파일을 build에 포함할지 첫 실행 시 내려받을지
-5. V4 grounding과 V3 action schema를 안정적으로 따르는 constrained decoding 방식
-6. cancellation, process crash, timeout, save 경로와 integrity 검증
-7. 저사양 fallback: deterministic Mock, authored dialogue, 또는 기능 비활성화
+## 구현 구성
 
-## 후보 범위
+- `NpcConversationMode.LocalInference = 5`. 기존 값과 Core/V4 계약은 유지한다.
+- 순수 `AiCharacterKit.LocalInference`에 `ILocalInferenceRunner`, `LocalInferenceConversationClient`, NPC별 기억과 FIFO 대기열을 둔다.
+- Unity `LocalInferenceProfile`은 외부 manifest를 지정하고 `LocalInferenceRuntime`은 Scene 수명으로 프로세스를 공유한다. NPC는 지정한 host, 없으면 부모 host를 찾는다. 개별 reset/취소는 공유 실행기를 종료하지 않는다.
+- 설치 도구는 기존 파일을 검사하고 manifest와 파생 템플릿만 생성한다. 상대 경로는 manifest 폴더 기준이며 player의 `-aiNpcLocalManifest`가 Profile 경로를 덮어쓴다.
+- 파일 검증 → 숨김 프로세스 → health → 합성 JSON 워밍업 → Ready. Windows CNG 해시와 대기는 메인 스레드를 막지 않는다. 준비 전 제출은 해당 요청만 실패한다. 실패 후 `PrepareAsync`로 명시적으로 다시 준비한다.
+- loopback 임시 포트, 프로세스별 환경변수 인증값, Windows Job Object 종료 연동. stdout/stderr는 기록 없이 소비한다.
+- V4 검증과 직렬화 후 512KiB 상한을 재사용한다. 캐릭터·grounding·trigger·사용자 입력을 구분한다. JSON Schema와 엄격한 출력 검사를 모두 거친다.
+- 실제 템플릿 적용 후 토큰을 계산한다. 입력+출력 예약이 4,096을 넘으면 오래된 기억부터 제외한다. 현재 입력만으로 넘으면 거부하며 현재 데이터를 자르지 않는다.
+- 성공한 사용자 입력과 대사만 기억한다. grounding·revision·실패·취소는 기억에 저장하지 않는다. 행동은 기존 router와 실행 직전 `CanExecute`를 거친다.
+- Builder Scene/Prefab 적용·재적용·미리보기와 Awake는 정적 검사만 수행한다. 부모 host가 필요한 Prefab은 경고하고 외부 Scene 참조를 저장하지 않는다.
+- Editor API로 host 하나와 NPC 둘의 Local Grounded NPC 샘플을 생성한다. 준비/재시도, 대화/reset, gate/alarm 변경을 제공한다.
 
-- 선택형 local inference client/runner interface와 capability probe
-- model manifest, hash 검증, 명시적 설치/제거 절차
-- V4 request grounding을 입력으로 사용하고 기존 `AiNpcResponse`로 반환
-- JSON/schema 오류, timeout, cancellation과 out-of-memory의 안전한 mapping
-- 플랫폼별 benchmark scene 및 최소 지원 사양 문서
-- provider가 없어도 기존 Mock와 online Backend가 그대로 동작하는 optional composition
+## 검증과 마무리
 
-## 제외 범위
+기준선은 Phase 15 안정화 Server 106개, Unity EditMode 203개다. fake 회귀, Builder, Windows 프로세스 소유권·설치 실패, 실제 모델 8개 시나리오 두 번, 기억·reset·격리·grounding·행동 권한 변경, 반복 Play Mode와 Windows Mono player를 검증한다. 짧은 기본 응답의 워밍업 후 p95 5초를 목표로 하며 준비 시간·RAM/VRAM·프레임 간격을 기록한다. OpenAI 호출은 하지 않는다.
 
-- AI Character Kit 저장소에 모델 weight를 직접 commit
-- 라이선스가 불명확한 model/runtime 재배포
-- 모든 플랫폼과 모든 GPU를 동시에 지원
-- 모델이 임의 C# 메서드나 Unity object를 직접 호출
-- local inference와 장기 기억·RAG·Realtime을 한 단계에서 함께 구현
+수정 소스의 root 복제본과 Built-in/Legacy consumer를 사용한다. 공개 패키지 캐시 결과를 수정본 검증으로 간주하지 않는다. 실행 검증이 막히면 전체 완료로 기록하지 않는다. 결과는 [검증 기록](PHASE16_VALIDATION.md), 설정은 [사용 안내](LOCAL_INFERENCE_QUICKSTART.md)에 기록한다.
 
-## 재계획 게이트
+작업 경로: `E:\CodexValidation\AI_NPC-phase16-implementation-20260930-a1`의 delivery/evidence. TEMP/TMP와 GI 캐시는 대응하는 `E:\CodexTemp` 작업 폴더를 사용한다. 최종 증거와 재실행 파일을 보존하고 불필요한 작업 소유 복제본·캐시는 정리한다. 새/수정 메서드 주석, 기존 GUID, Phase 15 변경을 보존하며 push·태그·릴리즈 발행은 하지 않는다.
 
-실제 게임의 대상 플랫폼, 최소 하드웨어, 배포 크기와 품질 평가 문장을 먼저 확정한다. 최소 두 개의 후보 model/runtime을 동일한 V4 fixture로 측정한 뒤 adapter 형태, package 분리, 공개 API와 version을 결정한다. 이 문서는 방향과 책임 경계만 고정하며 구현 승인을 의미하지 않는다.
+## 근거
+
+- [고정 llama.cpp API](https://github.com/ggml-org/llama.cpp/blob/b11146/tools/server/README.md)
+- [Windows Job Objects](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects)
+- 사전 검사: `E:\CodexValidation\AI_NPC-phase16-model-audit-20260930-031830\evidence\MODEL_ASSESSMENT.md` (이번 통합 검증과 별도)
