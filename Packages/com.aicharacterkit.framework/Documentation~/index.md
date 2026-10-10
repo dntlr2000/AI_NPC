@@ -9,6 +9,7 @@ AI Character Kit separates provider-neutral dialogue, request-time grounding, co
 - [Character Builder](CHARACTER_BUILDER.md)
 - [Runtime context and lore quick start](GROUNDING_QUICKSTART.md)
 - [Conversation actions quick start](ACTIONS_QUICKSTART.md)
+- [Advanced Behavior quick start (Unreleased)](ADVANCED_BEHAVIOR_QUICKSTART.md)
 - [Conversation contract V1](CONTRACT_V1.md)
 - [Conversation contract V2](CONTRACT_V2.md)
 - [Conversation actions contract V3](CONTRACT_V3.md)

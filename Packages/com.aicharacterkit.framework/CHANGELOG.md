@@ -4,6 +4,9 @@ All notable changes to this package are documented here.
 
 ## [Unreleased]
 
+- Added optional Phase 12 Advanced Behavior: per-NPC bool/bounded-number state, typed consumer values, deterministic conditional changes and one action through the existing final authorization contract.
+- Added structured Character Builder authoring, offline evaluation trace, explicit Basic draft import, Scene/Prefab wiring, selected-variable grounding and a Mock-first two-NPC Advanced Relationship sample. State reset is independent of conversation memory; no persistence or code generation is included.
+- Verified Phase 12 with Server 106/106, root and Built-in/Legacy EditMode 303/303 each, Advanced actual-model checks 50/50 in two root Play sessions, consumer and Windows Mono, V4 fake HTTP 31/31, and existing Local Grounded checks 54/54 in root/consumer/player plus memory and process cleanup. Current-source evidence and limitations are separate in `docs/PHASE12_VALIDATION.md`; earlier release and Phase 16 results below remain historical.
 - Corrected Local Grounded NPC action/dialogue consistency: opt-in local action result formatting precedes presentation and memory commit; both guards share one gate/alarm and display actual action status. Updated the imported sample without replacing scenes, profiles or GUIDs.
 - Prioritized fresh grounding after historical dialogue in local prompts and added finalization, cancellation and memory regressions. Ordinary model dialogue remains probabilistic; authored gate action receipts cover the sample's Korean/English outcomes.
 - Verified the 2026-10-02 correction with Server 106/106, root and Built-in/Legacy EditMode 248/248 each, and 54/54 state/action checks in each of root, consumer and Windows Mono actual-model runs, plus personal recall, isolation, reset and process cleanup. These results supersede the earlier sample-consistency coverage, not its separately recorded performance measurements.

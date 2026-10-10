@@ -76,68 +76,10 @@ namespace AiCharacterKit.Core
                     return selectionFailure;
                 }
 
-                if (!handlers.TryGetValue(selected.ActionId, out var handler))
-                {
-                    return CreateResult(
-                        NpcActionStatus.HandlerMissing,
-                        selected,
-                        "No handler is configured for the selected action ID.");
-                }
-
-                var actionContext = new NpcActionContext(
-                    context.Request,
-                    context.Response,
-                    selected);
-                bool canExecute;
-                string rejectionReason;
-                try
-                {
-                    canExecute = handler.CanExecute(
-                        actionContext,
-                        out rejectionReason);
-                }
-                catch (Exception exception)
-                {
-                    return CreateResult(
-                        NpcActionStatus.Failed,
-                        selected,
-                        "Action authorization failed: " + exception.Message);
-                }
-
-                if (!canExecute)
-                {
-                    return CreateResult(
-                        NpcActionStatus.Rejected,
-                        selected,
-                        string.IsNullOrWhiteSpace(rejectionReason)
-                            ? "The consumer rejected the action in the current game state."
-                            : rejectionReason);
-                }
-
-                try
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    await handler.ExecuteAsync(actionContext, cancellationToken);
-                    cancellationToken.ThrowIfCancellationRequested();
-                    return CreateResult(
-                        NpcActionStatus.Succeeded,
-                        selected,
-                        "Action completed.");
-                }
-                catch (OperationCanceledException)
-                {
-                    return CreateResult(
-                        NpcActionStatus.Cancelled,
-                        selected,
-                        "Action was cancelled.");
-                }
-                catch (Exception exception)
-                {
-                    return CreateResult(
-                        NpcActionStatus.Failed,
-                        selected,
-                        "Action failed: " + exception.Message);
-                }
+                handlers.TryGetValue(selected.ActionId, out var handler);
+                return await NpcActionExecutor.ExecuteAsync(
+                    new NpcActionContext(context.Request, context.Response, selected),
+                    handler, cancellationToken, true);
             }
             finally
             {
@@ -236,7 +178,7 @@ namespace AiCharacterKit.Core
         }
 
         /// <summary>
-        /// Copies definitions and rejects null, excessive, or duplicate trigger IDs.
+        /// Copies Basic action bindings and rejects signal-only, null, excessive or duplicate definitions.
         /// </summary>
         private static IReadOnlyList<NpcTriggerDefinition> CopyAndValidateDefinitions(
             IReadOnlyList<NpcTriggerDefinition> source)
@@ -255,10 +197,10 @@ namespace AiCharacterKit.Core
             var copy = new List<NpcTriggerDefinition>(source.Count);
             foreach (var definition in source)
             {
-                if (definition == null || !ids.Add(definition.TriggerId))
+                if (definition == null || !definition.HasActionBinding || !ids.Add(definition.TriggerId))
                 {
                     throw new ArgumentException(
-                        "Trigger definitions must be non-null with unique IDs.",
+                        "Basic trigger definitions must have action bindings and unique IDs.",
                         nameof(source));
                 }
 
@@ -295,21 +237,6 @@ namespace AiCharacterKit.Core
             }
 
             return copy;
-        }
-
-        /// <summary>
-        /// Creates one result for a selected authored definition.
-        /// </summary>
-        private static NpcActionResult CreateResult(
-            NpcActionStatus status,
-            NpcTriggerDefinition definition,
-            string message)
-        {
-            return new NpcActionResult(
-                status,
-                definition.TriggerId,
-                definition.ActionId,
-                message);
         }
 
         /// <summary>

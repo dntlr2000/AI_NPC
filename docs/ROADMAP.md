@@ -1,6 +1,6 @@
 # AI NPC Framework 진행 점검 및 로드맵
 
-> 기준일: 2026-09-30
+> 기준일: 2026-10-03
 > 비교 기준: ChatGPT 대화 **“Unity Ai NPC 만들기”**의 초기 구상과 이후 합의된 Phase 1~16 책임 경계
 
 ## 결론
@@ -10,6 +10,8 @@
 Phase 15 공개 시점에는 Server **95/95**, Unity compile, 전체 EditMode **186/186**과 live V4 수동 검증이 통과했다. 2026-09-08 검토에서 확인한 V4 HTTP 본문 제한, provider 초기화 시점과 릴리즈 문서 불일치는 별도 **Unreleased 안정화**로 보완했다. 수정본은 Server **106/106**, root 및 Built-in/Legacy consumer Unity **각 203/203**을 통과했다. 기존 완료 기록과 이번 보완의 검증 근거는 [`PHASE15_PLAN.md`](PHASE15_PLAN.md)에 구분한다. wire 규격은 [`CONTRACT_V4.md`](CONTRACT_V4.md), 공개 기록은 [`RELEASE_0.4.0.md`](RELEASE_0.4.0.md)를 따른다. Phase 16은 2026-09-30 승인 범위의 Windows 로컬 대화 구현·검증을 완료했으며 **Unreleased**다. Server **106/106**, root·Built-in/Legacy EditMode **각 240/240**, 실제 모델 Play Mode와 최종 Windows Mono **35/35** 검사를 통과했다. 측정값과 제한은 [검증 기록](PHASE16_VALIDATION.md)에 남긴다. Phase 12~14는 Advanced Behavior, Backend 배포, Realtime의 기존 책임 경계를 유지한다. 번호는 우선순위가 아니며 후보 기능은 구현 직전에 다시 계획한다.
 
 ## 우리가 만드는 것
+
+Phase 12는 2026-10-03 사용자 승인 범위의 구현과 자동 실행 검증을 완료했다. bool·범위 제한 숫자·typed 외부 값·복합 조건을 선택형 계층으로 추가하고 Basic 및 Phase 15·16을 보존한다. [확정 계획](PHASE12_PLAN.md)과 [현재 소스 검증](PHASE12_VALIDATION.md)을 따르며 공개 버전과 태그는 변경하지 않는다. Phase 13·14 후보는 그대로 유지한다.
 
 **AI Character Kit은 특정 게임의 NPC 한 명이 아니라, 여러 Unity 3D 프로젝트에서 재사용할 수 있는 AI NPC 런타임 프레임워크다.** 게임이나 UI에 종속되지 않은 대화 제어 계약을 중심에 두고, 캐릭터 설정·대화 공급자·화면 표현을 교체 가능한 경계로 분리한다. 개발 중에는 결정적 Mock으로 비용과 네트워크 없이 동작하고, 온라인 단계에서는 같은 Core 계약에 Backend 어댑터를 연결한다.
 
@@ -70,7 +72,7 @@ Push-to-Talk → IAudioCaptureDriver → bounded WAV
 - 캐릭터 canon·재사용 lore·현재 게임 상태를 turn별 bounded snapshot으로 조립하는 grounding 경계
 - 외부 설치 모델로 인터넷 없이 대화하는 선택형 Windows 로컬 실행기와 NPC별 기억
 
-API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유한다. TTS와 STT는 대화 Core를 변경하지 않는 선택형 adapter이며 전사 결과는 기존 텍스트 입력에서 검토한다. Realtime은 지연·끼어들기 요구가 실제로 확인된 뒤에만 검토한다. Phase 11은 대화 trigger와 consumer action 사이의 재사용 가능한 연결만 제공하고, Phase 15 grounding은 대사 생성 근거만 제공한다. 퀘스트·인벤토리·전투·NavMesh·Behavior Tree 자체와 관계도·범용 자율 에이전트는 프레임워크가 구현하지 않는다.
+API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유한다. TTS와 STT는 대화 Core를 변경하지 않는 선택형 adapter이며 전사 결과는 기존 텍스트 입력에서 검토한다. Realtime은 지연·끼어들기 요구가 실제로 확인된 뒤에만 검토한다. Phase 11은 대화 trigger와 consumer action 사이의 재사용 가능한 연결만 제공하고, Phase 15 grounding은 대사 생성 근거만 제공한다. 퀘스트·인벤토리·전투·NavMesh·Behavior Tree 자체와 장기 관계 서비스·범용 자율 에이전트는 프레임워크가 구현하지 않는다.
 
 ## 현재 기준선
 
@@ -100,7 +102,7 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 | Character Builder | profile 작성, Mock preview, 기존 Scene/Prefab·presentation·선택형 UI/TTS 연결 | Phase 10 구현·자동·수동 검증 완료 |
 | 대화 기반 행동 | 자연어 trigger를 action ID에 연결하고 consumer handler가 실제 행동 수행 | Phase 11 구현·자동·수동 검증 완료 |
 | Runtime context와 lore | character canon, reusable lore/belief, live observation을 turn별 bounded snapshot으로 전달 | Phase 15 구현·자동·수동 검증 완료 |
-| Advanced Behavior | 선택형 변수·점수·복합 gate를 기존 action handler 앞에 추가 | Phase 12 후속 가안; Phase 11 검증 후 재계획 |
+| Advanced Behavior | NPC별 bool·bounded number, typed game 값, 복합 조건과 기존 action handler | Phase 12 승인 범위 구현·자동 실행 검증 완료, Unreleased |
 | Backend 배포 | reference server를 독립 설치·검증 가능한 artifact로 정리 | Phase 13 후속 가안; 배포 방식 재계획 필요 |
 | Realtime 음성 | Push-to-Talk로 해결되지 않는 저지연·barge-in 요구 대응 | Phase 14 후속 가안; 요구 증거 후 재계획 |
 | Offline local inference | 외부 Gemma/llama.cpp를 Unity 공유 실행기와 NPC별 client로 연결 | Phase 16 Windows Editor/Mono 구현·실행 검증 완료, Unreleased |
@@ -241,15 +243,16 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - `0.3.0` 릴리즈 전에 신규 사용자가 handler 작성부터 Mock/V3 검증까지 완주하는 package Action Quick Start와 troubleshooting을 추가하고 예제 compile·링크를 검증했다.
 - `0.3.0` 구현은 `c38b5a0`, 완료 문서는 `7cf0a63`에 보존됐고 exact commit `42f5c5916f5e8fb20cfcec742b91a7451e062a0e`가 immutable `v0.3.0` tag와 GitHub Release로 공개됐다.
 
-### Phase 12 후보 — 선택적 Advanced Behavior Rules
+### Phase 12 — 선택형 Advanced Behavior Rules
 
-- **상태: 후속 가안 — Phase 11 완료 결과를 바탕으로 구현 전 재계획**
-- 후보 범위와 재계획 게이트: [`PHASE12_PLAN.md`](PHASE12_PLAN.md)
-- Phase 11의 trigger와 `INpcActionHandler`를 그대로 재사용하고 선택형 변수·점수·복합 gate만 추가한다.
-- ScriptableObject에는 정의만, NPC별 변경 값은 runtime state에 둔다.
-- 시각적 구조화 rule을 source of truth로 두고 자연어 작성 도우미는 검토 가능한 draft만 만든다.
-- 변수 타입, reset·저장 수명, 공개 API와 package version은 실제 consumer 사례를 수집한 뒤 확정한다.
-- Phase 11과 분리된 선택형 계층으로 유지하며 별도 구현 승인 전에는 코드를 추가하지 않는다.
+- **상태: 2026-10-03 승인 범위 구현·자동 실행 검증 완료, Unreleased**
+- [확정 계획](PHASE12_PLAN.md), [사용 안내](ADVANCED_BEHAVIOR_QUICKSTART.md), [현재 소스 검증](PHASE12_VALIDATION.md)
+- AI는 대화 신호를 판정하고 Unity가 NPC별 bool·bounded number 변경, typed 외부 상태 조건, priority·cooldown·once를 평가한다.
+- 한 턴의 변경을 함께 확정한 뒤 실제 행동은 기존 `INpcActionHandler.CanExecute`를 거쳐 최대 하나 실행한다.
+- 상태는 NPC 인스턴스 수명 동안 유지하고 대화 기억 reset과 독립적으로 초기화한다.
+- Character Builder 구조화 편집, 명시적 Basic 초안 가져오기, 오프라인 미리보기, 선택 변수 grounding과 두 NPC의 Mock 기본 샘플을 제공한다.
+- 저장·장기 관계 서비스·자율 행동·자연어 작성 도우미·코드 생성은 제외한다. 버전·의존성·공개 태그는 유지한다.
+- Server 106/106, root·Built-in/Legacy EditMode 각각 303/303, 실제 모델 Advanced 검사 50/50(root 연속 2회·consumer·Windows), V4 fake HTTP 31/31, 기존 Local Grounded 검사 54/54(root·consumer·Windows)와 기억/격리/reset/프로세스 종료를 통과했다. 일반 모델 의도 판정의 확률적 한계와 batch 검증의 제한은 별도 기록을 따른다.
 
 ### Phase 13 후보 — Backend 배포 단위와 운영 도구
 
@@ -333,4 +336,4 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 ## 바로 다음 행동
 
-**완료된 Phase 16 로컬 샘플과 설치 안내를 실제 consumer 구성에 적용하여 사용성을 확인한다.** [설치 안내](LOCAL_INFERENCE_QUICKSTART.md)와 [검증 기록](PHASE16_VALIDATION.md)에서 실행 방법, Windows 범위와 프레임 지연 제한을 확인한다. Phase 15 안정화 결과는 유지한다. Phase 12~14 후보 문서와 우선순위는 변경하지 않으며 새 후보 단계는 시작하지 않는다. 패키지 버전 변경, push, 태그와 릴리즈 발행은 별도 승인 작업이다.
+**완료한 Phase 12 Advanced Relationship 샘플을 실제 NPC 설정에 적용한다.** [사용 안내](ADVANCED_BEHAVIOR_QUICKSTART.md)와 [검증 기록](PHASE12_VALIDATION.md)에 따라 Mock으로 규칙을 먼저 확인하고 필요한 Backend/LocalInference를 연결한다. Phase 15·16 완료 증거와 이번 결과를 구분하며 Phase 13·14 후보 내용과 우선순위는 유지한다. 새 후보 단계, 패키지 버전 변경, push, 태그와 릴리즈 발행은 이번 작업에 포함하지 않는다.

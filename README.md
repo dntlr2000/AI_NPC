@@ -2,7 +2,7 @@
 
 AI Character Kit is a reusable Unity 6 framework for structured AI-driven NPCs. It separates character data, conversation providers, presentation, speech, and transcription behind replaceable boundaries so game-specific models and UI remain consumer-owned.
 
-Version `0.4.0` adds bounded request-time character canon, reusable lore/beliefs, live game-state providers, and conversation contract V4 to the existing deterministic Mock, V1/V2/V3, actions, bounded sessions, optional TTS/STT, samples, and Character Builder features. It remains a release candidate until the immutable `v0.4.0` tag and GitHub Release are published from an explicitly approved commit.
+Version `0.4.0` adds bounded request-time character canon, reusable lore/beliefs, live game-state providers, and conversation contract V4 to the existing deterministic Mock, V1/V2/V3, actions, bounded sessions, optional TTS/STT, samples, and Character Builder features. The immutable `v0.4.0` release was published on 2026-09-04 from commit `027b61f053c620d4e5202830b18692a6d45d3458`; subsequent source changes are Unreleased.
 
 ## Requirements
 
@@ -35,6 +35,10 @@ See the [reuse guide](docs/REUSE_GUIDE.md) and [package documentation](Packages/
 The installable UPM package lives at `Packages/com.aicharacterkit.framework`. It works without a network when using Mock mode and never contains API keys or calls OpenAI directly.
 
 The `server/` directory is a separate, loopback-only reference implementation for optional conversation, memory, semantic V3 triggers, V4 grounding, TTS, and STT paths. It is included as repository source but is not published as a UPM or npm package. Remote deployment, client authentication, Realtime voice, persistent memory, and bundled offline inference remain out of scope.
+
+## Advanced Behavior (Unreleased)
+
+The current source also includes optional **Phase 12 Advanced Behavior** for per-NPC variables, affinity, typed game conditions and action gates. See the [Advanced quick start](docs/ADVANCED_BEHAVIOR_QUICKSTART.md), [approved plan](docs/PHASE12_PLAN.md) and [current verification](docs/PHASE12_VALIDATION.md). Basic NPCs remain supported; this functionality is not in the public v0.4.0 tag.
 
 ## Windows local dialogue (Unreleased)
 

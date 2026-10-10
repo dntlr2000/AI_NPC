@@ -3,6 +3,7 @@
     "rootNamespace": "AiCharacterKit.Core.Tests",
     "references": [
         "AiCharacterKit.Core",
+        "AiCharacterKit.Behavior",
         "AiCharacterKit.Unity"
     ],
     "optionalUnityReferences": [

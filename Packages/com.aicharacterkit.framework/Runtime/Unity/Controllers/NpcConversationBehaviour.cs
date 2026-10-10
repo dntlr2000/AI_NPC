@@ -143,9 +143,23 @@ namespace AiCharacterKit.Unity
         }
 
         /// <summary>
-        /// Converts the active profile and user text into a pure request and submits it.
+        /// Reserves optional Advanced state throughout capture, generation, presentation and action processing.
         /// </summary>
         public async Task<bool> SubmitAsync(string userText)
+        {
+            System.IDisposable reservation = null;
+            if (controller != null && actionCoordinator != null
+                && !actionCoordinator.TryReserveBehaviorTurn(out reservation, out _))
+            {
+                presentationDriver?.PresentError("이미 대화 요청을 처리하고 있습니다.");
+                return false;
+            }
+            try { return await SubmitPreparedAsync(userText); }
+            finally { reservation?.Dispose(); }
+        }
+
+        /// <summary>Builds one immutable request under the caller's optional behavior reservation.</summary>
+        private async Task<bool> SubmitPreparedAsync(string userText)
         {
             if (controller == null || characterProfile == null || lifetimeCancellation == null)
             {
@@ -193,9 +207,23 @@ namespace AiCharacterKit.Unity
         }
 
         /// <summary>
-        /// Clears optional short memory and restores the profile's initial presentation.
+        /// Reserves Advanced state during memory reset while retaining variables and action gates.
         /// </summary>
         public async Task<bool> ResetConversationAsync()
+        {
+            System.IDisposable reservation = null;
+            if (controller != null && actionCoordinator != null
+                && !actionCoordinator.TryReserveBehaviorTurn(out reservation, out _))
+            {
+                presentationDriver?.PresentError("이미 대화 요청을 처리하고 있습니다.");
+                return false;
+            }
+            try { return await ResetPreparedConversationAsync(); }
+            finally { reservation?.Dispose(); }
+        }
+
+        /// <summary>Clears only optional conversation memory and restores the initial presentation.</summary>
+        private async Task<bool> ResetPreparedConversationAsync()
         {
             if (controller == null || lifetimeCancellation == null)
             {
@@ -240,6 +268,13 @@ namespace AiCharacterKit.Unity
                 Debug.LogError(
                     "Presentation Driver Source must implement INpcPresentationDriver.",
                     this);
+                return false;
+            }
+
+            if (actionCoordinator != null && actionCoordinator.IsAdvanced
+                && (conversationMode == NpcConversationMode.Backend || conversationMode == NpcConversationMode.BackendSession))
+            {
+                Debug.LogError("Advanced behavior requires Mock, BackendActions, BackendContext or LocalInference.", this);
                 return false;
             }
 

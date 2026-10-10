@@ -3,6 +3,7 @@
     "rootNamespace": "AiCharacterKit.Unity",
     "references": [
         "AiCharacterKit.Core",
+        "AiCharacterKit.Behavior",
         "AiCharacterKit.LocalInference",
         "AiCharacterKit.Speech",
         "AiCharacterKit.Transcription",

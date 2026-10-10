@@ -35,6 +35,10 @@ The builder never generates a game model, UI, presentation implementation, conte
 
 The package root is treated as read-only. Editor automation writes only to an imported sample location or `Assets/AI Character Kit/Samples`. When versioned sample folders coexist, automation selects the sample matching the installed package version.
 
+## Advanced Behavior (Unreleased)
+
+Optional current-source **Advanced Behavior** adds bounded NPC variables and structured game conditions to the existing action handlers. See the [Advanced Behavior Quick Start](Documentation~/ADVANCED_BEHAVIOR_QUICKSTART.md). The sample defaults to Mock, and conversation memory reset remains separate from behavior state reset. This functionality is not in the public v0.4.0 tag.
+
 ## Windows local dialogue (Unreleased)
 
 For **Unreleased Windows local inference**, follow [Local Inference Quick Start](Documentation~/LOCAL_INFERENCE_QUICKSTART.md). A scene-owned LocalInferenceRuntime shares an external model process while each NPC retains independent memory. This feature is available from current source and is not in the public v0.4.0 tag.

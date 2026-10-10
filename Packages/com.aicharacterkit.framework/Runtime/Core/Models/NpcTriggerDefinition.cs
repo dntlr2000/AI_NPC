@@ -23,6 +23,24 @@ namespace AiCharacterKit.Core
 
         public int Priority { get; }
 
+        public bool HasActionBinding => !string.IsNullOrEmpty(ActionId);
+
+        /// <summary>Creates an Advanced semantic signal without requiring a consumer action.</summary>
+        public static NpcTriggerDefinition CreateSignal(string triggerId, string conditionDescription, string exampleUserText)
+        {
+            return new NpcTriggerDefinition(triggerId, conditionDescription, exampleUserText);
+        }
+
+        /// <summary>Validates signal text while deliberately leaving the optional action binding empty.</summary>
+        private NpcTriggerDefinition(string triggerId, string conditionDescription, string exampleUserText)
+        {
+            TriggerId = RequireIdentifier(triggerId, nameof(triggerId));
+            ConditionDescription = RequireBoundedText(conditionDescription, MaxConditionUtf8Bytes, nameof(conditionDescription));
+            ExampleUserText = RequireBoundedText(exampleUserText, MaxExampleUtf8Bytes, nameof(exampleUserText));
+            ActionId = string.Empty;
+            Priority = 0;
+        }
+
         /// <summary>
         /// Creates and validates one trigger-to-action definition.
         /// </summary>

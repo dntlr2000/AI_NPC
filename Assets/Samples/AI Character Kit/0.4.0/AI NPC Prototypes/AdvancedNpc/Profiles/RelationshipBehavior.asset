@@ -1,0 +1,135 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9def104c2bd96224fbe4e2288021d01f, type: 3}
+  m_Name: RelationshipBehavior
+  m_EditorClassIdentifier: AiCharacterKit.Unity::AiCharacterKit.Unity.Behavior.NpcBehaviorProfile
+  definition:
+    variables:
+    - id: affinity
+      kind: 1
+      defaultBoolean: 0
+      defaultNumber: 40
+      minimum: 0
+      maximum: 100
+      exposeToDialogue: 1
+      label: Current affinity toward the player (0 to 100)
+    - id: greeted
+      kind: 0
+      defaultBoolean: 0
+      defaultNumber: 0
+      minimum: 0
+      maximum: 100
+      exposeToDialogue: 1
+      label: The player has greeted this NPC
+    externalValues:
+    - id: permission
+      kind: 0
+    - id: alarm
+      kind: 0
+    signals:
+    - triggerId: praise
+      conditionDescription: Match ONLY a direct compliment about this NPC in the
+        latest user message, such as calling this NPC kind. A request, a state question,
+        sharing a password or asking to recall one is NOT a compliment. Ignore compliments
+        in earlier turns.
+      exampleUserText: "\uC815\uB9D0 \uCE5C\uC808\uD558\uB124\uC694."
+    - triggerId: insult
+      conditionDescription: Match ONLY a direct insult about this NPC in the latest
+        user message, such as calling this NPC unkind. Requests, state questions
+        and password conversations are NOT insults. Ignore earlier turns.
+      exampleUserText: "\uBD88\uCE5C\uC808\uD558\uAD70\uC694."
+    - triggerId: greet
+      conditionDescription: Match ONLY an explicit greeting such as hello in the
+        latest user message. A polite request or a memory question is NOT a greeting.
+        Ignore greetings in earlier turns.
+      exampleUserText: "\uC548\uB155\uD558\uC138\uC694."
+    - triggerId: request_open_gate
+      conditionDescription: 'Match every current request to open the gate, including
+        repeated requests after success or refusal. Match the user''s intent regardless
+        of affinity, permission, alarm or gate state: Unity checks those separately.
+        Do not match a question asking only about the current gate state.'
+      exampleUserText: "\uBB38\uC744 \uC5F4\uC5B4 \uC8FC\uC138\uC694."
+    mutationRules:
+    - ruleId: gain_affinity
+      triggerId: praise
+      condition:
+        nodes: []
+      changes:
+      - variableId: affinity
+        operation: 1
+        boolean: 0
+        number: 10
+    - ruleId: lose_affinity
+      triggerId: insult
+      condition:
+        nodes: []
+      changes:
+      - variableId: affinity
+        operation: 2
+        boolean: 0
+        number: 10
+    - ruleId: remember_greeting
+      triggerId: greet
+      condition:
+        nodes: []
+      changes:
+      - variableId: greeted
+        operation: 0
+        boolean: 1
+        number: 10
+    actionRules:
+    - ruleId: open_gate_when_friendly
+      triggerId: request_open_gate
+      actionId: open_gate
+      priority: 100
+      cooldownSeconds: 5
+      once: 0
+      condition:
+        nodes:
+        - parent: -1
+          kind: 1
+          valueId: affinity
+          comparison: 3
+          boolean: 0
+          number: 60
+        - parent: 0
+          kind: 0
+          valueId: affinity
+          comparison: 3
+          boolean: 0
+          number: 60
+        - parent: 0
+          kind: 0
+          valueId: permission
+          comparison: 0
+          boolean: 1
+          number: 60
+        - parent: 0
+          kind: 3
+          valueId: affinity
+          comparison: 3
+          boolean: 0
+          number: 60
+        - parent: 3
+          kind: 0
+          valueId: alarm
+          comparison: 0
+          boolean: 1
+          number: 60
+    - ruleId: greet_once
+      triggerId: greet
+      actionId: special_greeting
+      priority: 10
+      cooldownSeconds: 0
+      once: 1
+      condition:
+        nodes: []

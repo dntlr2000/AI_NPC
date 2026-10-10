@@ -13,7 +13,7 @@ namespace AiCharacterKit.Editor
     /// <summary>
     /// Authors reusable profiles and connects existing consumer presentation and UI objects.
     /// </summary>
-    internal sealed class CharacterBuilderWindow : EditorWindow
+    internal sealed partial class CharacterBuilderWindow : EditorWindow
     {
         private CharacterProfile selectedProfile;
         private CharacterProfileDraft profileDraft = new CharacterProfileDraft();
@@ -249,6 +249,11 @@ namespace AiCharacterKit.Editor
         /// </summary>
         private void DrawPreviewSection()
         {
+            if (configuration.ConfigureActions && configuration.BehaviorMode == NpcBehaviorMode.Advanced)
+            {
+                EditorGUILayout.HelpBox("Use the Advanced preview below to simulate variables, facts and matched signals without live providers or actions.", MessageType.Info);
+                return;
+            }
             EditorGUILayout.LabelField("2. Mock Preview", EditorStyles.boldLabel);
             previewInput = EditorGUILayout.TextField("User Text", previewInput);
             if (GUILayout.Button("Preview Mock Response"))
@@ -312,6 +317,13 @@ namespace AiCharacterKit.Editor
                     "No action component is added. Existing action components and assets are left untouched.",
                     MessageType.Info);
                 EditorGUILayout.Space();
+                return;
+            }
+
+            configuration.BehaviorMode = (NpcBehaviorMode)EditorGUILayout.EnumPopup("Behavior Mode", configuration.BehaviorMode);
+            if (configuration.BehaviorMode == NpcBehaviorMode.Advanced)
+            {
+                DrawAdvancedBehavior();
                 return;
             }
 
@@ -405,7 +417,7 @@ namespace AiCharacterKit.Editor
 
             var selected = new List<MonoBehaviour>();
             var drawnIds = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var binding in actionDraft.Bindings)
+            foreach (var binding in GetActiveActionBindings())
             {
                 var actionId = binding?.ActionId?.Trim() ?? string.Empty;
                 if (actionId.Length == 0 || !drawnIds.Add(actionId))
@@ -924,6 +936,10 @@ namespace AiCharacterKit.Editor
             configuration.LocalInferenceRuntime = null;
             configuration.ActionHandlerSources = Array.Empty<MonoBehaviour>();
             configuration.ContextProviderSources = Array.Empty<MonoBehaviour>();
+            configuration.BehaviorMode = NpcBehaviorMode.Basic;
+            configuration.BehaviorValueProviderSources = Array.Empty<MonoBehaviour>();
+            configuration.EnableBehaviorTrace = false;
+            LoadBehaviorProfile(null);
             configuration.LoreProfiles = Array.Empty<NpcLoreProfile>();
             validationReport = null;
             if (target == null)
@@ -1069,6 +1085,7 @@ namespace AiCharacterKit.Editor
 
             configuration.ConfigureActions = true;
             var serializedCoordinator = new SerializedObject(coordinator);
+            LoadAdvancedConfiguration(serializedCoordinator);
             LoadActionProfile(
                 serializedCoordinator.FindProperty("actionProfile")
                     .objectReferenceValue as NpcActionProfile);

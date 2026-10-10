@@ -26,6 +26,8 @@ Implement `INpcActionHandler` directly for pure adapters or derive a consumer Mo
 
 ## Optional runtime grounding
 
+For NPC variables, affinity and compound action gates, select **Advanced** in Conversation Actions and follow the [Advanced Behavior Quick Start](ADVANCED_BEHAVIOR_QUICKSTART.md). The structured draft editor validates typed references and bounds; applying validates actual handler/provider connections. Basic profiles can be imported explicitly into a new draft. Offline preview uses the same evaluator with synthetic values, and Scene/Prefab apply/reapply remains static. This Unreleased feature supports Mock, V3, V4 and LocalInference; V3 has no variable grounding and V1/V2 are rejected.
+
 Enable **Runtime Grounding** to create or select one consumer-owned `NpcLoreProfile`, assign additional lore sources, and choose existing `INpcContextProvider` MonoBehaviours from the target hierarchy. The authored preview assembles canon and lore without calling runtime providers; live facts are intentionally captured only when Send begins.
 
 Select **BackendContext** to wire one `NpcContextCoordinator` and the V4 respond/reset endpoints. Lore facts, beliefs, and runtime observations require unique lower `snake_case` IDs. Applying an invalid or duplicate configuration is blocked before Scene or Prefab changes begin, and reapplying reuses the existing coordinator.

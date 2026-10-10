@@ -15,7 +15,7 @@ namespace AiCharacterKit.Editor
     /// <summary>
     /// Creates, updates, validates, and previews consumer-owned character data assets.
     /// </summary>
-    internal static class CharacterBuilderAssetService
+    internal static partial class CharacterBuilderAssetService
     {
         /// <summary>
         /// Creates one validated CharacterProfile at a unique writable Assets path.

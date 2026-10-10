@@ -288,6 +288,11 @@ namespace AiCharacterKit.Editor
 
         public NpcActionProfile ActionProfile { get; set; }
 
+        public NpcBehaviorMode BehaviorMode { get; set; }
+        public AiCharacterKit.Unity.Behavior.NpcBehaviorProfile BehaviorProfile { get; set; }
+        public MonoBehaviour[] BehaviorValueProviderSources { get; set; } = System.Array.Empty<MonoBehaviour>();
+        public bool EnableBehaviorTrace { get; set; }
+
         public MonoBehaviour[] ActionHandlerSources { get; set; } =
             System.Array.Empty<MonoBehaviour>();
 

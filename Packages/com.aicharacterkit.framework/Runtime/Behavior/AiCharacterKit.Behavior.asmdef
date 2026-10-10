@@ -1,0 +1,7 @@
+{
+    "name": "AiCharacterKit.Behavior",
+    "rootNamespace": "AiCharacterKit.Behavior",
+    "references": ["AiCharacterKit.Core"],
+    "autoReferenced": true,
+    "noEngineReferences": true
+}

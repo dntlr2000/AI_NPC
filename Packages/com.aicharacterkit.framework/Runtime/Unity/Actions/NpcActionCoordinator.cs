@@ -10,7 +10,7 @@ namespace AiCharacterKit.Unity.Actions
     /// <summary>
     /// Adapts Unity assets and MonoBehaviours to the pure-Core action router.
     /// </summary>
-    public sealed class NpcActionCoordinator : MonoBehaviour, INpcTurnObserver
+    public sealed partial class NpcActionCoordinator : MonoBehaviour, INpcTurnObserver
     {
         [SerializeField]
         private NpcActionProfile actionProfile;
@@ -22,13 +22,15 @@ namespace AiCharacterKit.Unity.Actions
 
         public NpcActionProfile ActionProfile => actionProfile;
 
-        public NpcActionResult LastResult => router?.LastResult;
+        public NpcActionResult LastResult => IsAdvanced ? behaviorRuntime?.LastResult : router?.LastResult;
 
         /// <summary>
         /// Validates the profile and every explicitly selected consumer action handler.
         /// </summary>
         public bool TryValidateConfiguration(out string error)
         {
+            if (IsAdvanced) return TryValidateAdvanced(out error);
+            if (behaviorMode != NpcBehaviorMode.Basic) { error = "Unknown behavior mode."; return false; }
             if (actionProfile == null)
             {
                 error = "NpcActionCoordinator requires an NpcActionProfile.";
@@ -77,6 +79,7 @@ namespace AiCharacterKit.Unity.Actions
         /// </summary>
         public IReadOnlyList<NpcTriggerDefinition> CreateTriggerDefinitions()
         {
+            if (IsAdvanced) return behaviorProfile == null ? Array.Empty<NpcTriggerDefinition>() : behaviorProfile.CreateTriggerDefinitions();
             if (actionProfile == null)
             {
                 return Array.Empty<NpcTriggerDefinition>();
@@ -90,6 +93,7 @@ namespace AiCharacterKit.Unity.Actions
         /// </summary>
         public bool TryInitialize(out string error)
         {
+            if (IsAdvanced) return TryInitializeAdvanced(out error);
             if (router != null)
             {
                 error = string.Empty;
@@ -131,6 +135,14 @@ namespace AiCharacterKit.Unity.Actions
         {
             if (!TryInitialize(out _))
             {
+                return;
+            }
+
+            if (IsAdvanced)
+            {
+                var providers = CreateValueProviders();
+                if (activeBehaviorTurn != null) await activeBehaviorTurn.EvaluateAsync(context, providers, cancellationToken);
+                else await behaviorRuntime.ProcessTurnAsync(context, providers, cancellationToken);
                 return;
             }
 

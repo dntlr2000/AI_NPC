@@ -17,7 +17,7 @@ namespace AiCharacterKit.Editor
     /// <summary>
     /// Validates and non-destructively applies one Character Builder composition.
     /// </summary>
-    internal static class CharacterBuilderService
+    internal static partial class CharacterBuilderService
     {
         /// <summary>
         /// Performs a complete read-only preflight for one Scene or Prefab configuration.
@@ -573,6 +573,12 @@ namespace AiCharacterKit.Editor
                     "Conversation Actions require Mock, BackendActions, BackendContext, or LocalInference mode.");
             }
 
+            if (configuration.BehaviorMode == NpcBehaviorMode.Advanced)
+            {
+                ValidateAdvanced(configuration, targetKindIsValid, report);
+                return;
+            }
+
             if (configuration.ActionProfile == null
                 || !EditorUtility.IsPersistent(configuration.ActionProfile))
             {
@@ -821,6 +827,10 @@ namespace AiCharacterKit.Editor
                 SessionResetEndpoint = source.SessionResetEndpoint,
                 ConfigureActions = source.ConfigureActions,
                 ActionProfile = source.ActionProfile,
+                BehaviorMode = source.BehaviorMode,
+                BehaviorProfile = source.BehaviorProfile,
+                EnableBehaviorTrace = source.EnableBehaviorTrace,
+                BehaviorValueProviderSources = ResolveLocators(contents, CreateLocators(source.Target, source.BehaviorValueProviderSources)),
                 ActionHandlerSources = ResolveLocators(
                     contents,
                     actionHandlerLocators),
@@ -1068,6 +1078,13 @@ namespace AiCharacterKit.Editor
         {
             RecordObject(coordinator, useUndo, "Configure AI NPC Actions");
             var serializedCoordinator = new SerializedObject(coordinator);
+            SetInteger(serializedCoordinator, "behaviorMode", (int)configuration.BehaviorMode);
+            SetObjectReference(serializedCoordinator, "behaviorProfile", configuration.BehaviorProfile);
+            SetBoolean(serializedCoordinator, "enableBehaviorTrace", configuration.EnableBehaviorTrace);
+            var valueSources = configuration.BehaviorValueProviderSources ?? Array.Empty<MonoBehaviour>();
+            var valueProperty = GetRequiredProperty(serializedCoordinator, "behaviorValueProviderSources");
+            valueProperty.arraySize = valueSources.Length;
+            for (var index = 0; index < valueSources.Length; index++) valueProperty.GetArrayElementAtIndex(index).objectReferenceValue = valueSources[index];
             SetObjectReference(
                 serializedCoordinator,
                 "actionProfile",
@@ -1115,6 +1132,7 @@ namespace AiCharacterKit.Editor
                 "contextProviderSources");
             var providers = configuration.ContextProviderSources
                 ?? Array.Empty<MonoBehaviour>();
+            providers = AppendBehaviorGroundingProvider(configuration, providers, useUndo);
             providerProperty.arraySize = providers.Length;
             for (var index = 0; index < providers.Length; index++)
             {
