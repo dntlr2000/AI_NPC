@@ -9,7 +9,7 @@
 
 Phase 15 공개 시점에는 Server **95/95**, Unity compile, 전체 EditMode **186/186**과 live V4 수동 검증이 통과했다. 2026-09-08 검토에서 확인한 V4 HTTP 본문 제한, provider 초기화 시점과 릴리즈 문서 불일치는 별도 **Unreleased 안정화**로 보완했다. 수정본은 Server **106/106**, root 및 Built-in/Legacy consumer Unity **각 203/203**을 통과했다. 기존 완료 기록과 이번 보완의 검증 근거는 [`PHASE15_PLAN.md`](PHASE15_PLAN.md)에 구분한다. wire 규격은 [`CONTRACT_V4.md`](CONTRACT_V4.md), 공개 기록은 [`RELEASE_0.4.0.md`](RELEASE_0.4.0.md)를 따른다. Phase 16은 2026-09-30 승인 범위의 Windows 로컬 대화 구현·검증을 완료했으며 **Unreleased**다. Server **106/106**, root·Built-in/Legacy EditMode **각 240/240**, 실제 모델 Play Mode와 최종 Windows Mono **35/35** 검사를 통과했다. 측정값과 제한은 [검증 기록](PHASE16_VALIDATION.md)에 남긴다. Phase 12~14는 Advanced Behavior, Backend 배포, Realtime의 기존 책임 경계를 유지한다. 번호는 우선순위가 아니며 후보 기능은 구현 직전에 다시 계획한다.
 
-다음 개발 항목은 **Phase 17 — PC·API 선택형 2단계 추론과 신뢰성 안정화**로 정리한다. [계획](PHASE17_PLAN.md)은 `main`의 Phase 12·15·16을 기준으로 의도 분류와 대사 생성을 분리하고, 확인된 토큰 계산 및 현재 턴 진단을 보완한다. 현재는 로드맵·계획을 정리한 상태이며 제품의 2단계 기능은 아직 구현되지 않았다.
+현재 개발 항목은 **Phase 17 — PC·API 선택형 2단계 추론과 신뢰성 안정화**다. 원래 E4B·API 후보 탈락 기록은 [이전 검증](PHASE17_VALIDATION.md)에 보존한다. 승인된 [후속 보완](PHASE17_REMEDIATION_VALIDATION.md)은 API `gpt-5.6-luna`의 의미·환경 기준을 통과해 NPC/Builder와 비교 샘플에 연결했다. E4B는 개선 후보 미선정으로 계속 미채택이다. 기존 SinglePass가 기본이며 Phase 17 전체 완료로 묶지 않는다.
 
 `AndroidSDK` 브랜치(대화에서 Android_SDK로 지칭)의 모바일·LiteRT 확장과 조사 자료는 보존하되 이번 개발에 병합하지 않는다. S10에서 실제 대화·행동까지 확인했지만 지연·프레임·의미 정확도 목표를 충족하지 못해 모바일 제품화는 보류한다. 이 판단은 기존 Windows Phase 16 완료 기록을 취소하거나 모든 모바일 환경의 실행 불가능을 뜻하지 않는다. Phase 13·14 후보의 내용과 상대적 우선순위는 유지한다.
 
@@ -87,7 +87,7 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - Git 공개 기준선: `027b61f053c620d4e5202830b18692a6d45d3458` (`v0.4.0`)
 - Backend: Node.js 24 + TypeScript + Fastify + OpenAI SDK, 대화 V1/V2/V3/V4와 선택형 Speech/Transcription V1, loopback 전용
 - 제외 범위: 영구·장기·Vector 기억, Realtime, VAD, 자동 전송, 원격 배포, client auth, streaming, bundled offline inference
-- 개발 기준: `main`의 `0ea2e4d3916e3da5f42076719d7560421021ca9b`를 바탕으로 Phase 17 계획 수립. 현재 제품은 단일 호출이며 2단계는 격리 검증 후보에만 존재한다.
+- 개발 기준: `main`의 `0ea2e4d3916e3da5f42076719d7560421021ca9b` 기반 Phase 17 구현·검증 진행 중. API `gpt-5.6-luna`만 선택형 2단계로 채택됐으며 제품 기본값은 기존 단일 호출이다.
 - 보존·보류: `AndroidSDK`의 Android/LiteRT 확장. E2B·LFM2.5 신규 제품 지원과 모바일 재검증은 Phase 17에 포함하지 않는다.
 
 ## 초기 로드맵과의 비교
@@ -112,7 +112,7 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 | Backend 배포 | reference server를 독립 설치·검증 가능한 artifact로 정리 | Phase 13 후속 가안; 배포 방식 재계획 필요 |
 | Realtime 음성 | Push-to-Talk로 해결되지 않는 저지연·barge-in 요구 대응 | Phase 14 후속 가안; 요구 증거 후 재계획 |
 | Offline local inference | 외부 Gemma/llama.cpp를 Unity 공유 실행기와 NPC별 client로 연결 | Phase 16 Windows Editor/Mono 구현·실행 검증 완료, Unreleased |
-| PC·API 추론 신뢰성 | main 기반 선택형 2단계, 토큰 계산·현재 턴 진단·설정과 검증 | Phase 17 다음 작업 — 계획 수립, 제품 구현 전 |
+| PC·API 추론 신뢰성 | main 기반 2단계 후보, 토큰 계산·현재 턴 진단·예시 검증 | Phase 17 API 조합 구현·검증 완료, E4B 미채택; 단일 호출 기본 유지 |
 | Android·LiteRT 확장 | 별도 브랜치에서 실기기 실행과 설치·수명 관리를 검증 | 제품 수용 기준 미충족, 보존·보류 |
 | 장기 기억 | 구현하지 않음 | 실제 persistence 요구와 privacy 설계 전까지 보류 |
 
@@ -304,14 +304,15 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 ### Phase 17 — PC·API 선택형 2단계 추론과 신뢰성 안정화
 
-- **상태: 다음 작업 — 2026-10-12 계획 수립, 제품 구현 전**
-- 범위·검증·채택 판단: [`PHASE17_PLAN.md`](PHASE17_PLAN.md)
+- **상태: 2026-10-12 API 보완 조합 채택·통합 완료, E4B 미채택 — 전체 모델 완료로 묶지 않음**
+- 범위·채택 기준: [`PHASE17_PLAN.md`](PHASE17_PLAN.md), 실제 결과: [`PHASE17_VALIDATION.md`](PHASE17_VALIDATION.md)
+- 실패 원인 재검토와 다음 후보 제안: [`PHASE17_REMEDIATION_PLAN.md`](PHASE17_REMEDIATION_PLAN.md). 원본 평가·기준을 보존한다. 모델별 144회 개발 후 E4B는 종료했고, API는 384턴 최종 비교와 72턴 실제 환경 검사를 마쳤다. Server 147/147, root·consumer EditMode 각 362/362와 모델별 제한은 [후속 결과](PHASE17_REMEDIATION_VALIDATION.md)에 구분한다.
 - `main`을 기준으로 E4B/llama.cpp Windows와 Backend V4/API를 지원 대상으로 삼는다. 기존 단일 호출을 기본값으로 유지하고 2단계를 NPC별로 명시적으로 선택한다.
 - 같은 모델로 먼저 의도를 분류하고 이후 대사를 생성한다. 분류에는 동일한 성공 이력을 사용하며, 두 단계 검증이 끝난 뒤 Basic/Advanced가 변수·행동을 한 번만 처리한다.
 - 기존 Core·V4 계약, 기억과 행동 상태의 독립 수명, 실행 직전 `CanExecute`, 로컬 행동 결과에 따른 대사·기억 최종화를 유지한다.
 - 실제 생성과 사전 토큰 계산을 일치시키고, 이번 턴의 분류·실패·행동 결과를 이전 trace와 구분한다. AndroidSDK의 보완은 필요한 항목만 검토하며 단일 호출 프롬프트를 일괄 교체하지 않는다.
 - main 기반 격리 비교에서 E4B 통합 통과는 단일 144/192 → 2단계 182/192, API는 187/192 → 190/192였다. 실제 저장소에 기능이 반영되었다는 뜻은 아니며 참조 요청 누락·기억/상태 오류와 긴 응답 사례가 남았다.
-- 자동 회귀, 오류 유형별 의미 검사, root·Built-in/Legacy consumer·Windows x64 Mono 실행을 검증한다. 의미 오류 허용 상한은 구현 시작 시 평가 전에 확정하며, 현재 후보를 전체 통과나 채택 완료로 기록하지 않는다.
+- 자동 회귀와 root·Built-in/Legacy consumer·Windows x64 Mono 실행을 검증한다. 사용자가 선택한 채택 기준은 행동 신호 오탐 0건, 신호 일치 95% 이상, 상태·기억 90% 이상, 전체 응답 p95 5초 이내다. 기존 96개·관측 24개·새 36개를 별도로 평가해 API 조합만 채택했다. 새 36개의 동시 비교에서는 단일 호출이 더 정확하고 빨랐다.
 - Android·LiteRT/E2B·LFM2.5 신규 지원, Phase 12 규칙 알고리즘 변경, Phase 13·14 구현, 모델 교체·자동 재시도·온라인 전환·버전 변경·공개 릴리즈는 제외한다.
 
 ### Package 0.2.0 — 공개 Git 릴리즈
@@ -357,6 +358,6 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 
 ## 바로 다음 행동
 
-**Phase 17을 main 기준의 다음 구현 단계로 진행한다.** [계획](PHASE17_PLAN.md)에 따라 작성 데이터와 단일 호출 기준을 고정하고, 오류 유형별 채택 기준을 정한 뒤 선택형 2단계·토큰 계산·현재 턴 진단을 연결한다. NPC 설정과 Builder·샘플·consumer·Windows player 검증까지 같은 단계에 포함한다.
+**검증된 API 선택형 경로를 현재 프로젝트에서 검토한다.** [후속 검증](PHASE17_REMEDIATION_VALIDATION.md)에 따라 `BackendContext` + `ClassifyThenRespond`를 선택하거나 별도 API Inference Comparison 샘플을 생성할 수 있다. 서버는 최신 소스로 한 번 실행하면 되며 기본 8787의 두 endpoint를 함께 사용한다. 기본 SinglePass는 유지한다. E4B 추가 개선, 새 모델·모바일 지원과 후속 Phase는 별도 결정 사항이며 이번 작업에서 자동 진행하지 않는다.
 
-이번 변경은 로드맵과 계획 정리이며 런타임 구현이나 모델/API 재검증 완료를 뜻하지 않는다. 기존 Phase 12·15·16 완료 증거와 AndroidSDK의 보존 자료를 유지한다. Phase 13·14는 기존 후보로 남기며 브랜치 전체 병합, 패키지 버전 변경, push, 태그와 릴리즈 발행은 포함하지 않는다.
+이번 완료는 검증한 API 조합에 한하며 Phase 17의 전체 모델·플랫폼 완료나 의미 오류 제거를 뜻하지 않는다. 기존 Phase 12·15·16 완료 증거와 AndroidSDK의 보존 자료를 유지한다. Phase 13·14는 기존 후보로 남기며 브랜치 전체 병합, 패키지 버전 변경, push, 태그와 릴리즈 발행은 포함하지 않는다.

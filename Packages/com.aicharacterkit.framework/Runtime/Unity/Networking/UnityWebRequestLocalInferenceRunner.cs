@@ -18,7 +18,7 @@ using UnityEngine.Networking;
 namespace AiCharacterKit.Unity.Networking
 {
     /// <summary>Manages one pinned local runner and sends bounded, non-streaming requests over loopback.</summary>
-    public sealed class UnityWebRequestLocalInferenceRunner : ILocalInferenceRunner, IDisposable
+    public sealed partial class UnityWebRequestLocalInferenceRunner : ILocalInferenceRunner, ILocalInferenceStrategyCapabilities, ILocalInferenceDiagnostics, IDisposable
     {
         private readonly string manifestPath;
         private readonly SynchronizationContext unityContext;
@@ -26,14 +26,18 @@ namespace AiCharacterKit.Unity.Networking
         private CancellationTokenSource lifetime;
         private LocalInferenceQueue queue;
         private Task preparation;
+        private Task stopping;
+        private readonly object requestSync = new object();
+        private readonly HashSet<TaskCompletionSource<bool>> inFlight = new HashSet<TaskCompletionSource<bool>>();
         private Task processExit = Task.CompletedTask;
         private string endpoint;
         private string credential;
         private string workDirectory;
         private LocalInferenceState state;
         private bool disposed;
+        private readonly Func<string, string, CancellationToken, Task<string>> testTransport;
 
-        public LocalInferenceState State => state == LocalInferenceState.Ready && (process == null || process.HasExited)
+        public LocalInferenceState State => testTransport == null && state == LocalInferenceState.Ready && (process == null || process.HasExited)
             ? LocalInferenceState.Faulted : state;
         public int ProcessId => process?.ProcessId ?? 0;
         public int LastInputTokens { get; private set; }
@@ -48,14 +52,33 @@ namespace AiCharacterKit.Unity.Networking
             unityContext = SynchronizationContext.Current;
         }
 
+        /// <summary>Exercises the production queue, token checks and stage pipeline through a test-only transport.</summary>
+        internal UnityWebRequestLocalInferenceRunner(Func<string, string, CancellationToken, Task<string>> testTransport)
+        {
+            this.testTransport = testTransport ?? throw new ArgumentNullException(nameof(testTransport));
+            unityContext = SynchronizationContext.Current;
+            lifetime = new CancellationTokenSource();
+            queue = new LocalInferenceQueue();
+            state = LocalInferenceState.Ready;
+        }
+
         /// <summary>Shares an in-flight preparation task and never starts a second process for the same host.</summary>
         public Task PrepareAsync(CancellationToken cancellationToken)
         {
             if (disposed) throw LocalInferenceErrors.Unavailable();
+            if (stopping != null && !stopping.IsCompleted) return PrepareAfterStopAsync(cancellationToken);
             if (preparation != null && !preparation.IsCompleted) return preparation;
             if (State == LocalInferenceState.Ready) return Task.CompletedTask;
             preparation = PrepareCoreAsync(cancellationToken);
             return preparation;
+        }
+
+        /// <summary>Waits for old HTTP work and process cleanup before admitting an explicitly requested preparation.</summary>
+        private async Task PrepareAfterStopAsync(CancellationToken cancellationToken)
+        {
+            await stopping;
+            cancellationToken.ThrowIfCancellationRequested();
+            await PrepareAsync(cancellationToken);
         }
 
         /// <summary>Verifies files, starts the private process, and completes synthetic schema warmup before readiness.</summary>
@@ -73,6 +96,7 @@ namespace AiCharacterKit.Unity.Networking
                 {
                     // Establish cancellation before awaiting old-process cleanup so shutdown cannot start a replacement child.
                     await CleanupWorkAsync();
+                    await DrainRequestsAsync();
                     deadline.Token.ThrowIfCancellationRequested();
                     var manifest = await LocalInferenceInstallation.LoadAsync(manifestPath, deadline.Token);
                     deadline.Token.ThrowIfCancellationRequested();
@@ -132,37 +156,61 @@ namespace AiCharacterKit.Unity.Networking
         /// <summary>Serializes callers through a bounded queue while keeping cancellation local to each request.</summary>
         public async Task<AiNpcResponse> GenerateAsync(LocalInferenceRequest request, CancellationToken cancellationToken)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            LocalInferenceJsonCodec.ValidateRequest(request);
-            if (State != LocalInferenceState.Ready || queue == null) throw LocalInferenceErrors.NotReady();
-            var generationLifetime = lifetime.Token;
-            using (var admission = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, generationLifetime))
-            using (await queue.EnterAsync(admission.Token))
-            using (var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, generationLifetime))
+            var total = Stopwatch.StartNew();
+            var diagnostic = new TurnMeasurements();
+            var settled = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            lock (requestSync) inFlight.Add(settled);
+            try
             {
-                deadline.CancelAfter(TimeSpan.FromSeconds(LocalInferenceDefaults.RequestSeconds));
-                var watch = Stopwatch.StartNew();
-                try
+                cancellationToken.ThrowIfCancellationRequested();
+                LocalInferenceJsonCodec.ValidateRequest(request);
+                if (!SupportsStrategy(request.Strategy)) throw LocalInferenceErrors.UnsupportedStrategy();
+                if (State != LocalInferenceState.Ready || queue == null) throw LocalInferenceErrors.NotReady();
+                var generationLifetime = lifetime.Token;
+                diagnostic.Stage = "queue";
+                var admissionWatch = Stopwatch.StartNew();
+                using (var admission = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, generationLifetime))
+                using (await queue.EnterAsync(admission.Token))
+                using (var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, generationLifetime))
                 {
-                    RequireRunning();
-                    var response = await GenerateCoreAsync(request, deadline.Token);
-                    deadline.Token.ThrowIfCancellationRequested();
-                    LastGenerationSeconds = watch.Elapsed.TotalSeconds;
-                    return response;
+                    diagnostic.QueueSeconds = admissionWatch.Elapsed.TotalSeconds;
+                    deadline.CancelAfter(TimeSpan.FromSeconds(LocalInferenceDefaults.RequestSeconds));
+                    var watch = Stopwatch.StartNew();
+                    try
+                    {
+                        RequireRunning();
+                        var response = request.Strategy == NpcInferenceStrategy.ClassifyThenRespond
+                            ? await GenerateTwoStageAsync(request, deadline.Token, diagnostic)
+                            : await GenerateCoreAsync(request, deadline.Token, diagnostic);
+                        deadline.Token.ThrowIfCancellationRequested();
+                        LastGenerationSeconds = watch.Elapsed.TotalSeconds;
+                        diagnostic.Stage = "complete";
+                        return response;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        if (generationLifetime.IsCancellationRequested) throw LocalInferenceErrors.Unavailable();
+                        throw LocalInferenceErrors.Timeout();
+                    }
                 }
-                catch (OperationCanceledException)
+            }
+            catch (OperationCanceledException) { diagnostic.FailureCode = "cancelled"; throw; }
+            catch (AiConversationException error) { diagnostic.FailureCode = error.Code; throw; }
+            catch { diagnostic.FailureCode = "local_runtime_unavailable"; throw LocalInferenceErrors.Unavailable(); }
+            finally
+            {
+                try { PublishDiagnostics(request, diagnostic, total.Elapsed.TotalSeconds); }
+                finally
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (generationLifetime.IsCancellationRequested) throw LocalInferenceErrors.Unavailable();
-                    throw LocalInferenceErrors.Timeout();
+                    lock (requestSync) inFlight.Remove(settled);
+                    settled.TrySetResult(true);
                 }
-                catch (AiConversationException) { throw; }
-                catch { throw LocalInferenceErrors.Unavailable(); }
             }
         }
 
         /// <summary>Counts the actual formatted prompt, drops oldest history pairs, and validates structured output.</summary>
-        private async Task<AiNpcResponse> GenerateCoreAsync(LocalInferenceRequest request, CancellationToken token)
+        private async Task<AiNpcResponse> GenerateCoreAsync(LocalInferenceRequest request, CancellationToken token, TurnMeasurements diagnostic = null)
         {
             LocalInferenceJsonCodec.ValidateRequest(request);
             LocalChatMessage[] messages = null;
@@ -170,23 +218,23 @@ namespace AiCharacterKit.Unity.Networking
             {
                 RequireRunning();
                 messages = LocalInferenceJsonCodec.CreateMessages(request, skipped);
-                var templateJson = await SendAsync("/apply-template", JsonUtility.ToJson(
-                    new LocalTemplateRequest { messages = messages }), token);
-                var template = ReadJson<LocalTemplateResponse>(templateJson);
-                if (string.IsNullOrEmpty(template.prompt)) throw LocalInferenceErrors.InvalidResponse();
-                // The pinned template already includes BOS; do not prepend another special token.
-                var tokensJson = await SendAsync("/tokenize", JsonUtility.ToJson(
-                    new LocalTokenizeRequest { content = template.prompt }), token);
-                var count = ReadJson<LocalTokenizeResponse>(tokensJson);
-                if (count.tokens == null || count.tokens.Length == 0) throw LocalInferenceErrors.InvalidResponse();
-                LastInputTokens = count.tokens.Length;
-                if (count.tokens.Length + LocalInferenceDefaults.OutputTokens <= LocalInferenceDefaults.ContextTokens) break;
+                if (diagnostic != null) diagnostic.Stage = "preflight";
+                LastInputTokens = await CountPromptTokensAsync(messages, token);
+                if (diagnostic != null) diagnostic.DialogueInputTokens = LastInputTokens;
+                if (FitsContext(LastInputTokens)) break;
                 if (skipped == request.History.Count) throw LocalInferenceErrors.ContextLimit();
             }
             var json = LocalInferenceJsonCodec.SerializeChat(messages, request.Envelope.triggers);
-            var response = await SendAsync("/v1/chat/completions", json, token);
-            token.ThrowIfCancellationRequested();
-            return LocalInferenceJsonCodec.ReadResponse(response, request.Envelope);
+            if (diagnostic != null) { diagnostic.Stage = "dialogue"; diagnostic.ModelCalls++; }
+            var watch = Stopwatch.StartNew();
+            try
+            {
+                var response = await SendAsync("/v1/chat/completions", json, token);
+                token.ThrowIfCancellationRequested();
+                if (diagnostic != null) diagnostic.DialogueOutputTokens = ReadOutputTokens(response);
+                return LocalInferenceJsonCodec.ReadResponse(response, request.Envelope);
+            }
+            finally { if (diagnostic != null) diagnostic.DialogueSeconds = watch.Elapsed.TotalSeconds; }
         }
 
         /// <summary>Waits only for the owned process, treating startup loading as a readiness state.</summary>
@@ -210,6 +258,8 @@ namespace AiCharacterKit.Unity.Networking
         /// <summary>Posts only to the private loopback instance and never follows HTTP redirects.</summary>
         private async Task<string> SendAsync(string route, string json, CancellationToken token)
         {
+            token.ThrowIfCancellationRequested();
+            if (testTransport != null) return await testTransport(route, json, token);
             using (var download = new BoundedDownload(4 * 1024 * 1024))
             using (var request = new UnityWebRequest(endpoint + route, UnityWebRequest.kHttpVerbPOST))
             {
@@ -254,7 +304,8 @@ namespace AiCharacterKit.Unity.Networking
         {
             if (completed.Task.IsCompleted) return;
             request.Abort();
-            completed.TrySetCanceled();
+            // Wait for native completion before disposing the request and releasing its queue lease.
+            if (request.isDone) completed.TrySetResult(true);
         }
 
         /// <summary>Converts unexpected JSON decoding details into a stable protocol error.</summary>
@@ -267,6 +318,7 @@ namespace AiCharacterKit.Unity.Networking
         /// <summary>Fails immediately if the process this instance started has exited.</summary>
         private void RequireRunning()
         {
+            if (testTransport != null) return;
             if (process == null || process.HasExited) throw LocalInferenceErrors.Unavailable();
         }
 
@@ -280,7 +332,15 @@ namespace AiCharacterKit.Unity.Networking
         }
 
         /// <summary>Cancels current work and waits for preparation and owned-directory cleanup to finish.</summary>
-        public async Task StopAsync()
+        public Task StopAsync()
+        {
+            if (stopping != null && !stopping.IsCompleted) return stopping;
+            stopping = StopCoreAsync();
+            return stopping;
+        }
+
+        /// <summary>Settles admitted HTTP work and preparation before reporting that the shared runner has stopped.</summary>
+        private async Task StopCoreAsync()
         {
             state = LocalInferenceState.Stopping;
             ReleaseResources();
@@ -289,8 +349,22 @@ namespace AiCharacterKit.Unity.Networking
             {
                 try { await pending; } catch { }
             }
+            await DrainRequestsAsync();
             await CleanupWorkAsync();
             state = LocalInferenceState.Stopped;
+        }
+
+        /// <summary>Waits for the requests that were already admitted, including native cancellation completion.</summary>
+        private Task DrainRequestsAsync()
+        {
+            Task[] pending;
+            lock (requestSync)
+            {
+                pending = new Task[inFlight.Count];
+                var index = 0;
+                foreach (var request in inFlight) pending[index++] = request.Task;
+            }
+            return Task.WhenAll(pending);
         }
 
         /// <summary>Synchronously terminates the owned child during Unity destruction or assembly reload.</summary>

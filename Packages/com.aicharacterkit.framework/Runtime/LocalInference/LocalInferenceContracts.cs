@@ -25,6 +25,13 @@ namespace AiCharacterKit.LocalInference
         Task StopAsync();
     }
 
+    /// <summary>Optionally declares supported strategies without preparing a model.</summary>
+    public interface ILocalInferenceStrategyCapabilities
+    {
+        /// <summary>Reports whether this runner can execute the explicit requested composition.</summary>
+        bool SupportsStrategy(NpcInferenceStrategy strategy);
+    }
+
     /// <summary>Stores only a successful dialogue pair; grounding and revision are never retained.</summary>
     public sealed class LocalConversationTurn
     {
@@ -42,13 +49,23 @@ namespace AiCharacterKit.LocalInference
     /// <summary>Carries one fresh V4 envelope and a bounded snapshot of successful history.</summary>
     public sealed class LocalInferenceRequest
     {
-        public AiNpcRequestEnvelopeDto Envelope { get; }
+        private readonly AiNpcRequestEnvelopeDto envelope;
+        public AiNpcRequestEnvelopeDto Envelope => LocalInferenceSnapshots.Copy(envelope);
+        public NpcInferenceStrategy Strategy { get; }
+        public string RequestId => envelope.requestId;
         public IReadOnlyList<LocalConversationTurn> History { get; }
 
         /// <summary>Copies the history collection so later client activity cannot change the request.</summary>
         public LocalInferenceRequest(AiNpcRequestEnvelopeDto envelope, IEnumerable<LocalConversationTurn> history)
+            : this(envelope, history, NpcInferenceStrategy.SinglePass) { }
+
+        /// <summary>Freezes input DTOs and selects a strategy without changing existing callers.</summary>
+        public LocalInferenceRequest(AiNpcRequestEnvelopeDto envelope, IEnumerable<LocalConversationTurn> history, NpcInferenceStrategy strategy)
         {
-            Envelope = envelope ?? throw new ArgumentNullException(nameof(envelope));
+            if (strategy != NpcInferenceStrategy.SinglePass && strategy != NpcInferenceStrategy.ClassifyThenRespond)
+                throw LocalInferenceErrors.UnsupportedStrategy();
+            Strategy = strategy;
+            this.envelope = LocalInferenceSnapshots.Copy(envelope ?? throw new ArgumentNullException(nameof(envelope)));
             History = new List<LocalConversationTurn>(history ?? Array.Empty<LocalConversationTurn>()).AsReadOnly();
         }
     }
@@ -76,6 +93,9 @@ namespace AiCharacterKit.LocalInference
     /// <summary>Creates fixed public messages without paths, prompts, or upstream diagnostics.</summary>
     public static class LocalInferenceErrors
     {
+        /// <summary>Rejects unsupported composition explicitly without falling back or contacting a model.</summary>
+        public static AiConversationException UnsupportedStrategy() => new AiConversationException(
+            "unsupported_inference_strategy", "이 대화 모드 또는 실행기는 선택한 추론 방식을 지원하지 않습니다.", false);
         /// <summary>Reports a configuration or installation that cannot be used.</summary>
         public static AiConversationException Configuration() => new AiConversationException(
             "local_configuration_error", "로컬 모델 설치 설정을 확인해 주세요.", false);

@@ -4,6 +4,14 @@ All notable changes to this package are documented here.
 
 ## [Unreleased]
 
+- Qualified the frozen Phase 17 clause-scope candidate only for `gpt-5.6-luna`: signals 184/192, 47/48 and 70/72; state/recall 38/38, 24/24 and 24/24; fresh task answers 66/72; action false positives zero. E4B remains unadopted. Added NPC/Builder strategy and separate endpoint persistence, static Scene/Prefab/reapply/Undo checks and a separate API Inference Comparison sample. SinglePass remains default and outperformed the candidate on the fresh paired set.
+- Verified Server 147/147, root/consumer EditMode 362/362 and 72/72 live core turns across root, consumer and Windows Mono, plus cancel/recovery and independent reset. Full submission p95: 3.798/3.906/3.351 seconds. The campaign used 991/1000 attempts including cancellation. See `docs/PHASE17_REMEDIATION_VALIDATION.md` for remaining semantic errors, Backend pre-action dialogue limitations, editor-harness interruptions and cleanup evidence.
+
+- Added Phase 17 two-stage inference infrastructure with strict intent/dialogue validation, shared deadlines and queue/session ownership, immutable request snapshots, and a separate V4 candidate route. The original E4B and API candidates failed their signal gates (API 178/192 and 45/48, 720 attempts). Those historical results are preserved separately from the qualified follow-up above; SinglePass stays the default.
+- Corrected pinned E4B token preflight using actual template/tokenizer special-token handling, and made cancellation/stop wait for admitted HTTP work before runner reuse.
+- Added request-correlated inference measurements, current-turn Basic/Advanced outcomes with immutable before/after values, and bounded optional Advanced signal examples without changing rule evaluation or Mock matching.
+- Phase 17 results and remaining semantic/environment limits are recorded separately in `docs/PHASE17_VALIDATION.md`; previous completion records below remain historical evidence.
+
 - Added optional Phase 12 Advanced Behavior: per-NPC bool/bounded-number state, typed consumer values, deterministic conditional changes and one action through the existing final authorization contract.
 - Added structured Character Builder authoring, offline evaluation trace, explicit Basic draft import, Scene/Prefab wiring, selected-variable grounding and a Mock-first two-NPC Advanced Relationship sample. State reset is independent of conversation memory; no persistence or code generation is included.
 - Verified Phase 12 with Server 106/106, root and Built-in/Legacy EditMode 303/303 each, Advanced actual-model checks 50/50 in two root Play sessions, consumer and Windows Mono, V4 fake HTTP 31/31, and existing Local Grounded checks 54/54 in root/consumer/player plus memory and process cleanup. Current-source evidence and limitations are separate in `docs/PHASE12_VALIDATION.md`; earlier release and Phase 16 results below remain historical.

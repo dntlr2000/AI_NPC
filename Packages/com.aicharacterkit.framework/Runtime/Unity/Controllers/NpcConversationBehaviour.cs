@@ -47,6 +47,12 @@ namespace AiCharacterKit.Unity
             "http://127.0.0.1:8787/v4/npc/respond";
 
         [SerializeField]
+        private NpcInferenceStrategy inferenceStrategy = NpcInferenceStrategy.SinglePass;
+
+        [SerializeField]
+        private string twoStageContextBackendEndpoint = "http://127.0.0.1:8787/v4/npc/respond-two-stage";
+
+        [SerializeField]
         private string contextResetEndpoint =
             "http://127.0.0.1:8787/v4/npc/sessions/reset";
 
@@ -68,7 +74,13 @@ namespace AiCharacterKit.Unity
         private INpcPresentationDriver presentationDriver;
         private INpcActionResponseFormatter localActionResponseFormatter;
         private NpcAIController controller;
+        private bool submissionInProgress;
+        private string submissionFailureCode;
+        public double LastSubmissionSeconds { get; private set; }
+        public AiCharacterKit.LocalInference.LocalInferenceTurnDiagnostics LastInferenceDiagnostics { get; private set; }
         private CancellationTokenSource lifetimeCancellation;
+
+        public NpcInferenceStrategy InferenceStrategy => inferenceStrategy;
 
         public string LastContextRevision { get; private set; } = string.Empty;
 
@@ -147,6 +159,11 @@ namespace AiCharacterKit.Unity
         /// </summary>
         public async Task<bool> SubmitAsync(string userText)
         {
+            if (submissionInProgress || IsRequestInProgress)
+            {
+                presentationDriver?.PresentError("이미 대화 요청을 처리하고 있습니다.");
+                return false;
+            }
             System.IDisposable reservation = null;
             if (controller != null && actionCoordinator != null
                 && !actionCoordinator.TryReserveBehaviorTurn(out reservation, out _))
@@ -154,8 +171,22 @@ namespace AiCharacterKit.Unity
                 presentationDriver?.PresentError("이미 대화 요청을 처리하고 있습니다.");
                 return false;
             }
-            try { return await SubmitPreparedAsync(userText); }
-            finally { reservation?.Dispose(); }
+            submissionInProgress = true;
+            LastInferenceDiagnostics = null;
+            submissionFailureCode = "generation_failed";
+            var number = actionCoordinator?.BeginBehaviorConversationTurn() ?? 0;
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            var succeeded = false;
+            try { succeeded = await SubmitPreparedAsync(userText); return succeeded; }
+            finally
+            {
+                LastSubmissionSeconds = watch.Elapsed.TotalSeconds;
+                var failure = lifetimeCancellation == null || lifetimeCancellation.IsCancellationRequested
+                    ? "cancelled" : submissionFailureCode;
+                actionCoordinator?.EndBehaviorConversationTurn(number, succeeded, failure);
+                reservation?.Dispose();
+                submissionInProgress = false;
+            }
         }
 
         /// <summary>Builds one immutable request under the caller's optional behavior reservation.</summary>
@@ -180,6 +211,7 @@ namespace AiCharacterKit.Unity
                         out omittedFactIds,
                         out contextError))
                 {
+                    submissionFailureCode = "context_capture_failed";
                     presentationDriver?.PresentError(
                         string.IsNullOrWhiteSpace(contextError)
                             ? "NPC 컨텍스트 구성이 준비되지 않았습니다."
@@ -201,9 +233,17 @@ namespace AiCharacterKit.Unity
                 userText,
                 grounding);
 
-            return await controller.SubmitAsync(
-                request,
-                lifetimeCancellation.Token);
+            var localClient = ownedConversationClient as AiCharacterKit.LocalInference.LocalInferenceConversationClient;
+            var previousDiagnostics = localClient?.LastDiagnostics;
+            try
+            {
+                return await controller.SubmitAsync(request, lifetimeCancellation.Token);
+            }
+            finally
+            {
+                var completed = localClient?.LastDiagnostics;
+                if (!ReferenceEquals(completed, previousDiagnostics)) LastInferenceDiagnostics = completed;
+            }
         }
 
         /// <summary>
@@ -211,6 +251,11 @@ namespace AiCharacterKit.Unity
         /// </summary>
         public async Task<bool> ResetConversationAsync()
         {
+            if (submissionInProgress || IsRequestInProgress)
+            {
+                presentationDriver?.PresentError("이미 대화 요청을 처리하고 있습니다.");
+                return false;
+            }
             System.IDisposable reservation = null;
             if (controller != null && actionCoordinator != null
                 && !actionCoordinator.TryReserveBehaviorTurn(out reservation, out _))
@@ -246,6 +291,11 @@ namespace AiCharacterKit.Unity
         /// </summary>
         private bool TryInitialize()
         {
+            if (!NpcInferenceAvailability.TryValidate(conversationMode, inferenceStrategy, out var strategyError))
+            {
+                Debug.LogError(strategyError, this);
+                return false;
+            }
             if (characterProfile == null)
             {
                 Debug.LogError(
@@ -343,7 +393,7 @@ namespace AiCharacterKit.Unity
                 }
                 try
                 {
-                    var client = runtime.CreateClient(characterProfile.CharacterId, triggerDefinitions,
+                    var client = runtime.CreateClient(characterProfile.CharacterId, triggerDefinitions, inferenceStrategy,
                         localActionResponseFormatter == null ? null : FinalizeLocalResponseAsync);
                     conversationClient = client;
                     ownedConversationClient = client;
@@ -440,7 +490,7 @@ namespace AiCharacterKit.Unity
                 try
                 {
                     var gateway = new UnityWebRequestAiNpcContextBackendGateway(
-                        contextBackendEndpoint,
+                        inferenceStrategy == NpcInferenceStrategy.ClassifyThenRespond ? twoStageContextBackendEndpoint : contextBackendEndpoint,
                         contextResetEndpoint,
                         backendTimeoutSeconds);
                     conversationClient = new ContextBackendConversationClient(

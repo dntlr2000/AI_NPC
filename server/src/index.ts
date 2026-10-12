@@ -1,6 +1,8 @@
 import { createApp } from "./app.js";
 import { loadServerConfig, SERVER_HOST } from "./config.js";
 import { OpenAiNpcResponseGenerator } from "./generator.js";
+import { OpenAiTwoStageNpcResponseGenerator } from "./two-stage-generator.js";
+import { supportsTwoStageModel } from "./two-stage-support.js";
 import { OpenAiSpeechGenerator } from "./speech.js";
 import { OpenAiTranscriptionGenerator } from "./transcription.js";
 import {
@@ -17,10 +19,13 @@ async function startServer(): Promise<void> {
     model: config.model,
     timeoutMs: config.openAiTimeoutMs,
   });
-  const sessionService = new SessionConversationService(
-    new InMemoryConversationSessionStore(config.sessionOptions),
-    generator,
-  );
+  // Both routes and reset share one lock and one success-only memory store.
+  const sessionStore = new InMemoryConversationSessionStore(config.sessionOptions);
+  const sessionService = new SessionConversationService(sessionStore, generator);
+  const twoStageSessionService = supportsTwoStageModel(config.model)
+    ? new SessionConversationService(sessionStore,
+      new OpenAiTwoStageNpcResponseGenerator({ apiKey: config.apiKey, model: config.model, timeoutMs: config.openAiTimeoutMs }))
+    : undefined;
   const speechGenerator = new OpenAiSpeechGenerator({
     apiKey: config.apiKey,
     model: config.ttsModel,
@@ -37,6 +42,7 @@ async function startServer(): Promise<void> {
   const app = createApp({
     generator,
     sessionService,
+    ...(twoStageSessionService ? { twoStageSessionService } : {}),
     speechGenerator,
     voicePresetResolver,
     transcriptionGenerator,

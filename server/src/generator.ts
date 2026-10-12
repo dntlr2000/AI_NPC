@@ -49,6 +49,8 @@ export interface NpcGenerationRequest {
 }
 
 export interface GenerationTelemetry {
+  readonly inferenceDiagnostics?: import("./errors.js").NpcInferenceDiagnostics;
+  readonly stages?: readonly { stage: string; seconds: number; inputTokens: number; outputTokens: number }[];
   readonly openAiResponseId: string;
   readonly inputTokens: number;
   readonly outputTokens: number;
@@ -262,7 +264,7 @@ function readParsedResult(
 }
 
 /** Converts SDK and transport failures into stable V1-safe service errors. */
-function mapOpenAiError(
+export function mapOpenAiError(
   error: unknown,
   cancellationSignal: AbortSignal,
 ): NpcServiceError {

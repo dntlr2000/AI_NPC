@@ -254,6 +254,9 @@ namespace AiCharacterKit.Editor
         public const string DefaultContextBackendEndpoint =
             "http://127.0.0.1:8787/v4/npc/respond";
 
+        public const string DefaultTwoStageContextBackendEndpoint =
+            "http://127.0.0.1:8787/v4/npc/respond-two-stage";
+
         public const string DefaultContextResetEndpoint =
             "http://127.0.0.1:8787/v4/npc/sessions/reset";
 
@@ -267,6 +270,8 @@ namespace AiCharacterKit.Editor
 
         public NpcConversationMode ConversationMode { get; set; } =
             NpcConversationMode.Mock;
+
+        public NpcInferenceStrategy InferenceStrategy { get; set; } = NpcInferenceStrategy.SinglePass;
 
         public LocalInferenceRuntime LocalInferenceRuntime { get; set; }
 
@@ -312,6 +317,8 @@ namespace AiCharacterKit.Editor
 
         public string ContextBackendEndpoint { get; set; } =
             DefaultContextBackendEndpoint;
+
+        public string TwoStageContextBackendEndpoint { get; set; } = DefaultTwoStageContextBackendEndpoint;
 
         public string ContextResetEndpoint { get; set; } =
             DefaultContextResetEndpoint;

@@ -43,6 +43,10 @@ Optional current-source **Advanced Behavior** adds bounded NPC variables and str
 
 For **Unreleased Windows local inference**, follow [Local Inference Quick Start](Documentation~/LOCAL_INFERENCE_QUICKSTART.md). A scene-owned LocalInferenceRuntime shares an external model process while each NPC retains independent memory. This feature is available from current source and is not in the public v0.4.0 tag.
 
+## Optional two-stage API inference (Unreleased)
+
+Current source supports **ClassifyThenRespond** for BackendContext/V4 with `gpt-5.6-luna`. SinglePass remains the default and E4B two-stage remains disabled. Character Builder saves the strategy and a separate two-stage endpoint without changing the single-pass endpoint. Both use the same backend, normally port 8787. Import the samples and create **API Inference Comparison** to inspect signals, state and actual effects. See [setup, measured results and limitations](Documentation~/INFERENCE_RELIABILITY.md). This is Unreleased source, not the immutable public v0.4.0 tag, and two-stage is not universally more accurate than SinglePass.
+
 ## Run package tests
 
 Add `com.aicharacterkit.framework` to the consumer manifest's `testables` array and install Unity Test Framework `1.7.0`. Import and repair **AI NPC Prototypes**, then create the Action and Grounded Guard prototype scenes from their **Tools > AI Character Kit > Samples** menu entries before running the full EditMode suite. Scene-configuration tests intentionally verify those imported consumer assets.

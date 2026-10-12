@@ -39,6 +39,8 @@ npm run dev
 
 The server listens on `http://127.0.0.1:8787`. `PORT`, `OPENAI_MODEL`, and `OPENAI_TIMEOUT_MS` are optional; the address remains loopback-only. The API key, session ID, profile text, user message, generated dialogue, synthesis text, voice instructions, microphone audio, and transcript are never written to application logs.
 
+Current Unreleased source also enables `/v4/npc/respond-two-stage` for the qualified `gpt-5.6-luna` configuration. The same server hosts both V4 generation routes and their shared reset route; a separate game server is unnecessary. Restart an older process to load this source, or rebuild before using `npm start`. Other models retain their existing single-pass routes and receive a fixed unsupported-service error on the two-stage route. SinglePass remains the Unity default. See [qualification, remaining semantic errors and measured latency](../docs/PHASE17_REMEDIATION_VALIDATION.md).
+
 Optional speech settings are loaded at startup:
 
 | Environment variable | Default | Purpose |
@@ -78,6 +80,7 @@ Invalid values stop startup. Limits remove the oldest complete turn or least-rec
 - `POST /v3/npc/respond`
 - `POST /v3/npc/sessions/reset`
 - `POST /v4/npc/respond`
+- `POST /v4/npc/respond-two-stage` (Unreleased, qualified model only)
 - `POST /v4/npc/sessions/reset`
 - `POST /v1/speech/synthesize`
 - `POST /v1/speech/transcribe`

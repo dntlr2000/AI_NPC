@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using AiCharacterKit.Behavior;
+using AiCharacterKit.Core;
 using UnityEditor;
 using UnityEngine;
 
@@ -38,6 +40,15 @@ namespace AiCharacterKit.Editor
                 EditorGUILayout.LabelField("Natural-language meaning");
                 signal.conditionDescription = EditorGUILayout.TextArea(signal.conditionDescription, GUILayout.MinHeight(38));
                 signal.exampleUserText = EditorGUILayout.TextField("Exact Mock example", signal.exampleUserText);
+                signal.positiveExamples = DrawExamples("Model match examples", signal.positiveExamples);
+                signal.negativeExamples = DrawExamples("Model non-match examples", signal.negativeExamples);
+                try
+                {
+                    var compiled = signal.CreateTrigger().ConditionDescription;
+                    EditorGUILayout.LabelField("Model description: " + Encoding.UTF8.GetByteCount(compiled) + " / " + NpcTriggerDefinition.MaxConditionUtf8Bytes + " UTF-8 bytes");
+                    using (new EditorGUI.DisabledScope(true)) EditorGUILayout.TextArea(compiled, GUILayout.MinHeight(38));
+                }
+                catch (ArgumentException exception) { EditorGUILayout.HelpBox(exception.Message, MessageType.Error); }
             });
             var triggerIds = draft.signals.Select(signal => signal.triggerId).ToArray();
             DrawList("State change rules (declaration order)", draft.mutationRules, 64 - draft.actionRules.Count, () => new NpcBehaviorMutationRule(), rule =>
@@ -65,6 +76,25 @@ namespace AiCharacterKit.Editor
                 rule.once = EditorGUILayout.Toggle("Once per state lifetime", rule.once);
                 DrawCondition(rule.condition, draft);
             });
+        }
+
+        /// <summary>Edits optional real-model examples independently of the exact deterministic Mock example.</summary>
+        private static List<string> DrawExamples(string title, List<string> examples)
+        {
+            if (examples == null) examples = new List<string>();
+            EditorGUILayout.LabelField(title + " (up to 4, 128 UTF-8 bytes each)", EditorStyles.miniBoldLabel);
+            var remove = -1;
+            for (var index = 0; index < examples.Count; index++)
+            {
+                EditorGUILayout.BeginHorizontal();
+                examples[index] = EditorGUILayout.TextField(examples[index]);
+                if (GUILayout.Button("Remove", GUILayout.Width(65))) remove = index;
+                EditorGUILayout.EndHorizontal();
+            }
+            if (remove >= 0) examples.RemoveAt(remove);
+            using (new EditorGUI.DisabledScope(examples.Count >= NpcBehaviorSignal.MaxModelExamples))
+                if (GUILayout.Button("Add " + title)) examples.Add(string.Empty);
+            return examples;
         }
 
         /// <summary>Draws an explicit tree with bounded child insertion and subtree removal.</summary>

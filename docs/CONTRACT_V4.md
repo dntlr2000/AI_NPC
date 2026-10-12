@@ -9,6 +9,14 @@ V4 extends the V3 session/action contract with a bounded, immutable request-time
 
 Both endpoints use UTF-8 JSON. The reference server remains bound to loopback.
 
+### Phase 17 optional two-stage route — Unreleased
+
+The current source also implements `POST /v4/npc/respond-two-stage` using the **same V4 request and response DTOs and schema version**. It separates ordered trigger classification from dialogue generation and combines only validated results. A turn with no triggers makes one generation; other turns make at most two, sharing the configured upstream deadline. There is no automatic retry or fallback. Classification output is never session memory.
+
+This candidate route has the same **524,288-byte** serialized UTF-8 body limit and V4 HTTP 413 response as `/v4/npc/respond`. Both routes and `/v4/npc/sessions/reset` use one session store and lock. Only successful complete dialogue is committed once. Busy, cancellation, invalid output and failed dialogue leave memory uncommitted.
+
+The current reference server enables this route only for `OPENAI_MODEL=gpt-5.6-luna`, qualified by the separate Phase 17 remediation campaign. Other configured models without a qualified service receive HTTP 503, `upstream_unavailable`, `retryable=false`. The ordinary server exposes both endpoints on its configured port (default 8787); a second production server is unnecessary. Existing single-pass asset endpoints remain unchanged; Builder stores a separate two-stage endpoint. Stage telemetry stays server-side. Backend still receives no Unity action-completion receipt: generated promises can be followed by a final authorization refusal. Qualification does not guarantee all semantic answers or changes in a mutable model alias.
+
 ## Conversation request
 
 ```json

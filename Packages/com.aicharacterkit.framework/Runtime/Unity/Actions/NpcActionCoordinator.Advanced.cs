@@ -10,6 +10,46 @@ namespace AiCharacterKit.Unity.Actions
 {
     public enum NpcBehaviorMode { Basic = 0, Advanced = 1 }
 
+    /// <summary>Describes one accepted submission without retaining conversation text or live context.</summary>
+    public sealed class NpcBehaviorTurnOutcome
+    {
+        public long TurnNumber { get; }
+        public bool IsPending { get; }
+        public bool WasEvaluated { get; }
+        public bool ConversationSucceeded { get; }
+        public string EvaluationCode { get; }
+        public IReadOnlyList<string> ReturnedTriggerIds { get; }
+        public NpcActionResult ActionResult { get; }
+        public IReadOnlyDictionary<string, NpcBehaviorValue> StateBefore { get; }
+        public IReadOnlyDictionary<string, NpcBehaviorValue> StateAfter { get; }
+        /// <summary>Copies bounded identifier diagnostics and the immutable action result for this submission only.</summary>
+        internal NpcBehaviorTurnOutcome(long turnNumber, bool pending, bool evaluated, bool succeeded,
+            string code, IEnumerable<string> ids = null, NpcActionResult result = null,
+            IReadOnlyDictionary<string, NpcBehaviorValue> before = null,
+            IReadOnlyDictionary<string, NpcBehaviorValue> after = null)
+        {
+            TurnNumber = turnNumber; IsPending = pending; WasEvaluated = evaluated;
+            ConversationSucceeded = succeeded; EvaluationCode = code; ActionResult = result;
+            var copied = new List<string>();
+            if (ids != null) foreach (var id in ids)
+            {
+                if (copied.Count >= NpcTriggerDefinition.MaxTriggerCount) break;
+                if (NpcTriggerDefinition.IsValidIdentifier(id)) copied.Add(id);
+            }
+            ReturnedTriggerIds = copied.AsReadOnly();
+            StateBefore = CopyState(before);
+            StateAfter = CopyState(after);
+        }
+
+        /// <summary>Copies the at-most-32 authored values so later turns cannot rewrite a displayed outcome.</summary>
+        private static IReadOnlyDictionary<string, NpcBehaviorValue> CopyState(IReadOnlyDictionary<string, NpcBehaviorValue> source)
+        {
+            var values = new Dictionary<string, NpcBehaviorValue>(StringComparer.Ordinal);
+            if (source != null) foreach (var pair in source) values.Add(pair.Key, pair.Value);
+            return new ReadOnlyDictionary<string, NpcBehaviorValue>(values);
+        }
+    }
+
     public sealed partial class NpcActionCoordinator
     {
         [SerializeField] private NpcBehaviorMode behaviorMode;
@@ -18,10 +58,12 @@ namespace AiCharacterKit.Unity.Actions
         [SerializeField] private bool enableBehaviorTrace;
         private NpcBehaviorRuntime behaviorRuntime;
         private NpcBehaviorTurn activeBehaviorTurn;
+        private long behaviorTurnNumber;
 
         public bool IsAdvanced => behaviorMode == NpcBehaviorMode.Advanced;
         public NpcBehaviorProfile BehaviorProfile => behaviorProfile;
         public NpcBehaviorTrace LastBehaviorTrace => behaviorRuntime?.LastTrace;
+        public NpcBehaviorTurnOutcome LastBehaviorTurnOutcome { get; private set; }
         public IReadOnlyList<NpcBehaviorTrace> BehaviorTraces => behaviorRuntime?.Traces ?? Array.Empty<NpcBehaviorTrace>();
         public IReadOnlyDictionary<string, NpcBehaviorValue> BehaviorState => behaviorRuntime?.State
             ?? new ReadOnlyDictionary<string, NpcBehaviorValue>(new Dictionary<string, NpcBehaviorValue>());
@@ -93,7 +135,36 @@ namespace AiCharacterKit.Unity.Actions
         public bool TryResetBehaviorState(out string error)
         {
             if (!RequireAdvanced(out error)) return false;
-            return behaviorRuntime.TryResetBehaviorState(out error);
+            if (!behaviorRuntime.TryResetBehaviorState(out error)) return false;
+            LastBehaviorTurnOutcome = null;
+            return true;
+        }
+        /// <summary>Starts fresh Basic or Advanced diagnostics after submission admission; memory reset preserves the outcome.</summary>
+        internal long BeginBehaviorConversationTurn()
+        {
+            if ((IsAdvanced && activeBehaviorTurn == null) || LastBehaviorTurnOutcome?.IsPending == true) return 0;
+            var state = BehaviorState;
+            LastBehaviorTurnOutcome = new NpcBehaviorTurnOutcome(++behaviorTurnNumber, true, false, false, "pending",
+                before: state, after: state);
+            return behaviorTurnNumber;
+        }
+        /// <summary>Completes this submission while preserving any state or action result committed before cancellation.</summary>
+        internal void EndBehaviorConversationTurn(long turnNumber, bool succeeded, string failureCode = "generation_failed")
+        {
+            var current = LastBehaviorTurnOutcome;
+            if (turnNumber == 0 || current == null || current.TurnNumber != turnNumber || !current.IsPending) return;
+            LastBehaviorTurnOutcome = new NpcBehaviorTurnOutcome(turnNumber, false, current.WasEvaluated, succeeded,
+                current.WasEvaluated ? current.EvaluationCode : succeeded ? "not_evaluated" : failureCode, current.ReturnedTriggerIds, current.ActionResult,
+                current.StateBefore, current.StateAfter);
+        }
+        /// <summary>Records a completed evaluation without reading a potentially older optional trace.</summary>
+        private void RecordBehaviorEvaluation(NpcTurnContext context, NpcActionResult result)
+        {
+            var current = LastBehaviorTurnOutcome;
+            if (current == null || !current.IsPending || result.Status == NpcActionStatus.Busy) return;
+            LastBehaviorTurnOutcome = new NpcBehaviorTurnOutcome(current.TurnNumber, true, true, false,
+                IsAdvanced ? behaviorRuntime.LastEvaluationCode : result.Status.ToString().ToLowerInvariant(), context?.Response.MatchedTriggerIds, result,
+                current.StateBefore, BehaviorState);
         }
         /// <summary>Enables or clears bounded in-memory diagnostics without logging any turn contents.</summary>
         public void SetBehaviorTraceEnabled(bool value)

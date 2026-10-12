@@ -44,6 +44,10 @@ The current source also includes optional **Phase 12 Advanced Behavior** for per
 
 The **Unreleased Phase 16** source adds optional Windows local NPC dialogue with an external Gemma model and llama.cpp process. See the [local setup guide](docs/LOCAL_INFERENCE_QUICKSTART.md), [approved plan](docs/PHASE16_PLAN.md) and [verification record](docs/PHASE16_VALIDATION.md). The public v0.4.0 installation does not include this feature.
 
+## Optional two-stage API inference (Unreleased)
+
+Phase 17 adds optional intent classification followed by dialogue generation. **SinglePass remains the default; `gpt-5.6-luna` is the only qualified two-stage API combination.** Character Builder supports strategy selection, separate V4 endpoints and a new API Inference Comparison sample. Both endpoints use the same ordinary 8787 backend. Current-source Server 147/147, root/consumer EditMode 362/362 and 72 live core turns passed. E4B remains unadopted. The fresh paired comparison favored SinglePass in accuracy and speed; qualification is not a claim that two calls always improve results. See [setup and limits](Packages/com.aicharacterkit.framework/Documentation~/INFERENCE_RELIABILITY.md), [remediation evidence](docs/PHASE17_REMEDIATION_VALIDATION.md) and the separately preserved [initial failures](docs/PHASE17_VALIDATION.md).
+
 ## Repository layout
 
 - `Packages/com.aicharacterkit.framework/`: reusable UPM Runtime, Editor tools, tests, samples, and documentation

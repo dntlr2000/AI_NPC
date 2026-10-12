@@ -301,6 +301,11 @@ namespace AiCharacterKit.Editor
             CharacterBuilderConfiguration configuration,
             CharacterBuilderValidationReport report)
         {
+            if (!NpcInferenceAvailability.TryValidate(configuration.ConversationMode, configuration.InferenceStrategy, out var strategyError))
+            {
+                report.AddError(strategyError);
+                return;
+            }
             if (configuration.ConversationMode == NpcConversationMode.LocalInference)
             {
                 ValidateLocalInference(configuration, report);
@@ -337,7 +342,8 @@ namespace AiCharacterKit.Editor
                         return;
                     case NpcConversationMode.BackendContext:
                         _ = new UnityWebRequestAiNpcContextBackendGateway(
-                            configuration.ContextBackendEndpoint,
+                            configuration.InferenceStrategy == NpcInferenceStrategy.ClassifyThenRespond
+                                ? configuration.TwoStageContextBackendEndpoint : configuration.ContextBackendEndpoint,
                             configuration.ContextResetEndpoint,
                             configuration.BackendTimeoutSeconds);
                         return;
@@ -820,6 +826,8 @@ namespace AiCharacterKit.Editor
                 VisualPresentationDriver =
                     visualLocator.Resolve(contents) as MonoBehaviour,
                 ConversationMode = source.ConversationMode,
+                InferenceStrategy = source.InferenceStrategy,
+                TwoStageContextBackendEndpoint = source.TwoStageContextBackendEndpoint,
                 LocalInferenceRuntime = ComponentLocator.CreateOptional(source.Target, source.LocalInferenceRuntime)
                     ?.Resolve(contents) as LocalInferenceRuntime,
                 BackendEndpoint = source.BackendEndpoint,
@@ -1019,6 +1027,8 @@ namespace AiCharacterKit.Editor
                 serializedConversation,
                 "presentationDriverSource",
                 presentationSource);
+            SetInteger(serializedConversation, "inferenceStrategy", (int)configuration.InferenceStrategy);
+            SetString(serializedConversation, "twoStageContextBackendEndpoint", configuration.TwoStageContextBackendEndpoint);
             SetInteger(
                 serializedConversation,
                 "conversationMode",
@@ -1202,6 +1212,8 @@ namespace AiCharacterKit.Editor
                     != presentationSource
                 || GetInteger(serializedConversation, "conversationMode")
                     != (int)configuration.ConversationMode
+                || GetInteger(serializedConversation, "inferenceStrategy") != (int)configuration.InferenceStrategy
+                || serializedConversation.FindProperty("twoStageContextBackendEndpoint").stringValue != configuration.TwoStageContextBackendEndpoint
                 || GetObjectReference(serializedConversation, "actionCoordinator")
                     != actionCoordinator
                 || GetObjectReference(serializedConversation, "contextCoordinator")

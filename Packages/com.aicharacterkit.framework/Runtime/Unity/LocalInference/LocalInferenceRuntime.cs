@@ -59,8 +59,17 @@ namespace AiCharacterKit.Unity.LocalInference
         public LocalInferenceConversationClient CreateClient(string characterId, IReadOnlyList<NpcTriggerDefinition> triggers,
             Func<AiNpcRequest, AiNpcResponse, CancellationToken, Task<AiNpcResponse>> finalizeResponse = null)
         {
+            return CreateClient(characterId, triggers, NpcInferenceStrategy.SinglePass, finalizeResponse);
+        }
+
+        /// <summary>Creates an immutable per-client strategy without preparing the shared model or changing another NPC.</summary>
+        public LocalInferenceConversationClient CreateClient(string characterId, IReadOnlyList<NpcTriggerDefinition> triggers,
+            NpcInferenceStrategy strategy, Func<AiNpcRequest, AiNpcResponse, CancellationToken, Task<AiNpcResponse>> finalizeResponse = null)
+        {
+            if (!NpcInferenceAvailability.TryValidate(NpcConversationMode.LocalInference, strategy, out _))
+                throw LocalInferenceErrors.UnsupportedStrategy();
             EnsureRunner();
-            return new LocalInferenceConversationClient(runner, characterId, triggers, finalizeResponse: finalizeResponse);
+            return new LocalInferenceConversationClient(runner, characterId, triggers, strategy, finalizeResponse: finalizeResponse);
         }
 
         /// <summary>Supports initial startup and explicit recovery without retrying any dialogue request.</summary>

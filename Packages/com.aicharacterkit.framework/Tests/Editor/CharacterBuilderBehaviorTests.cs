@@ -20,7 +20,7 @@ using V4 = AiCharacterKit.Transport.V4;
 namespace AiCharacterKit.Core.Tests
 {
     /// <summary>Verifies static Builder wiring, Prefab safety, runtime recovery and memory/state independence.</summary>
-    public sealed class CharacterBuilderBehaviorTests
+    public sealed partial class CharacterBuilderBehaviorTests
     {
         private const string Folder = "Assets/__AICharacterKitPhase12Tests";
         private CharacterProfile character;

@@ -49,6 +49,8 @@ An optional component implementing `INpcActionResponseFormatter` on the conversa
 
 Existing V4 field limits and **512KiB serialized UTF-8** request size remain. Separately, the actual formatted prompt plus 256 reserved output tokens must fit **4,096 tokens**. Old history is omitted first; an oversized current profile/grounding/trigger/input fails without truncation.
 
+Phase 17 corrects the pinned tokenizer's special-token handling: actual input 3,840 plus the output reserve fits, while 3,841 is rejected before generation. It also waits for cancelled HTTP work before releasing its queue slot and before completing an explicit runner stop. Existing SinglePass prompt/schema and sample defaults are preserved. The optional two-stage infrastructure is not enabled for E4B because its new held-out signal score missed the adoption criterion; the API candidate also failed its fixed signal criteria and remains unadopted. `NpcConversationBehaviour.LastInferenceDiagnostics` reports this NPC's latest admitted local generation, with unknown token usage represented by `-1`, and no prompt/reply logging.
+
 Each NPC retains at most eight successful user/assistant pairs, 16KiB UTF-8, expiring after 30 idle minutes. Grounding/revisions are never retained as history. Each host generates once at a time, with eight FIFO waiters, 30-second queue wait, 35-second request and 180-second preparation deadlines. No automatic retry or online fallback occurs.
 
 | Code | Meaning / recovery |

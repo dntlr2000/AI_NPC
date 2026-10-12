@@ -30,6 +30,8 @@ Affinity starts at 40 and clamps to 0–100. Opening the gate has a five-second 
 
 Mock, BackendActions (V3), BackendContext (V4) and LocalInference support Advanced. V1/V2 modes do not carry semantic triggers and are rejected for this configuration. V3 runs the rules but cannot send variable grounding. For V4 or LocalInference enable grounding; Builder adds one `NpcBehaviorContextProvider` for selected variables. LocalInference also requires an explicit or parent `LocalInferenceRuntime` with the existing external installation profile.
 
+Current-source Phase 17 also exposes optional **Model match examples** and **Model non-match examples** per Advanced signal. Each list permits four examples of at most 128 UTF-8 bytes. Empty/duplicate/control-character examples are rejected, and the complete description with labels and examples must still fit 512 bytes. Inspect the read-only compiled model description before saving. Empty lists preserve existing descriptions; the exact Mock example is independent. These authoring fields do not enable two-stage inference: E4B and the API candidate both missed their fixed signal criteria and remain unadopted.
+
 ## Consumer interfaces
 
 `AiCharacterKit.Behavior` is Unity-independent and references Core only. `NpcBehaviorProfile` lives in `AiCharacterKit.Unity.Behavior`; `NpcActionCoordinator` remains in `AiCharacterKit.Unity.Actions`. A typed provider may be an ordinary MonoBehaviour implementing:
@@ -52,6 +54,8 @@ Game code can read `BehaviorState` and call `TrySetBoolean`, `TrySetNumber`, `Tr
 Actual game effects still use `INpcActionHandler`. `CanExecute` must check authoritative state immediately before execution. A passed rule or an AI trigger never grants game permission. The framework neither invokes arbitrary methods nor accepts model-generated score deltas or action parameters.
 
 ## Order, lifetime and diagnostics
+
+For the latest admitted submission, read `NpcActionCoordinator.LastBehaviorTurnOutcome`: it identifies pending, unevaluated generation failure, evaluated provider/rule result, returned IDs, and immutable variable snapshots before/after processing. It avoids displaying an older optional trace as the current turn. Busy duplicate submissions leave the running outcome untouched. Behavior reset clears this outcome; conversation memory reset preserves it. `NpcConversationBehaviour.LastInferenceDiagnostics` is correlated to that NPC's local request and contains bounded timings, call/token counts and fixed error codes without dialogue text; unavailable token usage is `-1`.
 
 For a validated matched response, providers are captured once immediately before evaluation. All change-rule conditions read the same pre-change state. Matching changes apply in declaration order and commit together. Action conditions read the committed state; highest priority wins, with declaration order breaking ties. A rejected or failed selected action never falls through to another handler. Rules sharing an action ID must use the same cooldown/once policy and share its successful execution record.
 

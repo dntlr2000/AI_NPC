@@ -80,6 +80,7 @@ import type { VoicePresetResolver } from "./voice-presets.js";
 export interface AppDependencies {
   readonly generator: NpcResponseGenerator;
   readonly sessionService: SessionConversationService;
+  readonly twoStageSessionService?: SessionConversationService;
   readonly speechGenerator: SpeechGenerator;
   readonly voicePresetResolver: VoicePresetResolver;
   readonly transcriptionGenerator: TranscriptionGenerator;
@@ -215,7 +216,8 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
     }
   });
 
-  app.post("/v4/npc/respond", { bodyLimit: MAX_REQUEST_BODY_UTF8_BYTES }, async (request, reply) => {
+  for (const route of ["/v4/npc/respond", "/v4/npc/respond-two-stage"]) {
+  app.post(route, { bodyLimit: MAX_REQUEST_BODY_UTF8_BYTES }, async (request, reply) => {
     const requestId = readRequestIdV4(request.body, request.id);
     const version = readSchemaVersion(request.body);
     if (version !== undefined && version !== SCHEMA_VERSION_V4) {
@@ -243,7 +245,9 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
 
     const cancellation = createRequestCancellation(request.raw, reply.raw);
     try {
-      const generated = await dependencies.sessionService.respond(
+      const service = route.endsWith("respond-two-stage") ? dependencies.twoStageSessionService : dependencies.sessionService;
+      if (!service) throw new NpcServiceError("upstream_unavailable", "The requested inference strategy is unavailable.", 503, false, "strategy_unavailable");
+      const generated = await service.respond(
         parsedRequest.data,
         cancellation.signal,
       );
@@ -287,6 +291,8 @@ export function createApp(dependencies: AppDependencies): FastifyInstance {
       cancellation.dispose();
     }
   });
+
+  }
 
   app.post("/v3/npc/respond", async (request, reply) => {
     const requestId = readRequestIdV3(request.body, request.id);
@@ -776,6 +782,8 @@ function logGenerationSuccess(
       inputTokens: generated.telemetry.inputTokens,
       outputTokens: generated.telemetry.outputTokens,
       totalTokens: generated.telemetry.totalTokens,
+      ...(generated.telemetry.stages ? { stages: generated.telemetry.stages } : {}),
+      ...(generated.telemetry.inferenceDiagnostics ? { inference: generated.telemetry.inferenceDiagnostics } : {}),
     },
     "AI NPC response generated",
   );
@@ -825,6 +833,7 @@ function logServiceFailure(
       category: serviceError.logCategory,
       statusCode: serviceError.statusCode,
       retryable: serviceError.retryable,
+      ...(serviceError.inferenceDiagnostics ? { inference: serviceError.inferenceDiagnostics } : {}),
     },
     "AI NPC request failed",
   );

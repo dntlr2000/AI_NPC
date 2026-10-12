@@ -71,7 +71,10 @@ namespace AiCharacterKit.Transport.LocalInference
     public sealed class LocalTokenizeResponse { public int[] tokens; }
 
     [Serializable]
-    public sealed class LocalCompletionResponse { public LocalCompletionChoice[] choices; }
+    public sealed class LocalCompletionResponse { public LocalCompletionChoice[] choices; public LocalCompletionUsage usage; }
+
+    [Serializable]
+    public sealed class LocalCompletionUsage { public int prompt_tokens; public int completion_tokens; }
 
     [Serializable]
     public sealed class LocalCompletionChoice
@@ -86,7 +89,18 @@ namespace AiCharacterKit.Transport.LocalInference
         public string role;
         public string content;
         public string reasoning_content;
+        public string reasoning;
+        public string analysis;
+        public string channel;
+        public LocalToolCall[] tool_calls;
+        public LocalFunctionCall function_call;
     }
+
+    [Serializable]
+    public sealed class LocalToolCall { public string type; public LocalFunctionCall function; }
+
+    [Serializable]
+    public sealed class LocalFunctionCall { public string name; public string arguments; }
 
     [Serializable]
     public sealed class LocalResponseFormat

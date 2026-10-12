@@ -127,7 +127,7 @@ namespace AiCharacterKit.Unity.Actions
         }
 
         /// <summary>
-        /// Routes one successful conversation turn through the initialized pure-Core router.
+        /// Routes one response exactly once and records Advanced diagnostics independently of optional trace retention.
         /// </summary>
         public async Task ObserveAsync(
             NpcTurnContext context,
@@ -140,13 +140,36 @@ namespace AiCharacterKit.Unity.Actions
 
             if (IsAdvanced)
             {
-                var providers = CreateValueProviders();
-                if (activeBehaviorTurn != null) await activeBehaviorTurn.EvaluateAsync(context, providers, cancellationToken);
-                else await behaviorRuntime.ProcessTurnAsync(context, providers, cancellationToken);
+                IDisposable reservation = null;
+                var ownsSubmission = activeBehaviorTurn == null;
+                if (ownsSubmission && !TryReserveBehaviorTurn(out reservation, out _)) return;
+                var ownsOutcome = LastBehaviorTurnOutcome == null || !LastBehaviorTurnOutcome.IsPending;
+                var number = ownsOutcome ? BeginBehaviorConversationTurn() : LastBehaviorTurnOutcome.TurnNumber;
+                var evaluated = false;
+                try
+                {
+                    var result = await activeBehaviorTurn.EvaluateAsync(context, CreateValueProviders(), cancellationToken);
+                    RecordBehaviorEvaluation(context, result);
+                    evaluated = true;
+                }
+                finally
+                {
+                    if (ownsOutcome) EndBehaviorConversationTurn(number, evaluated);
+                    reservation?.Dispose();
+                }
                 return;
             }
 
-            await router.ObserveAsync(context, cancellationToken);
+            var ownsBasicOutcome = LastBehaviorTurnOutcome?.IsPending != true;
+            var basicNumber = ownsBasicOutcome ? BeginBehaviorConversationTurn() : LastBehaviorTurnOutcome.TurnNumber;
+            var completed = false;
+            try
+            {
+                await router.ObserveAsync(context, cancellationToken);
+                RecordBehaviorEvaluation(context, router.LastResult);
+                completed = true;
+            }
+            finally { if (ownsBasicOutcome) EndBehaviorConversationTurn(basicNumber, completed); }
         }
     }
 }

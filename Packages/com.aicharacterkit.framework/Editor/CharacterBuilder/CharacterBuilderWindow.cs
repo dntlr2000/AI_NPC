@@ -595,6 +595,7 @@ namespace AiCharacterKit.Editor
                 (NpcConversationMode)EditorGUILayout.EnumPopup(
                     "Conversation Mode",
                     configuration.ConversationMode);
+            DrawInferenceStrategy();
             DrawConversationEndpoints();
             if (configuration.ConversationMode != NpcConversationMode.LocalInference)
                 configuration.BackendTimeoutSeconds = EditorGUILayout.IntField(
@@ -840,6 +841,9 @@ namespace AiCharacterKit.Editor
                 configuration.ContextBackendEndpoint = EditorGUILayout.TextField(
                     "V4 Respond Endpoint",
                     configuration.ContextBackendEndpoint);
+                if (configuration.InferenceStrategy == NpcInferenceStrategy.ClassifyThenRespond)
+                    configuration.TwoStageContextBackendEndpoint = EditorGUILayout.TextField(
+                        "V4 Two-stage Endpoint", configuration.TwoStageContextBackendEndpoint);
                 configuration.ContextResetEndpoint = EditorGUILayout.TextField(
                     "V4 Reset Endpoint",
                     configuration.ContextResetEndpoint);
@@ -934,6 +938,7 @@ namespace AiCharacterKit.Editor
             configuration.ConfigureActions = false;
             configuration.ConfigureGrounding = false;
             configuration.LocalInferenceRuntime = null;
+            configuration.InferenceStrategy = NpcInferenceStrategy.SinglePass;
             configuration.ActionHandlerSources = Array.Empty<MonoBehaviour>();
             configuration.ContextProviderSources = Array.Empty<MonoBehaviour>();
             configuration.BehaviorMode = NpcBehaviorMode.Basic;
@@ -984,6 +989,8 @@ namespace AiCharacterKit.Editor
             configuration.ConversationMode =
                 (NpcConversationMode)serializedConversation
                     .FindProperty("conversationMode").intValue;
+            configuration.InferenceStrategy = (NpcInferenceStrategy)serializedConversation.FindProperty("inferenceStrategy").intValue;
+            configuration.TwoStageContextBackendEndpoint = serializedConversation.FindProperty("twoStageContextBackendEndpoint").stringValue;
             configuration.LocalInferenceRuntime = serializedConversation
                 .FindProperty("localInferenceRuntime").objectReferenceValue as LocalInferenceRuntime;
             configuration.BackendEndpoint = serializedConversation

@@ -13,6 +13,10 @@ namespace AiCharacterKit.LocalInference
     {
         private readonly ILocalInferenceRunner runner;
         private readonly string characterId;
+        private readonly NpcInferenceStrategy strategy;
+        private readonly ILocalInferenceDiagnostics diagnosticSource;
+        private string activeRequestId;
+        public LocalInferenceTurnDiagnostics LastDiagnostics { get; private set; }
         private readonly string sessionId = "local-" + Guid.NewGuid().ToString("N");
         private readonly IReadOnlyList<NpcTriggerDefinition> triggers;
         private readonly HashSet<string> knownIds = new HashSet<string>(StringComparer.Ordinal);
@@ -29,6 +33,12 @@ namespace AiCharacterKit.LocalInference
         public LocalInferenceConversationClient(ILocalInferenceRunner runner, string characterId,
             IReadOnlyList<NpcTriggerDefinition> triggers, Func<DateTime> utcNow = null,
             Func<AiNpcRequest, AiNpcResponse, CancellationToken, Task<AiNpcResponse>> finalizeResponse = null)
+            : this(runner, characterId, triggers, NpcInferenceStrategy.SinglePass, utcNow, finalizeResponse) { }
+
+        /// <summary>Selects an explicit composition while preserving independent success-only memory.</summary>
+        public LocalInferenceConversationClient(ILocalInferenceRunner runner, string characterId,
+            IReadOnlyList<NpcTriggerDefinition> triggers, NpcInferenceStrategy strategy, Func<DateTime> utcNow = null,
+            Func<AiNpcRequest, AiNpcResponse, CancellationToken, Task<AiNpcResponse>> finalizeResponse = null)
         {
             this.runner = runner ?? throw new ArgumentNullException(nameof(runner));
             if (string.IsNullOrWhiteSpace(characterId) || triggers == null
@@ -43,6 +53,12 @@ namespace AiCharacterKit.LocalInference
             this.triggers = copy.AsReadOnly();
             this.utcNow = utcNow ?? (() => DateTime.UtcNow);
             this.finalizeResponse = finalizeResponse;
+            if (strategy != NpcInferenceStrategy.SinglePass &&
+                (strategy != NpcInferenceStrategy.ClassifyThenRespond || !(runner is ILocalInferenceStrategyCapabilities supported) || !supported.SupportsStrategy(strategy)))
+                throw LocalInferenceErrors.UnsupportedStrategy();
+            this.strategy = strategy;
+            diagnosticSource = runner as ILocalInferenceDiagnostics;
+            if (diagnosticSource != null) diagnosticSource.TurnCompleted += RecordDiagnostics;
         }
 
         /// <summary>Validates generation before side effects and remembers only the finalized, uncancelled reply.</summary>
@@ -62,7 +78,9 @@ namespace AiCharacterKit.LocalInference
                 try { envelope = AiNpcContractMapper.CreateRequest(request, "req-" + Guid.NewGuid().ToString("N"), sessionId, triggers); }
                 catch { throw LocalInferenceErrors.InvalidRequest(); }
                 if (utcNow() - lastCommit >= TimeSpan.FromMinutes(LocalInferenceDefaults.IdleMinutes)) turns.Clear();
-                localRequest = new LocalInferenceRequest(envelope, turns);
+                localRequest = new LocalInferenceRequest(envelope, turns, strategy);
+                activeRequestId = localRequest.RequestId;
+                LastDiagnostics = null;
                 operation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, lifetime.Token);
                 busy = true;
             }
@@ -91,7 +109,7 @@ namespace AiCharacterKit.LocalInference
                 catch (OperationCanceledException) { throw; }
                 catch (AiConversationException) { throw; }
                 catch { throw LocalInferenceErrors.Unavailable(); }
-                finally { lock (sync) busy = false; }
+                finally { lock (sync) { busy = false; activeRequestId = null; } }
             }
         }
 
@@ -118,8 +136,15 @@ namespace AiCharacterKit.LocalInference
                 disposed = true;
                 turns.Clear();
             }
+            if (diagnosticSource != null) diagnosticSource.TurnCompleted -= RecordDiagnostics;
             lifetime.Cancel();
             lifetime.Dispose();
+        }
+
+        /// <summary>Accepts only this client's active request, rejecting other NPCs and stale completions.</summary>
+        private void RecordDiagnostics(LocalInferenceTurnDiagnostics value)
+        {
+            lock (sync) if (!disposed && value != null && value.RequestId == activeRequestId) LastDiagnostics = value;
         }
 
         /// <summary>Validates commands and configured IDs even when using a custom runner implementation.</summary>

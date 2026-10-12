@@ -24,6 +24,7 @@ namespace AiCharacterKit.Behavior
         private bool traceEnabled;
 
         public NpcActionResult LastResult { get; private set; }
+        public string LastEvaluationCode { get; private set; } = "not_evaluated";
         public bool IsBusy { get { lock (sync) return activeTurn != null; } }
         public IReadOnlyDictionary<string, NpcBehaviorValue> State { get { lock (sync) return Snapshot(state); } }
         public IReadOnlyList<NpcBehaviorTrace> Traces { get { lock (sync) return new List<NpcBehaviorTrace>(traces).AsReadOnly(); } }
@@ -96,7 +97,7 @@ namespace AiCharacterKit.Behavior
             {
                 if (activeTurn != null) { error = "busy"; return false; }
                 state = CreateInitialState(); successes.Clear(); traces.Clear();
-                LastResult = Result(NpcActionStatus.NoMatch, "reset"); error = string.Empty; return true;
+                LastResult = Result(NpcActionStatus.NoMatch, "reset"); LastEvaluationCode = "reset"; error = string.Empty; return true;
             }
         }
 
@@ -263,6 +264,7 @@ namespace AiCharacterKit.Behavior
             lock (sync)
             {
                 LastResult = result;
+                LastEvaluationCode = code;
                 if (traceEnabled)
                 {
                     traces.Enqueue(new NpcBehaviorTrace(ids, deltas ?? new List<NpcBehaviorDelta>(), rules ?? new List<NpcBehaviorRuleTrace>(), result, code));

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Text;
 using AiCharacterKit.Core;
 
 namespace AiCharacterKit.Behavior
@@ -61,13 +62,49 @@ namespace AiCharacterKit.Behavior
     [Serializable]
     public sealed class NpcBehaviorSignal
     {
+        public const int MaxModelExamples = 4, MaxModelExampleUtf8Bytes = 128;
         public string triggerId = "praise";
         public string conditionDescription = "The user compliments this character.";
         public string exampleUserText = "정말 친절하네요.";
-        /// <summary>Creates the existing transport-compatible immutable semantic definition.</summary>
-        public NpcTriggerDefinition CreateTrigger() => NpcTriggerDefinition.CreateSignal(triggerId, conditionDescription, exampleUserText);
-        /// <summary>Copies authored semantic text without sharing mutable state.</summary>
-        public NpcBehaviorSignal Copy() => (NpcBehaviorSignal)MemberwiseClone();
+        public List<string> positiveExamples = new List<string>();
+        public List<string> negativeExamples = new List<string>();
+        /// <summary>Compiles optional authored examples into the existing bounded description, retaining the Mock-only example.</summary>
+        public NpcTriggerDefinition CreateTrigger() => NpcTriggerDefinition.CreateSignal(triggerId, CompileModelConditionDescription(), exampleUserText);
+        /// <summary>Builds the bounded model description and rejects duplicated or contradictory examples without changing authored text.</summary>
+        public string CompileModelConditionDescription()
+        {
+            var text = new StringBuilder(NpcTriggerDefinition.CreateSignal(triggerId, conditionDescription, exampleUserText).ConditionDescription);
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            AppendExamples(text, positiveExamples, "Match examples", seen);
+            AppendExamples(text, negativeExamples, "Non-match examples", seen);
+            var result = text.ToString();
+            var bytes = Encoding.UTF8.GetByteCount(result);
+            if (bytes > NpcTriggerDefinition.MaxConditionUtf8Bytes)
+                throw new ArgumentException("Compiled trigger description uses " + bytes + " UTF-8 bytes; maximum is " + NpcTriggerDefinition.MaxConditionUtf8Bytes + ".");
+            return result;
+        }
+        /// <summary>Rejects repeated examples across both labels after trimming outer whitespace, while preserving the exact transmitted text.</summary>
+        private static void AppendExamples(StringBuilder text, List<string> examples, string label, HashSet<string> seen)
+        {
+            if (examples == null || examples.Count == 0) return;
+            if (examples.Count > MaxModelExamples) throw new ArgumentException("Each model example list allows at most four entries.");
+            text.Append('\n').Append(label).Append(':');
+            foreach (var example in examples)
+            {
+                if (string.IsNullOrWhiteSpace(example) || Encoding.UTF8.GetByteCount(example) > MaxModelExampleUtf8Bytes)
+                    throw new ArgumentException("Model examples must be nonempty and at most 128 UTF-8 bytes each.");
+                foreach (var character in example)
+                    if (char.IsControl(character) || character == '\u2028' || character == '\u2029')
+                        throw new ArgumentException("Model examples must each occupy one line without control characters.");
+                if (!seen.Add(example.Trim()))
+                    throw new ArgumentException("Model examples must be unique after trimming, including across match and non-match lists.");
+                text.Append("\n- ").Append(example);
+            }
+        }
+        /// <summary>Copies both optional example lists, treating absent legacy lists as empty.</summary>
+        public NpcBehaviorSignal Copy() => new NpcBehaviorSignal { triggerId = triggerId, conditionDescription = conditionDescription,
+            exampleUserText = exampleUserText, positiveExamples = new List<string>(positiveExamples ?? new List<string>()),
+            negativeExamples = new List<string>(negativeExamples ?? new List<string>()) };
     }
 
     /// <summary>Uses parent indices to serialize a bounded condition tree without Unity recursive-serialization limits.</summary>

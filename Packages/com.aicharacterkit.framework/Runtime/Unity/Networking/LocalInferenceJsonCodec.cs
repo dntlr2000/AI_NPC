@@ -12,7 +12,7 @@ using UnityEngine;
 namespace AiCharacterKit.Unity.Networking
 {
     /// <summary>Serializes local chat at the Unity boundary and strictly parses the four NPC output fields.</summary>
-    public static class LocalInferenceJsonCodec
+    public static partial class LocalInferenceJsonCodec
     {
         /// <summary>Checks the unchanged V4 budget before constructing any model HTTP request.</summary>
         public static void ValidateRequest(LocalInferenceRequest request)
