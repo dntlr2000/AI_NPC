@@ -1,13 +1,17 @@
 # AI NPC Framework 진행 점검 및 로드맵
 
-> 기준일: 2026-10-03
-> 비교 기준: ChatGPT 대화 **“Unity Ai NPC 만들기”**의 초기 구상과 이후 합의된 Phase 1~16 책임 경계
+> 기준일: 2026-10-12
+> 비교 기준: ChatGPT 대화 **“Unity Ai NPC 만들기”**의 초기 구상, 기존 Phase 1~16 책임 경계와 Phase 17 후속 방향
 
 ## 결론
 
 저장소는 수정된 로드맵의 순서와 제약을 따르고 있다. **Phase 1~11과 Phase 15의 구현·검증 및 package `0.2.0`, `0.3.0`, `0.4.0` 공개가 완료됐다.** `v0.3.0`은 exact commit `42f5c5916f5e8fb20cfcec742b91a7451e062a0e`에서 공개됐으며 최소 action pipeline을 제공한다. Phase 15의 character canon, world lore와 live game-state grounding pipeline은 2026-09-04 exact commit `027b61f053c620d4e5202830b18692a6d45d3458`의 `v0.4.0`으로 공개됐다.
 
 Phase 15 공개 시점에는 Server **95/95**, Unity compile, 전체 EditMode **186/186**과 live V4 수동 검증이 통과했다. 2026-09-08 검토에서 확인한 V4 HTTP 본문 제한, provider 초기화 시점과 릴리즈 문서 불일치는 별도 **Unreleased 안정화**로 보완했다. 수정본은 Server **106/106**, root 및 Built-in/Legacy consumer Unity **각 203/203**을 통과했다. 기존 완료 기록과 이번 보완의 검증 근거는 [`PHASE15_PLAN.md`](PHASE15_PLAN.md)에 구분한다. wire 규격은 [`CONTRACT_V4.md`](CONTRACT_V4.md), 공개 기록은 [`RELEASE_0.4.0.md`](RELEASE_0.4.0.md)를 따른다. Phase 16은 2026-09-30 승인 범위의 Windows 로컬 대화 구현·검증을 완료했으며 **Unreleased**다. Server **106/106**, root·Built-in/Legacy EditMode **각 240/240**, 실제 모델 Play Mode와 최종 Windows Mono **35/35** 검사를 통과했다. 측정값과 제한은 [검증 기록](PHASE16_VALIDATION.md)에 남긴다. Phase 12~14는 Advanced Behavior, Backend 배포, Realtime의 기존 책임 경계를 유지한다. 번호는 우선순위가 아니며 후보 기능은 구현 직전에 다시 계획한다.
+
+다음 개발 항목은 **Phase 17 — PC·API 선택형 2단계 추론과 신뢰성 안정화**로 정리한다. [계획](PHASE17_PLAN.md)은 `main`의 Phase 12·15·16을 기준으로 의도 분류와 대사 생성을 분리하고, 확인된 토큰 계산 및 현재 턴 진단을 보완한다. 현재는 로드맵·계획을 정리한 상태이며 제품의 2단계 기능은 아직 구현되지 않았다.
+
+`AndroidSDK` 브랜치(대화에서 Android_SDK로 지칭)의 모바일·LiteRT 확장과 조사 자료는 보존하되 이번 개발에 병합하지 않는다. S10에서 실제 대화·행동까지 확인했지만 지연·프레임·의미 정확도 목표를 충족하지 못해 모바일 제품화는 보류한다. 이 판단은 기존 Windows Phase 16 완료 기록을 취소하거나 모든 모바일 환경의 실행 불가능을 뜻하지 않는다. Phase 13·14 후보의 내용과 상대적 우선순위는 유지한다.
 
 ## 우리가 만드는 것
 
@@ -83,6 +87,8 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - Git 공개 기준선: `027b61f053c620d4e5202830b18692a6d45d3458` (`v0.4.0`)
 - Backend: Node.js 24 + TypeScript + Fastify + OpenAI SDK, 대화 V1/V2/V3/V4와 선택형 Speech/Transcription V1, loopback 전용
 - 제외 범위: 영구·장기·Vector 기억, Realtime, VAD, 자동 전송, 원격 배포, client auth, streaming, bundled offline inference
+- 개발 기준: `main`의 `0ea2e4d3916e3da5f42076719d7560421021ca9b`를 바탕으로 Phase 17 계획 수립. 현재 제품은 단일 호출이며 2단계는 격리 검증 후보에만 존재한다.
+- 보존·보류: `AndroidSDK`의 Android/LiteRT 확장. E2B·LFM2.5 신규 제품 지원과 모바일 재검증은 Phase 17에 포함하지 않는다.
 
 ## 초기 로드맵과의 비교
 
@@ -106,6 +112,8 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 | Backend 배포 | reference server를 독립 설치·검증 가능한 artifact로 정리 | Phase 13 후속 가안; 배포 방식 재계획 필요 |
 | Realtime 음성 | Push-to-Talk로 해결되지 않는 저지연·barge-in 요구 대응 | Phase 14 후속 가안; 요구 증거 후 재계획 |
 | Offline local inference | 외부 Gemma/llama.cpp를 Unity 공유 실행기와 NPC별 client로 연결 | Phase 16 Windows Editor/Mono 구현·실행 검증 완료, Unreleased |
+| PC·API 추론 신뢰성 | main 기반 선택형 2단계, 토큰 계산·현재 턴 진단·설정과 검증 | Phase 17 다음 작업 — 계획 수립, 제품 구현 전 |
+| Android·LiteRT 확장 | 별도 브랜치에서 실기기 실행과 설치·수명 관리를 검증 | 제품 수용 기준 미충족, 보존·보류 |
 | 장기 기억 | 구현하지 않음 | 실제 persistence 요구와 privacy 설계 전까지 보류 |
 
 초기 대화에서는 실제 GPT/JSON 응답이 비교적 앞에 있었으나, 이후 계획은 Mock → 프로필 재사용 → 전송 계약 → 백엔드 순서로 정리됐다. 현재 저장소는 이 수정된 순서를 따른다.
@@ -294,6 +302,18 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - 기본 UPM에는 모델·실행기·native DLL을 포함하지 않는다. 게임 중 다운로드·모델 복사·자동 재요청·온라인 fallback은 없다.
 - 두 후보 비교, Phase 12~14, 장기 기억, RAG, 로컬 음성과 스트리밍은 이번 범위에서 제외한다.
 
+### Phase 17 — PC·API 선택형 2단계 추론과 신뢰성 안정화
+
+- **상태: 다음 작업 — 2026-10-12 계획 수립, 제품 구현 전**
+- 범위·검증·채택 판단: [`PHASE17_PLAN.md`](PHASE17_PLAN.md)
+- `main`을 기준으로 E4B/llama.cpp Windows와 Backend V4/API를 지원 대상으로 삼는다. 기존 단일 호출을 기본값으로 유지하고 2단계를 NPC별로 명시적으로 선택한다.
+- 같은 모델로 먼저 의도를 분류하고 이후 대사를 생성한다. 분류에는 동일한 성공 이력을 사용하며, 두 단계 검증이 끝난 뒤 Basic/Advanced가 변수·행동을 한 번만 처리한다.
+- 기존 Core·V4 계약, 기억과 행동 상태의 독립 수명, 실행 직전 `CanExecute`, 로컬 행동 결과에 따른 대사·기억 최종화를 유지한다.
+- 실제 생성과 사전 토큰 계산을 일치시키고, 이번 턴의 분류·실패·행동 결과를 이전 trace와 구분한다. AndroidSDK의 보완은 필요한 항목만 검토하며 단일 호출 프롬프트를 일괄 교체하지 않는다.
+- main 기반 격리 비교에서 E4B 통합 통과는 단일 144/192 → 2단계 182/192, API는 187/192 → 190/192였다. 실제 저장소에 기능이 반영되었다는 뜻은 아니며 참조 요청 누락·기억/상태 오류와 긴 응답 사례가 남았다.
+- 자동 회귀, 오류 유형별 의미 검사, root·Built-in/Legacy consumer·Windows x64 Mono 실행을 검증한다. 의미 오류 허용 상한은 구현 시작 시 평가 전에 확정하며, 현재 후보를 전체 통과나 채택 완료로 기록하지 않는다.
+- Android·LiteRT/E2B·LFM2.5 신규 지원, Phase 12 규칙 알고리즘 변경, Phase 13·14 구현, 모델 교체·자동 재시도·온라인 전환·버전 변경·공개 릴리즈는 제외한다.
+
 ### Package 0.2.0 — 공개 Git 릴리즈
 
 - **상태: 공개 완료 — `v0.2.0`, exact commit `dcad604a510b767b18154eb01408218a2e1e51f2`**
@@ -333,7 +353,10 @@ API 키와 OpenAI 호출은 Unity 클라이언트가 아니라 Backend가 소유
 - mutable world state가 빠르게 변하면 응답 생성 뒤 실제 action 시점과 snapshot이 달라질 수 있다. V4는 request-time 근거만 제공하고 handler가 실행 직전 실제 상태를 다시 검사한다.
 - 모든 lore를 매 turn 보내면 비용과 충돌이 증가한다. Phase 15는 strict byte/count budget과 deterministic priority trimming을 사용하며 RAG나 자동 요약을 선행 구현하지 않는다.
 - offline local inference는 플랫폼별 native runtime, model 재배포 라이선스와 큰 설치 용량 위험이 있다. 기본 package에 포함하지 않으며 Phase 16은 지정된 Windows/Gemma/Vulkan 구성만 검증했다. 기본 응답 p95 3.199초와 별개로 일시적인 프레임 지연이 관측되었으므로 [측정 결과](PHASE16_VALIDATION.md)를 따른다.
+- 2단계는 호출량과 지연을 늘리며 모델의 의미 정확성을 보장하지 않는다. 행동 오탐, 정상 요청 누락, 호감도 오변경, 현재 상태·기억 오류를 분리하고 과거 검증과 현재 소스의 결과를 구분한다. 같은 평가 설정의 비교를 기본 샘플 전체의 성능 보장으로 확대하지 않는다.
 
 ## 바로 다음 행동
 
-**완료한 Phase 12 Advanced Relationship 샘플을 실제 NPC 설정에 적용한다.** [사용 안내](ADVANCED_BEHAVIOR_QUICKSTART.md)와 [검증 기록](PHASE12_VALIDATION.md)에 따라 Mock으로 규칙을 먼저 확인하고 필요한 Backend/LocalInference를 연결한다. Phase 15·16 완료 증거와 이번 결과를 구분하며 Phase 13·14 후보 내용과 우선순위는 유지한다. 새 후보 단계, 패키지 버전 변경, push, 태그와 릴리즈 발행은 이번 작업에 포함하지 않는다.
+**Phase 17을 main 기준의 다음 구현 단계로 진행한다.** [계획](PHASE17_PLAN.md)에 따라 작성 데이터와 단일 호출 기준을 고정하고, 오류 유형별 채택 기준을 정한 뒤 선택형 2단계·토큰 계산·현재 턴 진단을 연결한다. NPC 설정과 Builder·샘플·consumer·Windows player 검증까지 같은 단계에 포함한다.
+
+이번 변경은 로드맵과 계획 정리이며 런타임 구현이나 모델/API 재검증 완료를 뜻하지 않는다. 기존 Phase 12·15·16 완료 증거와 AndroidSDK의 보존 자료를 유지한다. Phase 13·14는 기존 후보로 남기며 브랜치 전체 병합, 패키지 버전 변경, push, 태그와 릴리즈 발행은 포함하지 않는다.
